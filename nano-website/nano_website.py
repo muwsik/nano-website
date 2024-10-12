@@ -2,10 +2,14 @@ import io
 import csv
 import numpy as np
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 import style
 import MicFunctions_v2 as mf
+
+# Run
+# streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
+
 
 # Header
 style.set_style()
