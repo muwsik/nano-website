@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>nano_website.py</StartupFile>
+    <StartupFile>test.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -24,6 +24,9 @@
     <Compile Include="MicFunctions_v2.py" />
     <Compile Include="nano_website.py" />
     <Compile Include="style.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="test.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="tools.py">
