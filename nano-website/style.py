@@ -45,7 +45,7 @@ def set_style():
             text-align: center;
         }
         .image-display {
-            width: 100%;
+            width: inherit;
             height: 400px;
             object-fit: contain;
         }
