@@ -6,17 +6,18 @@ import cv2
 import numpy as np
 
 def process_file(img):
-    dist = distance(img, black_pixels(img))
+    dist = distance(img, black_pixels(img)[0])
     rez = text_out(img)
+    print("Текст:", rez)
     text_result = ' '.join(rez)               
     uvel, shkal = extract_values(text_result)
 
-    print(f"Длинна шкилы: {dist}")
     print(f"Увеличение: {uvel}")
+    print(f"Длинна шкалы: {dist}")
     print(f"Число под шкалой: {shkal}")
-    if shkal is not None:
+    if (shkal is not None) and (dist is not None):
         fraction = dist / shkal
-        print(f"Дробь: {fraction}")
+        print(f"px/nm: {fraction}")
 
 
 # Дополнительные функции, необходимые для обработки изображений
@@ -30,11 +31,11 @@ def black_pixels(img):
             last_black_y = y
         else:
             break
-    print(f"Координата X: {width - 1}, Координата Y: {last_black_y}")
+    print(f"Координата X: {width}, Координата Y: {last_black_y}")
     
     crop_img = img.crop((0, last_black_y, width, height))    
     
-    return last_black_y
+    return last_black_y, crop_img
 
 def distance(img, start_y):
     width, height = img.size
@@ -50,7 +51,8 @@ def distance(img, start_y):
 
     if first_white_index is not None and last_white_index is not None:
         return last_white_index - first_white_index
-    return 0
+
+    return None
 
 def text_out(img):
     img_np = np.array(img)
@@ -60,15 +62,15 @@ def text_out(img):
     return result
 
 def extract_values(text):
-    matches_increase = re.findall(r'[xX][0-9]{3}[kK]', text)[0]
     try:
-        increase = int(matches_increase[1:-1])
+        matches_increase = re.findall(r'[xX][0-9]*.?[0-9]+[kK]', text)[0]
+        increase = float(matches_increase[1:-1])
     except Exception:
         increase = None
 
 
-    matches_scale = re.findall(r'\d+.\d{0,3}[nup]m', text)[0]
     try:
+        matches_scale = re.findall(r'[0-9]*.?[0-9]+[nup]m', text)[0]
         if matches_scale[-2] == 'n':
             scale = int(matches_scale[:-2])
         if matches_scale[-2] == 'u' or matches_scale[-2] == 'p':
@@ -78,7 +80,7 @@ def extract_values(text):
 
     return increase, scale
 
-img_path = r"D:\Cloud\Mycroscopy\gt\EP-483_i042\EP-483_i042.tif"
+img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0018.tif"
 
 
 img = Image.open(img_path)
