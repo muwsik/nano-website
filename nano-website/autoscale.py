@@ -1,9 +1,9 @@
-import os
 from PIL import Image
-import easyocr
-import re
-import cv2
 import numpy as np
+import easyocr
+import cv2
+import os
+import re
 
 def process_file(img):
     dist = distance(img, black_pixels(img)[0])

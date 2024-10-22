@@ -7,7 +7,7 @@ from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
     
-import style, tools
+import style, tools#, autoscale
 
 # Run
 # streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
@@ -17,10 +17,12 @@ help_str = "be added soon"
 
 if 'imageUpload' not in st.session_state:
     st.session_state['imageUpload'] = False
-    st.session_state['settingDefault'] = True
     st.session_state['uploadedImage'] = None
-    st.session_state['detect'] = False
-    st.session_state['BLOBs'] = False
+
+    st.session_state['settingDefault'] = True
+
+    st.session_state['detected'] = False
+    st.session_state['BLOBs'] = None
     st.session_state['imageBLOBs'] = None
 
 
@@ -38,32 +40,47 @@ with left:
     uploadedImage = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "tif"])
 
     image_placeholder = st.empty()
-    if uploadedImage is not None:
+    if uploadedImage is None:        
+        st.session_state['imageUpload'] = False
+        st.session_state['uploadedImage'] = None
+
+        st.session_state['settingDefault'] = True
+
+        st.session_state['detected'] = False  
+        st.session_state['BLOBs'] = None
+        st.session_state['imageBLOBs'] = None
+    else:
         st.session_state['imageUpload'] = True
 
         crsImage = Image.open(uploadedImage)
-        grayImage = np.asarray(crsImage, dtype='uint8')[:890,:]
+        grayImage = np.array(crsImage, dtype='uint8')[:890, :]
 
-        if (st.session_state['imageBLOBs'] is None):            
-            st.session_state['detect'] = False
-            image_placeholder.image(crsImage, use_column_width=True, caption="Uploaded image")
+        if (st.session_state['uploadedImage'] is None):
+            st.session_state['uploadedImage'] = grayImage
+    
+        if  (  not np.array_equal(st.session_state['uploadedImage'], grayImage) 
+            or (st.session_state['imageBLOBs'] is None)
+        ):            
+            st.session_state['detected'] = False            
+            st.session_state['uploadedImage'] = grayImage
+
+            image_placeholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
         else:
-            st.markdown(f"""
-                <style>
-                iframe {{
-                    width: inherit;
-                    height: 890px;
-                }}
-                </style>""", unsafe_allow_html = True)
+            st.markdown(
+                f"""
+                    <style>
+                    iframe {{
+                        width: 100%;
+                        height: 890px;
+                    }}
+                    </style>
+                """, unsafe_allow_html = True)
 
             image_comparison(
                img1 = grayImage,
                img2 = st.session_state['imageBLOBs'],
                label1 = "Initial SEM image",
                label2 = "Detected nanoparticles")
-    else:
-        st.session_state['imageUpload'] = False
-        st.session_state['settingDefault'] = True
 
 
 with rigth:
@@ -114,14 +131,14 @@ with rigth:
                  help = help_str)
 
 
-    pushProcc = st.button("Detect nanoparticles",
+    pushProcc = st.button("Nanoparticles detection ",
         use_container_width = True,
         disabled = not st.session_state['imageUpload'],
         help = "You need to upload an SEM image")
     
     # Detecting
     if pushProcc:
-        currentImage = grayImage      
+        currentImage = np.copy(grayImage)      
         
         if methodPrep != "None":
             # Adaptive threshold
@@ -146,7 +163,7 @@ with rigth:
                     False, int(fsize), float(thresCoefOld), 3)
 
         st.session_state['BLOBs'] = BLOBs
-        st.session_state['detect'] = True
+        st.session_state['detected'] = True
 
         imageBLOBs = crsImage.crop((0, 0, 1280, 890)).convert("RGBA")
         draw = ImageDraw.Draw(imageBLOBs)
@@ -158,11 +175,11 @@ with rigth:
         st.session_state['imageBLOBs'] = imageBLOBs
     
     # Info about detected nanoparticles
-    if st.session_state['detect']:
+    if st.session_state['detected']:
         st.write(f"{st.session_state['BLOBs'].shape[0]} nanoparticles found!")
 
     # Saving
-    if st.session_state['detect']:
+    if st.session_state['detected']:
         safeImgCol, safeBLOBCol = st.columns(2)
 
         with safeImgCol:
@@ -188,7 +205,7 @@ with rigth:
             )
     
     # Mass
-    if st.session_state['detect']:
+    if st.session_state['detected']:
 
         #crop_coef = 800
         #contours = tools.prepair_img(grayImage, crop_coef)
