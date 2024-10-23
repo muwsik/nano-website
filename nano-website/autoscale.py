@@ -64,8 +64,8 @@ def scale(_text):
 ### main
 
 
-img_path = r"D:\Cloud\Mycroscopy\gt\EP-483_i042\EP-483_i042.tif"
-#img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0018.tif"
+#img_path = r"D:\Cloud\Mycroscopy\gt\EP-166O_i021\EP-166O_i021.tif"
+img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0007.tif"
 
 
 img = Image.open(img_path)
@@ -73,6 +73,7 @@ grayImage = np.array(img, dtype='uint8')
 
 # Высота только изображения (без нижней сноски)
 lowerBound = findBorder(grayImage)
+print(f"Граница: {lowerBound} px")
 
 # Сноска
 #plt.imshow(grayImage[lowerBound:, :])
@@ -93,6 +94,7 @@ scaleVal = scale(text)
 
 # Длина шкалы в пикселях
 scaleLengthVal = scaleLength(grayImage, lowerBound)
+print(f"Длина шкалы: {scaleLengthVal} px")
 
 if (scaleVal is not None) and (scaleLengthVal is not None):
     print(f"nm / pixel: {scaleVal / scaleLengthVal}")
