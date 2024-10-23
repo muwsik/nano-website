@@ -5,46 +5,25 @@ import cv2
 import os
 import re
 
-def process_file(img):
-    dist = distance(img, black_pixels(img)[0])
-    rez = text_out(img)
-    print("Текст:", rez)
-    text_result = ' '.join(rez)               
-    uvel, shkal = extract_values(text_result)
-
-    print(f"Увеличение: {uvel}")
-    print(f"Длинна шкалы: {dist}")
-    print(f"Число под шкалой: {shkal}")
-    if (shkal is not None) and (dist is not None):
-        fraction = dist / shkal
-        print(f"px/nm: {fraction}")
-
+import matplotlib.pyplot as plt
 
 # Дополнительные функции, необходимые для обработки изображений
-def black_pixels(img):    
-    width, height = img.size
-    last_black_y = -1
-    
-    for y in range(height - 1, -1, -1):
-        pixel = img.getpixel((width - 1, y))
-        if pixel == (0, 0, 0):
-            last_black_y = y
-        else:
-            break
-    print(f"Координата X: {width}, Координата Y: {last_black_y}")
-    
-    crop_img = img.crop((0, last_black_y, width, height))    
-    
-    return last_black_y, crop_img
+def findBorder(_fullImage, thr = 0.5):    
+    row_sum = np.sum(_fullImage, axis = 1, dtype = np.int64)
 
-def distance(img, start_y):
-    width, height = img.size
+    for i in range(len(row_sum)):
+        if np.abs(row_sum[i] - row_sum[i + 1]) >= row_sum[i] * thr:
+            return i + 1
+    
+    return None
+
+def scaleLength(_fullImage, start_y):
+    height, width = _fullImage.shape
     first_white_index = None
     last_white_index = None
 
-    for x in range(width):
-        pixel = img.getpixel((x, start_y))
-        if pixel == (255, 255, 255):
+    for x in range(1, width):
+        if (_fullImage[start_y, x] == 255) and (_fullImage[start_y, x-1] == 0):
             if first_white_index is None:
                 first_white_index = x
             last_white_index = x
@@ -54,36 +33,69 @@ def distance(img, start_y):
 
     return None
 
-def text_out(img):
-    img_np = np.array(img)
-
+def findText(img):
     reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-    result = reader.readtext(img_np, detail=0, blocklist='SOo')
-    return result
+    result = reader.readtext(img, detail=0, blocklist='SOo')
+    return ' '.join(result)  
 
-def extract_values(text):
+def increase(_text):
     try:
-        matches_increase = re.findall(r'[xX][0-9]*.?[0-9]+[kK]', text)[0]
-        increase = float(matches_increase[1:-1])
+        matchesIncrease = re.findall(r'[xX][0-9]*.?[0-9]+[kK]', _text)[0]
+        _increase = float(matchesIncrease[1:-1])
     except Exception:
-        increase = None
+        _increase = None
 
+    return _increase
 
+def scale(_text):
     try:
-        matches_scale = re.findall(r'[0-9]*.?[0-9]+[nup]m', text)[0]
-        if matches_scale[-2] == 'n':
-            scale = int(matches_scale[:-2])
-        if matches_scale[-2] == 'u' or matches_scale[-2] == 'p':
-            scale = float(matches_scale[:-2]) * 1000
+        matchesScale = re.findall(r'[0-9]*.?[0-9]+[nup]m', _text)[0]
+        if matchesScale[-2] == 'n':
+            _scale = float(matchesScale[:-2])
+        if matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
+            _scale = float(matchesScale[:-2]) * 1000
     except Exception:
-        scale = None
+        _scale = None
 
-    return increase, scale
+    return _scale
 
-img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0018.tif"
+
+
+### main
+
+
+img_path = r"D:\Cloud\Mycroscopy\gt\EP-483_i042\EP-483_i042.tif"
+#img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0018.tif"
 
 
 img = Image.open(img_path)
-img = img.convert('RGB')
+grayImage = np.array(img, dtype='uint8')
 
-process_file(img)
+# Высота только изображения (без нижней сноски)
+lowerBound = findBorder(grayImage)
+
+# Сноска
+#plt.imshow(grayImage[lowerBound:, :])
+
+# Только изображение
+#plt.imshow(grayImage[:lowerBound, :])
+
+# Распознавание текста в сноске
+text = findText(grayImage[lowerBound:, :])
+print("Текст:", text)
+
+# Увеличение
+increaseVal = increase(text)
+print(f"Увеличение: {increaseVal}")
+
+# Длина шкалы в нанометрах
+scaleVal = scale(text)
+
+# Длина шкалы в пикселях
+scaleLengthVal = scaleLength(grayImage, lowerBound)
+
+if (scaleVal is not None) and (scaleLengthVal is not None):
+    print(f"nm / pixel: {scaleVal / scaleLengthVal}")
+    print(f"pixel / nm: {scaleLengthVal / scaleVal}")
+
+

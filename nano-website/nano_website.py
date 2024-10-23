@@ -59,7 +59,7 @@ with left:
             st.session_state['uploadedImage'] = grayImage
     
         if  (  not np.array_equal(st.session_state['uploadedImage'], grayImage) 
-            or (st.session_state['imageBLOBs'] is None)
+            or not st.session_state['detected']
         ):            
             st.session_state['detected'] = False            
             st.session_state['uploadedImage'] = grayImage
