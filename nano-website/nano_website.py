@@ -215,10 +215,12 @@ with rigth:
         
         grayImage = np.array(crsImage, dtype = 'uint8')
         lowerBound = autoscale.findBorder(grayImage)
-        st.write(f"Граница: {lowerBound} px")
+        print(f"Граница: {lowerBound} px")
+
+        #st.image(grayImage[lowerBound:, :])
 
         text = autoscale.findText(grayImage[lowerBound:, :])
-        st.write("Текст:", text)
+        print("Текст:", text)
 
         scaleVal = autoscale.scale(text)
 
@@ -228,14 +230,15 @@ with rigth:
 
         if (scaleVal is not None) and (scaleLengthVal is not None):
             print(f"nm / pixel: {scaleVal / scaleLengthVal}")
-            print(f"pixel / nm: {scaleLengthVal / scaleVal}")
+            print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
 
-        
+            radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
+            V = 4 / 3 * np.pi * radiusNM ** 3
+            massParticles = np.sum(V * densityPd)
 
-        radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
-        V = 4 / 3 * np.pi * radiusNM ** 3
-        massParticles = np.sum(V * densityPd)
+            st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
+        else:
+            st.write(f"The image scale could not be determined automatically!")
 
-        st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
             
 st.markdown("<div class='footer'>Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024</div>", unsafe_allow_html=True)

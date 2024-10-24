@@ -1,9 +1,9 @@
+import streamlit as st
+
 from PIL import Image
 import numpy as np
 import easyocr
 import re
-
-import matplotlib.pyplot as plt
 
 # Дополнительные функции, необходимые для обработки изображений
 def findBorder(_fullImage, thr = 0.5):    
@@ -30,6 +30,7 @@ def scaleLength(_fullImage, start_y):
         return last_white_index - first_white_index
 
     return None
+
 
 def findText(_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
