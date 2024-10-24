@@ -7,7 +7,7 @@ from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
     
-import style, tools#, autoscale
+import style, tools, autoscale
 
 # Run
 # streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
@@ -15,7 +15,7 @@ import style, tools#, autoscale
 help_str = "be added soon"
 
 
-if 'imageUpload' not in st.session_state:
+def load_default_settings():
     st.session_state['imageUpload'] = False
     st.session_state['uploadedImage'] = None
 
@@ -25,46 +25,45 @@ if 'imageUpload' not in st.session_state:
     st.session_state['BLOBs'] = None
     st.session_state['imageBLOBs'] = None
 
+    st.session_state['comparison'] = False
+
+
+if 'imageUpload' not in st.session_state:
+    load_default_settings()
+
 
 # Header
 style.set_style()
-st.markdown("<div class='header'>WEB NANOPARTICLES</div>", unsafe_allow_html=True)
-st.markdown("<div class='about'>Hello! This is a web interface for processing SEM images.</div>", unsafe_allow_html=True)
+st.markdown("<div class='header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
+st.markdown("<div class='about'>Hello! This is a web interface for processing SEM images.</div>", unsafe_allow_html = True)
 
 
 # Main content area
-left, rigth = st.columns([7, 3])
+left, rigth = st.columns([9, 3])
+
 
 with left:
     st.header("Upload SEM image")
     uploadedImage = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "tif"])
+    
+    imagePlaceholder = st.empty()
 
-    image_placeholder = st.empty()
     if uploadedImage is None:        
-        st.session_state['imageUpload'] = False
-        st.session_state['uploadedImage'] = None
-
-        st.session_state['settingDefault'] = True
-
-        st.session_state['detected'] = False  
-        st.session_state['BLOBs'] = None
-        st.session_state['imageBLOBs'] = None
+         load_default_settings()
     else:
         st.session_state['imageUpload'] = True
-
         crsImage = Image.open(uploadedImage)
-        grayImage = np.array(crsImage, dtype='uint8')[:890, :]
+        grayImage = np.array(crsImage, dtype = 'uint8')[:890, :]
 
-        if (st.session_state['uploadedImage'] is None):
+        if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
             st.session_state['uploadedImage'] = grayImage
-    
-        if  (  not np.array_equal(st.session_state['uploadedImage'], grayImage) 
-            or not st.session_state['detected']
-        ):            
-            st.session_state['detected'] = False            
-            st.session_state['uploadedImage'] = grayImage
+            st.session_state['detected'] = False
 
-            image_placeholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
+
+        if (not st.session_state['detected']):
+            imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
+        elif (not st.session_state['comparison']):
+            imagePlaceholder.image(st.session_state['imageBLOBs'], use_column_width = True, caption = "Detected nanoparticles")        
         else:
             st.markdown(
                 f"""
@@ -154,7 +153,7 @@ with rigth:
             approxPoint = np.ones_like(currentImage)
         
         if dispCurrentImage:
-            image_placeholder.image(currentImage, use_column_width=True, caption="Processed image")
+            imagePlaceholder.image(currentImage, use_column_width = True, caption = "Processed image")
 
         # Approximation 
         radius = np.arange(1.0, 7.1, 0.1)
@@ -171,26 +170,31 @@ with rigth:
             y, x, r = BLOB          
             draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
 
-        image_placeholder.image(imageBLOBs, use_column_width = True, caption = "Detected nanoparticles")
+        imagePlaceholder.image(imageBLOBs, use_column_width = True, caption = "Detected nanoparticles")
         st.session_state['imageBLOBs'] = imageBLOBs
     
     # Info about detected nanoparticles
     if st.session_state['detected']:
         st.write(f"{st.session_state['BLOBs'].shape[0]} nanoparticles found!")
 
+    # Slider for comparing the results before and after detection
+    if st.session_state['detected']:        
+        st.checkbox("Comparison mode", key = 'comparison', help = help_str)
+
     # Saving
     if st.session_state['detected']:
         safeImgCol, safeBLOBCol = st.columns(2)
 
         with safeImgCol:
-            file = io.StringIO()
-            #imageBLOBs.save(file, format="PNG")
+            file = io.BytesIO()
+            st.session_state['imageBLOBs'].save(file, format = "PNG")
 
             st.download_button(
                 label = "Download image",
                 data = file.getvalue(),
                 file_name = "processed-image.tif",
-                use_container_width  = True
+                use_container_width  = True,
+                help = help_str
             )
 
         with safeBLOBCol:
@@ -201,21 +205,34 @@ with rigth:
                 label = "Download nanoparticles",
                 data = file.getvalue(),
                 file_name = "nanoparticles.csv",
-                use_container_width  = True
+                use_container_width  = True,
+                help = help_str
             )
     
-    # Mass
+    # Nanoparticle mass
     if st.session_state['detected']:
-
-        #crop_coef = 800
-        #contours = tools.prepair_img(grayImage, crop_coef)
-        #scale_x, length_nm, cropped_image = tools.recognize_and_crop(contours, grayImage[crop_coef:, :])
-        #st.write(scale_x, length_nm)
-
         densityPd = 12.02 * 10**-15 # nanograms / nanometer
-        scale = 1; # nanometer in pixel
+        
+        grayImage = np.array(crsImage, dtype = 'uint8')
+        lowerBound = autoscale.findBorder(grayImage)
+        st.write(f"Граница: {lowerBound} px")
 
-        radiusNM = st.session_state['BLOBs'][:, 2] * scale;
+        text = autoscale.findText(grayImage[lowerBound:, :])
+        st.write("Текст:", text)
+
+        scaleVal = autoscale.scale(text)
+
+        # Длина шкалы в пикселях
+        scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
+        print(f"Длина шкалы: {scaleLengthVal} px")
+
+        if (scaleVal is not None) and (scaleLengthVal is not None):
+            print(f"nm / pixel: {scaleVal / scaleLengthVal}")
+            print(f"pixel / nm: {scaleLengthVal / scaleVal}")
+
+        
+
+        radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
         V = 4 / 3 * np.pi * radiusNM ** 3
         massParticles = np.sum(V * densityPd)
 

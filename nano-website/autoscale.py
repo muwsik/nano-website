@@ -1,8 +1,6 @@
 from PIL import Image
 import numpy as np
 import easyocr
-import cv2
-import os
 import re
 
 import matplotlib.pyplot as plt
@@ -33,9 +31,9 @@ def scaleLength(_fullImage, start_y):
 
     return None
 
-def findText(img):
-    reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-    result = reader.readtext(img, detail=0, blocklist='SOo')
+def findText(_footnoteImage):
+    reader = easyocr.Reader(["en"], gpu = False, verbose = False)
+    result = reader.readtext(_footnoteImage, detail = 0, blocklist = 'SOo')
     return ' '.join(result)  
 
 def increase(_text):
@@ -60,44 +58,42 @@ def scale(_text):
     return _scale
 
 
-
 ### main
+if __name__ == "__main__":    
+
+    img_path = r"C:\Cloud\Mycroscopy\gt\EP-483_i061\EP-483_i061.tif"
 
 
-#img_path = r"D:\Cloud\Mycroscopy\gt\EP-166O_i021\EP-166O_i021.tif"
-img_path = r"C:\Users\Muwa\Desktop\2024-09-10-Ivanova\Pd_C_0.1%_8mm\Pd_C_0.1%_8mm_0007.tif"
+    img = Image.open(img_path)
+    grayImage = np.array(img, dtype='uint8')
 
+    # Высота только изображения (без нижней сноски)
+    lowerBound = findBorder(grayImage)
+    print(f"Граница: {lowerBound} px")
 
-img = Image.open(img_path)
-grayImage = np.array(img, dtype='uint8')
+    # Сноска
+    #plt.imshow(grayImage[lowerBound:, :])
 
-# Высота только изображения (без нижней сноски)
-lowerBound = findBorder(grayImage)
-print(f"Граница: {lowerBound} px")
+    # Только изображение
+    #plt.imshow(grayImage[:lowerBound, :])
 
-# Сноска
-#plt.imshow(grayImage[lowerBound:, :])
+    # Распознавание текста в сноске
+    text = findText(grayImage[lowerBound:, :])
+    print("Текст:", text)
 
-# Только изображение
-#plt.imshow(grayImage[:lowerBound, :])
+    # Увеличение
+    increaseVal = increase(text)
+    print(f"Увеличение: {increaseVal}")
 
-# Распознавание текста в сноске
-text = findText(grayImage[lowerBound:, :])
-print("Текст:", text)
+    # Длина шкалы в нанометрах
+    scaleVal = scale(text)
 
-# Увеличение
-increaseVal = increase(text)
-print(f"Увеличение: {increaseVal}")
+    # Длина шкалы в пикселях
+    scaleLengthVal = scaleLength(grayImage, lowerBound)
+    print(f"Длина шкалы: {scaleLengthVal} px")
 
-# Длина шкалы в нанометрах
-scaleVal = scale(text)
-
-# Длина шкалы в пикселях
-scaleLengthVal = scaleLength(grayImage, lowerBound)
-print(f"Длина шкалы: {scaleLengthVal} px")
-
-if (scaleVal is not None) and (scaleLengthVal is not None):
-    print(f"nm / pixel: {scaleVal / scaleLengthVal}")
-    print(f"pixel / nm: {scaleLengthVal / scaleVal}")
+    if (scaleVal is not None) and (scaleLengthVal is not None):
+        print(f"nm / pixel: {scaleVal / scaleLengthVal}")
+        print(f"pixel / nm: {scaleLengthVal / scaleVal}")
 
 
