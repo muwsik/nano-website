@@ -53,7 +53,8 @@ with left:
     else:
         st.session_state['imageUpload'] = True
         crsImage = Image.open(uploadedImage)
-        grayImage = np.array(crsImage, dtype = 'uint8')[:890, :]
+        grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')
+               
 
         if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
             st.session_state['uploadedImage'] = grayImage
@@ -70,13 +71,13 @@ with left:
                     <style>
                     iframe {{
                         width: 100%;
-                        height: 890px;
+                        height: 1000px;
                     }}
                     </style>
                 """, unsafe_allow_html = True)
 
             image_comparison(
-               img1 = grayImage,
+               img1 = crsImage,
                img2 = st.session_state['imageBLOBs'],
                label1 = "Initial SEM image",
                label2 = "Detected nanoparticles")
@@ -137,8 +138,14 @@ with rigth:
     
     # Detecting
     if pushProcc:
-        currentImage = np.copy(grayImage)      
+        currentImage = np.copy(grayImage) 
+         
+        lowerBound = autoscale.findBorder(grayImage)
+        print(f"Граница: {lowerBound} px")
         
+        if (lowerBound is not None):
+            currentImage = currentImage[:lowerBound, :]
+
         if methodPrep != "None":
             # Adaptive threshold
             thrPrep = tools.CACHE_FindThresPrep(currentImage, 1000, float(thrPrepCoef)) 
@@ -164,7 +171,7 @@ with rigth:
         st.session_state['BLOBs'] = BLOBs
         st.session_state['detected'] = True
 
-        imageBLOBs = crsImage.crop((0, 0, 1280, 890)).convert("RGBA")
+        imageBLOBs = crsImage.convert("RGBA")
         draw = ImageDraw.Draw(imageBLOBs)
         for BLOB in BLOBs:                
             y, x, r = BLOB          
@@ -211,33 +218,36 @@ with rigth:
     
     # Nanoparticle mass
     if st.session_state['detected']:
-        densityPd = 12.02 * 10**-15 # nanograms / nanometer
+        densityPd = 12.02 * 10**-15 # nanograms / nanometer        
         
-        grayImage = np.array(crsImage, dtype = 'uint8')
         lowerBound = autoscale.findBorder(grayImage)
-        print(f"Граница: {lowerBound} px")
+        
+        flag = False
+        if (lowerBound is not None):      
+            
+            st.image(grayImage[lowerBound:, :])
 
-        #st.image(grayImage[lowerBound:, :])
+            text = autoscale.findText(grayImage[lowerBound:, :])
+            print("Текст:", text)
 
-        text = autoscale.findText(grayImage[lowerBound:, :])
-        print("Текст:", text)
+            scaleVal = autoscale.scale(text)
 
-        scaleVal = autoscale.scale(text)
+            # Длина шкалы в пикселях
+            scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
+            print(f"Длина шкалы: {scaleLengthVal} px")
 
-        # Длина шкалы в пикселях
-        scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
-        print(f"Длина шкалы: {scaleLengthVal} px")
+            if (scaleVal is not None) and (scaleLengthVal is not None):
+                print(f"nm / pixel: {scaleVal / scaleLengthVal}")
+                print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
 
-        if (scaleVal is not None) and (scaleLengthVal is not None):
-            print(f"nm / pixel: {scaleVal / scaleLengthVal}")
-            print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
+                radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
+                V = 4 / 3 * np.pi * radiusNM ** 3
+                massParticles = np.sum(V * densityPd)
 
-            radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
-            V = 4 / 3 * np.pi * radiusNM ** 3
-            massParticles = np.sum(V * densityPd)
-
-            st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
-        else:
+                st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
+                flag = True
+        
+        if not flag:
             st.write(f"The image scale could not be determined automatically!")
 
             
