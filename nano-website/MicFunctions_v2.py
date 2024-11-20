@@ -5,14 +5,14 @@ import numpy as np
 import pandas as pd
 import cv2
 import csv
-from scipy import ndimage, misc
+#from scipy import ndimage, misc
 from skimage import measure
 from skimage import morphology
 from skimage.feature import blob_dog, blob_log, blob_doh, peak_local_max
 #%matplotlib notebook
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from mpl_toolkits.mplot3d import Axes3D
+#import matplotlib.pyplot as plt
+#from matplotlib.gridspec import GridSpec
+#from mpl_toolkits.mplot3d import Axes3D
 import os
 #from tqdm.notebook import tqdm
 #import ipyvolume as ipv
@@ -21,7 +21,7 @@ import multiprocessing
 import time
 import math
 import random as rnd
-import docx
+#import docx
 
 # [ ----- fuctions ------------------------
 def LoadBlobs(blobsFName, maxsize, prn=False):
