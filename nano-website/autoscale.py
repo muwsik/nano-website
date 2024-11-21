@@ -1,11 +1,14 @@
 import streamlit as st
 
 from PIL import Image
+import glob
+import cv2
 import numpy as np
 import easyocr
 import re
 
-# Дополнительные функции, необходимые для обработки изображений
+import matplotlib.pyplot as plt
+
 
 @st.cache_data(show_spinner = False)
 def findBorder(_fullImage, thr = 0.5):    
@@ -62,10 +65,38 @@ def scale(_text):
     return _scale
 
 
+@st.cache_data(show_spinner = False)
+def load_templates():
+    files = glob.glob(r"template\\*.tif")
+    
+    templates = []
+    for file in files:
+        str_scale = file.split('\\')[-1].split('.')[0]
+        templates.append([str_scale, np.array(Image.open(file).convert('L'), dtype = 'uint8')])
+
+    return templates
+
+
+def scale_template(_footnoteImage, _thr = 0.5):
+    templates = load_templates()
+        
+    matchingVal = []
+    for str, template in templates:
+        tempMatching = cv2.matchTemplate(_footnoteImage, template, method = cv2.TM_SQDIFF_NORMED)     
+        tempMinVal, _, _, _ = cv2.minMaxLoc(tempMatching)
+        matchingVal.append(tempMinVal)
+        st.write(tempMinVal)
+        
+    if np.min(matchingVal) <= _thr:
+        return scale(templates[np.argmin(matchingVal)][0])
+
+    return None
+
+
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"temp.tif"
+    img_path = r"C:\Users\Muwa\Downloads\11783661\497-S1-A62-200k-ordered.tif"
 
 
     img = Image.open(img_path).convert('L')
@@ -74,6 +105,11 @@ if __name__ == "__main__":
     # Высота только изображения (без нижней сноски)
     lowerBound = findBorder(grayImage)
     print(f"Граница: {lowerBound} px")
+    
+    if not (lowerBound is None):
+        temp = scale_template(grayImage[lowerBound:, :])
+        print(f"Масштаб v2: {temp}")
+
 
     if not (lowerBound is None):
         # Сноска
@@ -92,6 +128,7 @@ if __name__ == "__main__":
 
         # Длина шкалы в нанометрах
         scaleVal = scale(text)
+        print(f"Масштаб: {scaleVal}")
 
         # Длина шкалы в пикселях
         scaleLengthVal = scaleLength(grayImage, lowerBound)

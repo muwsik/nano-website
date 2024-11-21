@@ -225,17 +225,26 @@ with rigth:
         flag = False
         if (lowerBound is not None):      
             text = autoscale.findText(grayImage[lowerBound:, :])
-            print("Текст:", text)
+            st.write("Текст:", text)
 
-            scaleVal = autoscale.scale(text)
+            scaleVal1 = autoscale.scale(text)
+            st.write(f"Масштаб по тексту: {scaleVal1}")
+            
+            scaleVal2 = autoscale.scale_template(grayImage[lowerBound:, :])
+            st.write(f"Масштаб по шаблону: {scaleVal2}")
+
+            if (scaleVal1 == scaleVal2):
+                scaleVal = scaleVal1
+            else:
+                scaleVal = None
 
             # Длина шкалы в пикселях
             scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
-            print(f"Длина шкалы: {scaleLengthVal} px")
+            st.write(f"Длина шкалы: {scaleLengthVal} px")
 
             if (scaleVal is not None) and (scaleLengthVal is not None):
-                print(f"nm / pixel: {scaleVal / scaleLengthVal}")
-                print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
+                st.write(f"nm / pixel: {scaleVal / scaleLengthVal}")
+                st.write(f"pixel / nm: {scaleLengthVal / scaleVal}")        
 
                 radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
                 V = 4 / 3 * np.pi * radiusNM ** 3

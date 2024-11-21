@@ -37,6 +37,14 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
+    <Content Include="template\1um.tif" />
+    <Content Include="template\200nm.tif" />
+    <Content Include="template\300nm.tif" />
+    <Content Include="template\400nm.tif" />
+    <Content Include="template\500nm.tif" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="template\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
