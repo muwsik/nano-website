@@ -65,7 +65,7 @@ def scale(_text):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"C:\Users\Михаил\Pictures\scale_1200.tif"
+    img_path = r"temp.tif"
 
 
     img = Image.open(img_path).convert('L')

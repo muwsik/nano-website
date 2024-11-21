@@ -60,7 +60,6 @@ with left:
             st.session_state['uploadedImage'] = grayImage
             st.session_state['detected'] = False
 
-
         if (not st.session_state['detected']):
             imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
         elif (not st.session_state['comparison']):
@@ -70,7 +69,7 @@ with left:
                 f"""
                     <style>
                     iframe {{
-                        width: 100%;
+                        width: inherit;
                         height: 1000px;
                     }}
                     </style>
@@ -80,7 +79,8 @@ with left:
                img1 = crsImage,
                img2 = st.session_state['imageBLOBs'],
                label1 = "Initial SEM image",
-               label2 = "Detected nanoparticles")
+               label2 = "Detected nanoparticles",
+               in_memory = True)
 
 
 with rigth:
@@ -224,9 +224,6 @@ with rigth:
         
         flag = False
         if (lowerBound is not None):      
-            
-            st.image(grayImage[lowerBound:, :])
-
             text = autoscale.findText(grayImage[lowerBound:, :])
             print("Текст:", text)
 
