@@ -1,5 +1,5 @@
 numpy==1.26.4
-scikit-image==0.18.3
+scikit-image==0.18.4
 pillow==10.4.0
 easyocr==1.7.2
 setuptools
