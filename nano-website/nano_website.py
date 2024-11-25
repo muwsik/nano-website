@@ -34,8 +34,15 @@ if 'imageUpload' not in st.session_state:
 
 # Header
 style.set_style()
-st.markdown("<div class='header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
-st.markdown("<div class='about'>Hello! This is a web interface for processing SEM images.</div>", unsafe_allow_html = True)
+st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
+st.markdown("""<div class = 'about'>
+                    Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
+                    It will help you to detect palladium nanoparticles in the image and calculate their mass.
+                    Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
+               </div>""", unsafe_allow_html = True)
+st.markdown("""<div class = 'cite'> <b>How to cite</b>: Mikhail Yu. Kurbakov, Valentina V. Sulimova, Andrei V. Kopylov,
+                    Oleg S. Seredina, Alexey S. Kashin, Nina M. Ivanova, Valentine P. Ananikov. The article. Journal. 2025.
+               </div>""", unsafe_allow_html = True)
 
 
 # Main content area
@@ -70,7 +77,7 @@ with left:
                     <style>
                     iframe {{
                         width: inherit;
-                        height: 1000px;
+                        height: 1150px;
                     }}
                     </style>
                 """, unsafe_allow_html = True)
@@ -141,7 +148,7 @@ with rigth:
         currentImage = np.copy(grayImage) 
          
         lowerBound = autoscale.findBorder(grayImage)
-        print(f"Граница: {lowerBound} px")
+        #print(f"Граница: {lowerBound} px")
         
         if (lowerBound is not None):
             currentImage = currentImage[:lowerBound, :]
@@ -182,7 +189,7 @@ with rigth:
     
     # Info about detected nanoparticles
     if st.session_state['detected']:
-        st.write(f"{st.session_state['BLOBs'].shape[0]} nanoparticles found!")
+        st.markdown(f"<p class = 'text'> {st.session_state['BLOBs'].shape[0]} nanoparticles found! </p>", unsafe_allow_html=True)
 
     # Slider for comparing the results before and after detection
     if st.session_state['detected']:        
@@ -193,8 +200,14 @@ with rigth:
         safeImgCol, safeBLOBCol = st.columns(2)
 
         with safeImgCol:
+            temp = Image.new(mode="RGBA", size = st.session_state['imageBLOBs'].size)
+            draw = ImageDraw.Draw(temp)
+            for BLOB in st.session_state['BLOBs']:                
+                y, x, r = BLOB          
+                draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
+
             file = io.BytesIO()
-            st.session_state['imageBLOBs'].save(file, format = "PNG")
+            temp.save(file, format = "PNG")
 
             st.download_button(
                 label = "Download image",
@@ -237,15 +250,17 @@ with rigth:
                 print(f"nm / pixel: {scaleVal / scaleLengthVal}")
                 print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
 
+                st.markdown(f"<p class = 'text'> Аutomatic scale calculation: <b>{scaleVal / scaleLengthVal:0.4} nm/px</b> </p>", unsafe_allow_html=True)
+
                 radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
                 V = 4 / 3 * np.pi * radiusNM ** 3
                 massParticles = np.sum(V * densityPd)
 
-                st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
+                st.markdown(f"<p class = 'text'> Mass of detected Pd-nanoparticles is <b>{massParticles:0.2e} nanograms</b> </p>", unsafe_allow_html=True)
                 flag = True
         
         if not flag:
             st.write(f"The image scale could not be determined automatically!")
 
             
-st.markdown("<div class='footer'>Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024</div>", unsafe_allow_html=True)
+st.markdown("<div class = 'footer'> Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024 </div>", unsafe_allow_html=True)
