@@ -1,7 +1,7 @@
 import streamlit as st
 
 from PIL import Image
-import glob
+import glob, os
 import cv2
 import numpy as np
 import easyocr
@@ -67,11 +67,11 @@ def scale(_text):
 
 @st.cache_data(show_spinner = False)
 def load_templates():
-    files = glob.glob(r"template\\*.tif")
-    
+    #files = glob.glob(r"./template/*.tif")
+    print(os.getcwd())
     templates = []
     for file in files:
-        str_scale = file.split('\\')[-1].split('.')[0]
+        str_scale = file.split('/')[-1].split('.')[0]
         templates.append([str_scale, np.array(Image.open(file).convert('L'), dtype = 'uint8')])
 
     return templates
