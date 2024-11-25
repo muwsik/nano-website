@@ -68,7 +68,7 @@ def scale(_text):
 @st.cache_data(show_spinner = False)
 def load_templates():
     files = glob.glob(r"./template/*.tif")
-    print(os.getcwd())
+    print(os.listdir(os.getcwd()))
     print(files)
     templates = []
     for file in files:
