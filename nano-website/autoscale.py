@@ -67,8 +67,9 @@ def scale(_text):
 
 @st.cache_data(show_spinner = False)
 def load_templates():
-    #files = glob.glob(r"./template/*.tif")
+    files = glob.glob(r"./template/*.tif")
     print(os.getcwd())
+    print(files)
     templates = []
     for file in files:
         str_scale = file.split('/')[-1].split('.')[0]
