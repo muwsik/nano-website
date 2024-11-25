@@ -68,7 +68,7 @@ def scale(_text):
 @st.cache_data(show_spinner = False)
 def load_templates():
     files = glob.glob(r"/mount/src/nano-website/template/*.tif")
-
+    print(os.listdir(r"/mount/src/nano-website/template"))
     print(files)
     templates = []
     for file in files:
