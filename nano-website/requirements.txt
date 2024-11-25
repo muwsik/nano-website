@@ -3,7 +3,7 @@ scikit-image>0.18.3
 pillow==10.4.0
 easyocr==1.7.2
 setuptools
-opencv-python==4.5.3.56
+opencv-python
 scipy
 matplotlib
 streamlit-image-comparison
