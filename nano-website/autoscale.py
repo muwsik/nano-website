@@ -68,7 +68,6 @@ def scale(_text):
 @st.cache_data(show_spinner = False)
 def load_templates():
     files = glob.glob(r"/mount/src/nano-website/nano-website/template/*.tif")
-    print(files)
 
     templates = []
     for file in files:
@@ -78,7 +77,7 @@ def load_templates():
     return templates
 
 
-def scale_template(_footnoteImage, _thr = 0.5):
+def scale_template(_footnoteImage, _thr = 0.55):
     templates = load_templates()
         
     matchingVal = []
@@ -86,7 +85,6 @@ def scale_template(_footnoteImage, _thr = 0.5):
         tempMatching = cv2.matchTemplate(_footnoteImage, template, method = cv2.TM_SQDIFF_NORMED)     
         tempMinVal, _, _, _ = cv2.minMaxLoc(tempMatching)
         matchingVal.append(tempMinVal)
-        st.write(tempMinVal)
         
     if np.min(matchingVal) <= _thr:
         return scale(templates[np.argmin(matchingVal)][0])
