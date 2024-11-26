@@ -44,7 +44,7 @@ st.markdown("""<div class = 'about'>
                     <br>It will help you to detect palladium nanoparticles in the image and calculate their mass.
                </div>""", unsafe_allow_html = True)
 
-st.markdown("""<div class = 'about'>
+st.markdown("""<div class = 'text'>
                     Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
                </div>""", unsafe_allow_html = True)
 
