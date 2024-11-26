@@ -12,7 +12,8 @@ def set_style():
             font-size: 20px;
         }
         .cite {
-            font-size: 20px;
+            font-size: 1.25vw;
+            padding-top: 25px;
             padding-bottom: 25px;
             text-align: center;
         }
@@ -24,13 +25,12 @@ def set_style():
             text-align: center;
             padding: 20px;
             border-radius: 10px;
+            padding-bottom: 35px;
         }
         .about
         {
             font-weight: bold;
-            font-size: 30px;
-            padding-top: 35px;
-            padding-bottom: 35px;
+            font-size: 2vw;
             text-align: center;
         }
         .footer {
