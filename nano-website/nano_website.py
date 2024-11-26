@@ -44,7 +44,7 @@ st.markdown("""<div class = 'about'>
                     <br>It will help you to detect palladium nanoparticles in the image and calculate their mass.
                </div>""", unsafe_allow_html = True)
 
-st.markdown("""<div class = 'text'>
+st.markdown("""<div class = 'about'>
                     Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
                </div>""", unsafe_allow_html = True)
 
@@ -75,7 +75,9 @@ with left:
 
         if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
             st.session_state['uploadedImage'] = grayImage
-            st.session_state['detected'] = False
+            st.session_state['detected'] = False            
+            st.session_state['scale'] = None
+            st.session_state['mass'] = None
 
         if (not st.session_state['detected']):
             imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
