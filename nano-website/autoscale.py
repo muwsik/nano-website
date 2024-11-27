@@ -1,7 +1,7 @@
 import streamlit as st
 
 from PIL import Image
-import glob
+import glob, os
 import cv2
 import numpy as np
 import easyocr
@@ -67,17 +67,17 @@ def scale(_text):
 
 @st.cache_data(show_spinner = False)
 def load_templates():
-    files = glob.glob(r"template\\*.tif")
-    
+    files = glob.glob(r"/mount/src/nano-website/nano-website/template/*.tif")
+
     templates = []
     for file in files:
-        str_scale = file.split('\\')[-1].split('.')[0]
+        str_scale = file.split('/')[-1].split('.')[0]
         templates.append([str_scale, np.array(Image.open(file).convert('L'), dtype = 'uint8')])
 
     return templates
 
 
-def scale_template(_footnoteImage, _thr = 0.5):
+def scale_template(_footnoteImage, _thr = 0.55):
     templates = load_templates()
         
     matchingVal = []
@@ -85,7 +85,6 @@ def scale_template(_footnoteImage, _thr = 0.5):
         tempMatching = cv2.matchTemplate(_footnoteImage, template, method = cv2.TM_SQDIFF_NORMED)     
         tempMinVal, _, _, _ = cv2.minMaxLoc(tempMatching)
         matchingVal.append(tempMinVal)
-        st.write(tempMinVal)
         
     if np.min(matchingVal) <= _thr:
         return scale(templates[np.argmin(matchingVal)][0])
