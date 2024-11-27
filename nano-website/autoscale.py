@@ -27,7 +27,7 @@ def scaleLength(_fullImage, start_y):
     last_white_index = None
 
     for x in range(1, width):
-        if (_fullImage[start_y, x] == 255) and (_fullImage[start_y, x-1] == 0):
+        if (_fullImage[start_y, x] >= 230) and (_fullImage[start_y, x-1] <= 25):
             if first_white_index is None:
                 first_white_index = x
             last_white_index = x
@@ -96,7 +96,7 @@ def scale_template(_footnoteImage, _thr = 0.5):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"C:\Users\Muwa\Downloads\11783661\497-S1-A62-200k-ordered.tif"
+    img_path = r"C:\Users\Михаил\Desktop\preview.jpg"
 
 
     img = Image.open(img_path).convert('L')
