@@ -26,6 +26,9 @@ def load_default_settings():
     st.session_state['imageBLOBs'] = None
 
     st.session_state['comparison'] = False
+    
+    st.session_state['scale'] = None
+    st.session_state['mass'] = None
 
 
 if 'imageUpload' not in st.session_state:
@@ -34,8 +37,22 @@ if 'imageUpload' not in st.session_state:
 
 # Header
 style.set_style()
-st.markdown("<div class='header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
-st.markdown("<div class='about'>Hello! This is a web interface for processing SEM images.</div>", unsafe_allow_html = True)
+st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
+
+st.markdown("""<div class = 'about'>
+                    Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
+                    <br>It will help you to detect palladium nanoparticles in the image and calculate their mass.
+               </div>""", unsafe_allow_html = True)
+
+st.markdown("""<div class = 'about'>
+                    Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
+               </div>""", unsafe_allow_html = True)
+
+st.markdown("""<div class = 'cite'> <b>How to cite</b>: Determining the orderliness of carbon materials with nanoparticle imaging and explainable machine learning. 
+                    <br> M. Yu. Kurbakov, V. V. Sulimova, A. V. Kopylov [et al.] 
+                    // Nanoscale. – 2024. – Vol. 16, No. 28. – P. 13663-13676. 
+                    – DOI <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
+               </div>""", unsafe_allow_html = True)
 
 
 # Main content area
@@ -58,7 +75,9 @@ with left:
 
         if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
             st.session_state['uploadedImage'] = grayImage
-            st.session_state['detected'] = False
+            st.session_state['detected'] = False            
+            st.session_state['scale'] = None
+            st.session_state['mass'] = None
 
         if (not st.session_state['detected']):
             imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
@@ -70,7 +89,7 @@ with left:
                     <style>
                     iframe {{
                         width: inherit;
-                        height: 1000px;
+                        height: 1150px;
                     }}
                     </style>
                 """, unsafe_allow_html = True)
@@ -141,7 +160,6 @@ with rigth:
         currentImage = np.copy(grayImage) 
          
         lowerBound = autoscale.findBorder(grayImage)
-        print(f"Граница: {lowerBound} px")
         
         if (lowerBound is not None):
             currentImage = currentImage[:lowerBound, :]
@@ -182,7 +200,7 @@ with rigth:
     
     # Info about detected nanoparticles
     if st.session_state['detected']:
-        st.write(f"{st.session_state['BLOBs'].shape[0]} nanoparticles found!")
+        st.markdown(f"<p class = 'text'> <b>{st.session_state['BLOBs'].shape[0]}</b> nanoparticles found! </p>", unsafe_allow_html=True)
 
     # Slider for comparing the results before and after detection
     if st.session_state['detected']:        
@@ -193,11 +211,17 @@ with rigth:
         safeImgCol, safeBLOBCol = st.columns(2)
 
         with safeImgCol:
+            temp = Image.new(mode="RGBA", size = st.session_state['imageBLOBs'].size)
+            draw = ImageDraw.Draw(temp)
+            for BLOB in st.session_state['BLOBs']:                
+                y, x, r = BLOB          
+                draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
+
             file = io.BytesIO()
-            st.session_state['imageBLOBs'].save(file, format = "PNG")
+            temp.save(file, format = "PNG")
 
             st.download_button(
-                label = "Download image",
+                label = "Download nanoparticles image",
                 data = file.getvalue(),
                 file_name = "processed-image.tif",
                 use_container_width  = True,
@@ -209,7 +233,7 @@ with rigth:
             csv.writer(file).writerows(st.session_state['BLOBs'])
 
             st.download_button(
-                label = "Download nanoparticles",
+                label = "Download nanoparticles *.csv",
                 data = file.getvalue(),
                 file_name = "nanoparticles.csv",
                 use_container_width  = True,
@@ -220,32 +244,36 @@ with rigth:
     if st.session_state['detected']:
         densityPd = 12.02 * 10**-15 # nanograms / nanometer        
         
-        lowerBound = autoscale.findBorder(grayImage)
+        flag = True
+        if  (st.session_state['scale'] is None) or (st.session_state['mass'] is None):
+            lowerBound = autoscale.findBorder(grayImage)
         
-        flag = False
-        if (lowerBound is not None):      
-            text = autoscale.findText(grayImage[lowerBound:, :])
-            print("Текст:", text)
+            if (lowerBound is not None):      
+                text = autoscale.findText(grayImage[lowerBound:, :])
 
-            scaleVal = autoscale.scale(text)
+                scaleVal = autoscale.scale(text)
 
-            # Длина шкалы в пикселях
-            scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
-            print(f"Длина шкалы: {scaleLengthVal} px")
+                # Длина шкалы в пикселях
+                scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
 
-            if (scaleVal is not None) and (scaleLengthVal is not None):
-                print(f"nm / pixel: {scaleVal / scaleLengthVal}")
-                print(f"pixel / nm: {scaleLengthVal / scaleVal}")        
-
-                radiusNM = st.session_state['BLOBs'][:, 2] * scaleVal / scaleLengthVal;
-                V = 4 / 3 * np.pi * radiusNM ** 3
-                massParticles = np.sum(V * densityPd)
-
-                st.write(f"Mass of detected Pd-nanoparticles is {massParticles:0.2e} nanograms")
-                flag = True
+                if (scaleVal is not None) and (scaleLengthVal is not None):
+                    st.session_state['scale'] = scaleVal / scaleLengthVal 
+                    radiusNM = st.session_state['BLOBs'][:, 2] * st.session_state['scale'];
+                    V = 4 / 3 * np.pi * radiusNM ** 3
+                    st.session_state['mass'] = np.sum(V * densityPd)
+                else:
+                    flag = False
         
         if not flag:
-            st.write(f"The image scale could not be determined automatically!")
+            st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html=True)
+        else:        
+            st.markdown(f"""<div class = 'text'>
+                            Estimated scale: <b>{st.session_state['scale']:0.4} nm/px</b> 
+                        </div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class = 'text'>
+                            Mass of detected Pd-nanoparticles:<br> <b>{st.session_state['mass']:0.2e} nanograms</b> 
+                        </div>""", unsafe_allow_html=True)
+
 
             
-st.markdown("<div class='footer'>Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024</div>", unsafe_allow_html=True)
+st.markdown("<div class = 'footer'> Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024 </div>", unsafe_allow_html=True)

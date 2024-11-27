@@ -8,6 +8,15 @@ def set_style():
         body {
             background-color: #f0f0f0;
         }
+        .text {
+            font-size: 20px;
+        }
+        .cite {
+            font-size: 1.25vw;
+            padding-top: 25px;
+            padding-bottom: 25px;
+            text-align: center;
+        }
         .header {
             background-color: #90E593;
             color: black;
@@ -15,14 +24,14 @@ def set_style():
             font-size: 3vw;
             text-align: center;
             padding: 20px;
+            border-radius: 10px;
+            padding-bottom: 35px;
         }
         .about
         {
-            color: white;
             font-weight: bold;
-            font-size: 1.5vw;
-            padding-top: 10px;
-            padding-bottom: 10px;
+            font-size: 2vw;
+            text-align: center;
         }
         .footer {
             background-color: #f1f1f1;

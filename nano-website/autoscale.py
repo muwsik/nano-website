@@ -7,7 +7,6 @@ import re
 
 # Дополнительные функции, необходимые для обработки изображений
 
-@st.cache_data(show_spinner = False)
 def findBorder(_fullImage, thr = 0.5):    
     row_sum = np.sum(_fullImage, axis = 1, dtype = np.int64)
 
@@ -17,7 +16,6 @@ def findBorder(_fullImage, thr = 0.5):
     
     return None
 
-@st.cache_data(show_spinner = False)
 def scaleLength(_fullImage, start_y):
     __, width = _fullImage.shape
     first_white_index = None
@@ -34,7 +32,7 @@ def scaleLength(_fullImage, start_y):
 
     return None
 
-@st.cache_data(show_spinner = False)
+
 def findText(_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
     result = reader.readtext(_footnoteImage, detail = 0, blocklist = 'SOo')
