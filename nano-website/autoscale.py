@@ -24,7 +24,7 @@ def scaleLength(_fullImage, start_y):
     last_white_index = None
 
     for x in range(1, width):
-        if (_fullImage[start_y, x] == 255) and (_fullImage[start_y, x-1] == 0):
+        if (_fullImage[start_y, x] >= 230 ) and (_fullImage[start_y, x-1] <= 25):
             if first_white_index is None:
                 first_white_index = x
             last_white_index = x
