@@ -33,6 +33,8 @@ def load_default_settings():
     st.session_state['scale'] = None
     st.session_state['mass'] = None
 
+    st.session_state['chartRange'] = ('min','max')
+    st.session_state['distView'] = False
 
 if 'imageUpload' not in st.session_state:
     load_default_settings()
@@ -248,7 +250,7 @@ with tabDetect:
 
 # TAB 2
 with tabInfo:
-    heightCol = 250
+    heightCol = 500
 
     if not st.session_state['detected']: 
          st.markdown(f"""<div class = 'about'>
@@ -256,29 +258,69 @@ with tabInfo:
                         Please go to "Detection" tab.
                     </div>""", unsafe_allow_html=True)
     else:
-        left, center, right = st.columns([4, 4, 4])
+        # Dashboard structure
+        left, right = st.columns([4, 2])
     
+        
         # Particle size distribution
         with left:
-            with st.container(border = True, height = heightCol*2):
+            with st.container(border = True, height = heightCol):                
+                chart_col, set_col = st.columns([4, 2])
+                
                 radius = st.session_state['BLOBs'][:, 2]
 
-                fig = px.histogram(radius, nbins = 15, marginal = "rug", opacity = 0.5)
-                fig.update_layout(
-                    title_text = 'Particle size distribution',
-                    xaxis_title_text = 'radius',
-                    yaxis_title_text = 'count particle',
-                    showlegend = False
-                )
-                fig.update_traces(hoverinfo = "x", hovertemplate = "rarius: %{x:.2}")
-                #fig.update_xaxes(showgrid = True, gridwidth = 1, gridcolor = 'gray')
-                #fig.update_yaxes(range = [0, None], showgrid = True, gridwidth = 1, gridcolor = 'gray')
+                minVal, maxVal = st.session_state['chartRange']
+                if (minVal == 'min') and (maxVal != 'max'):
+                    radiusFiltered = radius[radius <= float(maxVal)]
+                elif (minVal != 'min') and (maxVal == 'max'):
+                    radiusFiltered = radius[radius >= float(minVal)]
+                elif (minVal != 'min') and (maxVal != 'max'):
+                    radiusFiltered = radius[(radius >= float(minVal)) & (radius <= float(maxVal))]
+                else:
+                    radiusFiltered = radius
 
-                st.plotly_chart(fig, use_container_width = True)
+                with chart_col:
+                    fig = ff.create_distplot(
+                        [radiusFiltered], [''], bin_size = 1, curve_type = 'kde', histnorm = 'probability',
+                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
+                    )
+
+                    fig.update_layout(
+                        margin = dict(l=10, r=25, t=45, b=5),
+                        title = dict(text = "Particle size distribution", font = dict(size=27)),
+                        xaxis_title_text = 'Radius',
+                        yaxis_title_text = 'Particle fraction',
+                        showlegend = False
+                    )
+
+                    fig.update_traces(hoverinfo = "x", hovertemplate = "rarius: %{x:.2}")
+
+                    st.plotly_chart(fig, use_container_width = True)
+
+                with set_col:
+                    st.subheader("Settings")
+
+                    uniqueRadius = ['min'] + [f'{x:.2}' for x in np.unique(radius)] + ['max']
+
+                    st.select_slider("Select a range of particle radius",
+                        options = uniqueRadius,
+                        key = 'chartRange',
+                        value = ('min', 'max'),
+                        help = help_str
+                    )
+
+                    st.write("You selected ", st.session_state['chartRange'])
+
+                    st.checkbox("Display distribution function?",
+                        key = 'distView',
+                        help = help_str
+                    )
+
+
         # END colomn
 
 
-        # Nanoparticle mass
+        # Nanoparticle parameters
         with right:
             with st.container(border = True, height = heightCol):
                 st.subheader("Secondary particle parameters")
@@ -323,36 +365,6 @@ with tabInfo:
         # END colomn
     
 
-        # ?
-        with center:
-            with st.container(border = True, height = heightCol):                
-                pass
-        # END colomn
-
-        left, right = st.columns([4, 8])
-
-        with right:
-            with st.container(border = True, height = 2 * heightCol):
-                radius = st.session_state['BLOBs'][:, 2]
-
-                fig = px.histogram(radius, nbins = 15, marginal = "box", opacity = 0.5)
-                fig.update_layout(
-                    title_text = 'Particle size distribution',
-                    xaxis_title_text = 'radius',
-                    yaxis_title_text = 'count particle',
-                    showlegend = False
-                )
-                fig.update_traces(hoverinfo = "x", hovertemplate = "rarius: %{x:.2}")
-                #fig.update_xaxes(showgrid = True, gridwidth = 1, gridcolor = 'gray')
-                #fig.update_yaxes(range = [0, None], showgrid = True, gridwidth = 1, gridcolor = 'gray')
-
-                st.plotly_chart(fig, use_container_width = True)
-
-        with left:
-            with st.container(border = True, height = heightCol):                
-                st.subheader("Structuring")
-                st.markdown(f"""<div class = 'text'>It's coming soon!</div>""", unsafe_allow_html=True)
-
 
 # Articls
 st.markdown("""<div class = 'cite'> <b>How to cite</b>:
@@ -377,6 +389,5 @@ st.markdown("""<div class = 'cite'> <b>How to cite</b>:
 
 # Footer
 st.markdown("""<div class = 'footer'>
-        Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2025
-        <br>Do you need help? Please e-mail to muwsik@mail.ru
+        Laboratory of Cognitive Technologies and Simulating Systems, Tula State University © 2025 (Email support: muwsik@mail.ru)
     </div>""", unsafe_allow_html = True)

@@ -45,9 +45,9 @@ def set_style():
 
         .footer {
             background-color: #f1f1f1;
-            color: #4CAF50;
+            color: #808080;
             text-align: center;
-            padding: 10px;
+            padding: 1px;
             position: fixed;
             left: 0;
             bottom: 0;
