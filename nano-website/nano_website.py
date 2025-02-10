@@ -27,14 +27,15 @@ def load_default_settings():
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
     st.session_state['imageBLOBs'] = None
+    st.session_state['sizeImage'] = None
 
     st.session_state['comparison'] = False
     
     st.session_state['scale'] = None
-    st.session_state['mass'] = None
 
     st.session_state['chartRange'] = ('min','max')
     st.session_state['distView'] = False
+    st.session_state['recalculation'] = True
 
 if 'imageUpload' not in st.session_state:
     load_default_settings()
@@ -56,6 +57,7 @@ st.markdown("""<div class = 'about'>
 
 # Main content area
 tabDetect, tabInfo = st.tabs(["Detection nanoparticls", "Statistics dashboard"])
+
 
 # TAB 1
 with tabDetect:
@@ -163,10 +165,11 @@ with tabDetect:
         if pushProcc:
             currentImage = np.copy(grayImage) 
          
-            lowerBound = autoscale.findBorder(grayImage)
-        
+            lowerBound = autoscale.findBorder(grayImage)        
             if (lowerBound is not None):
                 currentImage = currentImage[:lowerBound, :]
+            
+            st.session_state['sizeImage'] = currentImage.shape
 
             if methodPrep != "None":
                 # Adaptive threshold
@@ -182,15 +185,13 @@ with tabDetect:
                 approxPoint = np.ones_like(currentImage)
         
             if dispCurrentImage:
-                imagePlaceholder.image(currentImage, use_container_width = True, caption = "Processed image")
+                imagePlaceholder.image(currentImage, use_column_width = True, caption = "Processed image")
 
             # Approximation 
-            radius = np.arange(1.0, 7.1, 0.1)
             #BLOBs = tools.CACHE_ExponentialApproximationMask(
-            #            currentImage, 1 / (radius ** 2), approxPoint,
+            #            currentImage, 1 / (np.arange(1.0, 7.1, 0.1) ** 2), approxPoint,
             #            False, int(fsize), float(thresCoefOld), 3)
-
-            BLOBs = tools.randon_BLOBS()
+            BLOBs = tools.randon_BLOBS(1000)
 
             st.session_state['BLOBs'] = BLOBs
             st.session_state['detected'] = True
@@ -245,6 +246,11 @@ with tabDetect:
                     use_container_width  = True,
                     help = help_str
                 )
+
+        if (st.session_state['scale'] is None):
+            tempScale = autoscale.estimateScale(grayImage)
+            if tempScale is not None:
+                st.session_state['scale'] = tempScale
     # END right side
 
 
@@ -259,49 +265,43 @@ with tabInfo:
                     </div>""", unsafe_allow_html=True)
     else:
         # Dashboard structure
-        left, right = st.columns([4, 2])
-    
+        db11, db12 = st.columns([4, 2])
+        db21, db22, db23 = st.columns([4, 4, 4])
+
+        additionalSTR = ''         
+        radius_nm = st.session_state['BLOBs'][:, 2] * st.session_state['scale']
         
         # Particle size distribution
-        with left:
+        with db11:
             with st.container(border = True, height = heightCol):                
                 chart_col, set_col = st.columns([4, 2])
                 
-                radius = st.session_state['BLOBs'][:, 2]
+                minRadius = np.min(radius_nm)
+                maxRadius = np.max(radius_nm)
 
                 minVal, maxVal = st.session_state['chartRange']
+                
+                flagCustomRangeRadius = True
                 if (minVal == 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius[radius <= float(maxVal)]
+                    radiusFiltered = radius_nm[radius_nm <= float(maxVal)]
                 elif (minVal != 'min') and (maxVal == 'max'):
-                    radiusFiltered = radius[radius >= float(minVal)]
+                    radiusFiltered = radius_nm[radius_nm >= float(minVal)]
                 elif (minVal != 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius[(radius >= float(minVal)) & (radius <= float(maxVal))]
+                    radiusFiltered = radius_nm[(radius_nm >= float(minVal)) & (radius_nm <= float(maxVal))]
                 else:
-                    radiusFiltered = radius
-
-                with chart_col:
-                    fig = ff.create_distplot(
-                        [radiusFiltered], [''], bin_size = 1, curve_type = 'kde', histnorm = 'probability',
-                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
-                    )
-
-                    fig.update_layout(
-                        margin = dict(l=10, r=25, t=45, b=5),
-                        title = dict(text = "Particle size distribution", font = dict(size=27)),
-                        xaxis_title_text = 'Radius',
-                        yaxis_title_text = 'Particle fraction',
-                        showlegend = False
-                    )
-
-                    fig.update_traces(hoverinfo = "x", hovertemplate = "rarius: %{x:.2}")
-
-                    st.plotly_chart(fig, use_container_width = True)
+                    flagCustomRangeRadius = False
+                    radiusFiltered = radius_nm                
+                
+                if flagCustomRangeRadius:
+                    temp1 = minVal if (minVal != "min") else f'{minRadius:.1f}'
+                    temp2 = maxVal if (maxVal != "max") else f'{maxRadius:.1f}'
+                    additionalSTR = f" (from {temp1} to {temp2})"
+    
 
                 with set_col:
-                    st.subheader("Settings")
+                    st.subheader("Settings chart")
 
-                    uniqueRadius = ['min'] + [f'{x:.2}' for x in np.unique(radius)] + ['max']
-
+                    uniqueRadius = ['min'] + [f'{x:.1f}' for x in np.unique(radius_nm)] + ['max']
                     st.select_slider("Select a range of particle radius",
                         options = uniqueRadius,
                         key = 'chartRange',
@@ -309,61 +309,117 @@ with tabInfo:
                         help = help_str
                     )
 
-                    st.write("You selected ", st.session_state['chartRange'])
-
                     st.checkbox("Display distribution function?",
                         key = 'distView',
                         help = help_str
                     )
 
+                    st.checkbox("Recalculation parameters?",
+                        key = 'recalculation',
+                        help = help_str
+                    )
+                # END set_col
 
-        # END colomn
+                with chart_col:
+                    
+                    fig = ff.create_distplot(
+                        [radiusFiltered], [''], bin_size = 0.25, curve_type = 'kde', histnorm = 'probability',
+                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
+                    )
 
+                    fig.update_layout(
+                        margin = dict(l=10, r=25, t=45, b=5),
+                        title = dict(text = "Distribution of particle radius" + additionalSTR, font = dict(size=27)),
+                        xaxis_title_text = 'Radius, nm',
+                        yaxis_title_text = 'Particle fraction',
+                        showlegend = False
+                    )
+                    
+                    fig.update_xaxes(range = [np.floor(minRadius), np.ceil(maxRadius)],
+                        showgrid = True, gridwidth = 0.5, gridcolor = '#606060'
+                    )
+                    fig.update_traces(hoverinfo = "x", hovertemplate = "radius: %{x:.2} nm")
+
+                    st.plotly_chart(fig, use_container_width = True)
+                # END chart_col
+        # END db11
 
         # Nanoparticle parameters
-        with right:
+        with db12:
+            with st.container(border = True, height = heightCol):                        
+                # for Pd (palladium)
+                materialDensity = 12.02 * 10**-15 # nanogram / nanometer   
+
+                if st.session_state['scale'] is None:
+                    st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html = True)
+                else:                    
+                    st.markdown(f"""<div class = 'text'>
+                                    Estimated scale: <b>{st.session_state['scale']:.3} nm/px</b> 
+                                </div>""", unsafe_allow_html = True)
+
+                    if st.session_state['recalculation']:
+                        radius_nm = radiusFiltered
+
+                    st.subheader("Primary parameters")                    
+                    st.markdown(f"""<div class = 'text'>
+                                    Average radius: <b>{np.mean(radius_nm):0.3} nm</b> 
+                                </div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div class = 'text'>
+                                    Variance radius: <b>{np.var(radius_nm):0.3} nm</b> 
+                                </div>""", unsafe_allow_html=True)
+
+
+                    st.subheader("Secondary parameters")  
+                    volumeParticls = 4 / 3 * np.pi * radius_nm ** 3
+                    areaParticls =  np.sum(2 * np.pi * radius_nm ** 2)
+                    massParticls = np.sum(volumeParticls * materialDensity)
+
+                    st.markdown(f"""<div class = 'text'>
+                                    Mass: <b>{massParticls:0.2e} nanograms</b> 
+                                </div>""", unsafe_allow_html = True)                        
+                    st.markdown(f"""<div class = 'text'>
+                                    Volume: <b>{np.sum(volumeParticls):0.2e} nanometers<sup>3</sup></b> 
+                                </div>""", unsafe_allow_html = True)                        
+                    st.markdown(f"""<div class = 'text'>
+                                    Area: <b>{areaParticls:0.2e} nanometers<sup>2</sup></b> 
+                                </div>""", unsafe_allow_html = True)
+                    
+
+                    st.subheader("Secondary parameters (norm)", help = help_str)
+                    imageArea = st.session_state['sizeImage'][0] * st.session_state['sizeImage'][1] * st.session_state['scale'] ** 2
+                    
+                    st.markdown(f"""<div class = 'text'>
+                                    Mass: <b>{massParticls/imageArea:0.2e} nanograms/nanometers<sup>2</sup></b> 
+                                </div>""", unsafe_allow_html = True)                        
+                    st.markdown(f"""<div class = 'text'>
+                                    Volume: <b>{np.sum(volumeParticls)/imageArea:0.2e} nanometers</b> 
+                                </div>""", unsafe_allow_html = True)                        
+                    st.markdown(f"""<div class = 'text'>
+                                    Area: <b>{areaParticls/imageArea:0.2e}</b> 
+                                </div>""", unsafe_allow_html = True)
+        # END db12
+
+        # ?
+        with db21:
             with st.container(border = True, height = heightCol):
-                st.subheader("Secondary particle parameters")
+                uniformityMap = tools.uniformity(st.session_state['BLOBs'], st.session_state['sizeImage'], 10)
+                fig = px.density_heatmap(uniformityMap)
+                st.plotly_chart(fig, use_container_width = True)
+        # END db21
 
-                densityPd = 12.02 * 10**-15 # nanograms / nanometer        
-        
-                flag = True
-                if  (st.session_state['scale'] is None) or (st.session_state['mass'] is None):
-                    lowerBound = autoscale.findBorder(grayImage)
-        
-                    if (lowerBound is not None):      
-                        text = autoscale.findText(grayImage[lowerBound:, :])
+        # ?
+        with db22:
+            with st.container(border = True, height = heightCol):
+                pass
+        # END db22
 
-                        scaleVal = autoscale.scale(text)
+        # ?
+        with db23:
+            with st.container(border = True, height = heightCol):
+                pass
+        # END db23
 
-                        # Длина шкалы в пикселях
-                        scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
 
-                        if (scaleVal is not None) and (scaleLengthVal is not None):
-                            st.session_state['scale'] = scaleVal / scaleLengthVal 
-                            radiusNM = st.session_state['BLOBs'][:, 2] * st.session_state['scale'];
-                            V = 4 / 3 * np.pi * radiusNM ** 3
-                            st.session_state['mass'] = np.sum(V * densityPd)
-                        else:
-                            flag = False
-        
-                if not flag:
-                    st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html=True)
-                else:        
-                        st.markdown(f"""<div class = 'text'>
-                                        Estimated scale: <b>{st.session_state['scale']:0.4} nm/px</b> 
-                                    </div>""", unsafe_allow_html=True)
-                        st.markdown(f"""<div class = 'text'>
-                                        Mass: <b>{st.session_state['mass']:0.2e} nanograms</b> 
-                                    </div>""", unsafe_allow_html=True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Volume: <b>{st.session_state['mass']:0.2e} nanometers<sup>3</sup></b> 
-                                    </div>""", unsafe_allow_html=True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Surface areas: <b>{st.session_state['mass']:0.2e} nanometers<sup>2</sup></b> 
-                                    </div>""", unsafe_allow_html=True) 
-        # END colomn
-    
 
 
 # Articls
