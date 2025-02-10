@@ -6,10 +6,7 @@ from skimage import morphology
 from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
-   
-import plotly.express as px
-import plotly.figure_factory as ff
-
+    
 import style, tools, autoscale
 
 # Run
@@ -55,58 +52,57 @@ st.markdown("""<div class = 'about'>
 
 
 # Main content area
-tabDetect, tabInfo = st.tabs(["Detection nanoparticls", "Statistics dashboard"])
+left, rigth = st.columns([8, 3])
 
-# TAB 1
-with tabDetect:
-    left, rigth = st.columns([8, 3])
 
-    # Viewing images
-    with left:
-        st.header("Upload SEM image")
-        uploadedImage = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "tif"])
+with left:
+    st.header("Upload SEM image")
+    uploadedImage = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "tif"])
     
-        imagePlaceholder = st.empty()
+    imagePlaceholder = st.empty()
 
-        if uploadedImage is None:        
-             load_default_settings()
-        else:
-            st.session_state['imageUpload'] = True
-            crsImage = Image.open(uploadedImage)
-            grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')
+    if uploadedImage is None:        
+         load_default_settings()
+    else:
+        st.session_state['imageUpload'] = True
+        crsImage = Image.open(uploadedImage)
+        grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')
                
 
-            if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
-                st.session_state['uploadedImage'] = grayImage
-                st.session_state['detected'] = False            
-                st.session_state['scale'] = None
-                st.session_state['mass'] = None
+        if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
+            st.session_state['uploadedImage'] = grayImage
+            st.session_state['detected'] = False            
+            st.session_state['scale'] = None
+            st.session_state['mass'] = None
 
-            if (not st.session_state['detected']):
-                imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
-            elif (not st.session_state['comparison']):
-                imagePlaceholder.image(st.session_state['imageBLOBs'], use_column_width = True, caption = "Detected nanoparticles")        
-            else:
-                st.markdown(
-                    f"""
-                        <style>
-                        iframe {{
-                            width: inherit;
-                            height: 1150px;
-                        }}
-                        </style>
-                    """, unsafe_allow_html = True)
+        if (not st.session_state['detected']):
+            imagePlaceholder.image(crsImage, use_container_width = True, caption = "Uploaded image")
+        elif (not st.session_state['comparison']):
+            imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True, caption = "Detected nanoparticles")        
+        else:
+            st.markdown(
+                f"""
+                    <style>
+                    iframe {{
+                        width: inherit;
+                        height: 1150px;
+                    }}
+                    </style>
+                """, unsafe_allow_html = True)
 
-                image_comparison(
-                   img1 = crsImage,
-                   img2 = st.session_state['imageBLOBs'],
-                   label1 = "Initial SEM image",
-                   label2 = "Detected nanoparticles",
-                   in_memory = True)
-    # END left side
+            image_comparison(
+               img1 = crsImage,
+               img2 = st.session_state['imageBLOBs'],
+               label1 = "Initial SEM image",
+               label2 = "Detected nanoparticles",
+               in_memory = True)
 
-    # Detection settings and results
-    with rigth:
+
+with rigth:
+    
+    tabDetect, tabMass, tabStruct = st.tabs(["Detection", "Mass", "Structuring"])
+    
+    with tabDetect:
         st.header("Settings")
 
         st.checkbox("Use default settings?",
@@ -117,10 +113,10 @@ with tabDetect:
         # Preprocessing settings
         with st.container(border = True):
             methodPrep = st.selectbox("Image preprocessing method",
-                    ("None", "Top-hat  &  threshold filtering", "New!"),
-                    index = 1 if st.session_state['settingDefault'] else 0,
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
+                 ("None", "Top-hat  &  threshold filtering", "New!"),
+                 index = 1 if st.session_state['settingDefault'] else 0,
+                 disabled = st.session_state['settingDefault'],
+                 help = help_str)
 
             if methodPrep == "Top-hat  &  threshold filtering":
                 thrPrepCoef = st.text_input("Pretreatment filtering coefficient",
@@ -136,10 +132,10 @@ with tabDetect:
         # Nanoparticle detection settings
         with st.container(border = True):        
             methodDetect = st.selectbox("Nanoparticle detection method",
-                    ("Exponential approximation", "New!"),
-                    index = 0 if st.session_state['settingDefault'] else 0,
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
+                 ("Exponential approximation", "New!"),
+                 index = 0 if st.session_state['settingDefault'] else 0,
+                 disabled = st.session_state['settingDefault'],
+                 help = help_str)
 
             if methodDetect == "Exponential approximation":
                 thresCoefOld = st.text_input("Nanoparticle brightness filtering threshold",
@@ -148,10 +144,10 @@ with tabDetect:
                     help = help_str)
 
                 fsize = st.selectbox("Size of the approximation window (in pixels)",
-                        (5, 7, 9, 11, 13),
-                        index = 1 if st.session_state['settingDefault'] else 0,
-                        disabled = st.session_state['settingDefault'],
-                        help = help_str)
+                     (5, 7, 9, 11, 13),
+                     index = 1 if st.session_state['settingDefault'] else 0,
+                     disabled = st.session_state['settingDefault'],
+                     help = help_str)
 
 
         pushProcc = st.button("Nanoparticles detection",
@@ -186,11 +182,9 @@ with tabDetect:
 
             # Approximation 
             radius = np.arange(1.0, 7.1, 0.1)
-            #BLOBs = tools.CACHE_ExponentialApproximationMask(
-            #            currentImage, 1 / (radius ** 2), approxPoint,
-            #            False, int(fsize), float(thresCoefOld), 3)
-
-            BLOBs = tools.randon_BLOBS()
+            BLOBs = tools.CACHE_ExponentialApproximationMask(
+                        currentImage, 1 / (radius ** 2), approxPoint,
+                        False, int(fsize), float(thresCoefOld), 3)
 
             st.session_state['BLOBs'] = BLOBs
             st.session_state['detected'] = True
@@ -201,7 +195,7 @@ with tabDetect:
                 y, x, r = BLOB          
                 draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
 
-            imagePlaceholder.image(imageBLOBs, use_column_width = True, caption = "Detected nanoparticles")
+            imagePlaceholder.image(imageBLOBs, use_container_width = True, caption = "Detected nanoparticles")
             st.session_state['imageBLOBs'] = imageBLOBs
     
         # Info about detected nanoparticles
@@ -245,128 +239,62 @@ with tabDetect:
                     use_container_width  = True,
                     help = help_str
                 )
-    # END right side
+    # END tabDetect
 
+    with tabMass:        
+        # Nanoparticle mass
+        if st.session_state['detected']:            
+            st.header("Settings coming soon...")
 
-# TAB 2
-with tabInfo:
-    heightCol = 500
+            densityPd = 12.02 * 10**-15 # nanograms / nanometer        
+        
+            flag = True
+            if  (st.session_state['scale'] is None) or (st.session_state['mass'] is None):
+                lowerBound = autoscale.findBorder(grayImage)
+        
+                if (lowerBound is not None):      
+                    text = autoscale.findText(grayImage[lowerBound:, :])
 
-    if not st.session_state['detected']: 
-         st.markdown(f"""<div class = 'about'>
-                        Nanoparticle detection is necessary to calculate their mass.
-                        Please go to "Detection" tab.
-                    </div>""", unsafe_allow_html=True)
-    else:
-        # Dashboard structure
-        left, right = st.columns([4, 2])
+                    scaleVal = autoscale.scale(text)
+
+                    # Длина шкалы в пикселях
+                    scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
+
+                    if (scaleVal is not None) and (scaleLengthVal is not None):
+                        st.session_state['scale'] = scaleVal / scaleLengthVal 
+                        radiusNM = st.session_state['BLOBs'][:, 2] * st.session_state['scale'];
+                        V = 4 / 3 * np.pi * radiusNM ** 3
+                        st.session_state['mass'] = np.sum(V * densityPd)
+                    else:
+                        flag = False
+        
+            if not flag:
+                st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html=True)
+            else:        
+                st.markdown(f"""<div class = 'text'>
+                                Estimated scale: <b>{st.session_state['scale']:0.4} nm/px</b> 
+                            </div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div class = 'text'>
+                                Mass of detected Pd-nanoparticles:<br> <b>{st.session_state['mass']:0.2e} nanograms</b> 
+                            </div>""", unsafe_allow_html=True)
+        else:            
+            st.markdown(f"""<div class = 'text'>
+                    Nanoparticle detection is necessary to calculate their mass.
+                    Please go to "Detection" tab.
+                </div>""", unsafe_allow_html=True)
+    # END tabMass
     
-        
-        # Particle size distribution
-        with left:
-            with st.container(border = True, height = heightCol):                
-                chart_col, set_col = st.columns([4, 2])
-                
-                radius = st.session_state['BLOBs'][:, 2]
+    with tabStruct:
+        if st.session_state['detected']:
+            st.markdown(f"""<div class = 'text'>It's coming soon!</div>""", unsafe_allow_html=True)
+        else:
+            st.markdown(f"""<div class = 'text'>
+                    Nanoparticle detection is necessary to calculate the structuring.
+                    Please go to "Detection" tab.
+                </div>""", unsafe_allow_html=True)
 
-                minVal, maxVal = st.session_state['chartRange']
-                if (minVal == 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius[radius <= float(maxVal)]
-                elif (minVal != 'min') and (maxVal == 'max'):
-                    radiusFiltered = radius[radius >= float(minVal)]
-                elif (minVal != 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius[(radius >= float(minVal)) & (radius <= float(maxVal))]
-                else:
-                    radiusFiltered = radius
+    # END tabStruct       
 
-                with chart_col:
-                    fig = ff.create_distplot(
-                        [radiusFiltered], [''], bin_size = 1, curve_type = 'kde', histnorm = 'probability',
-                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
-                    )
-
-                    fig.update_layout(
-                        margin = dict(l=10, r=25, t=45, b=5),
-                        title = dict(text = "Particle size distribution", font = dict(size=27)),
-                        xaxis_title_text = 'Radius',
-                        yaxis_title_text = 'Particle fraction',
-                        showlegend = False
-                    )
-
-                    fig.update_traces(hoverinfo = "x", hovertemplate = "rarius: %{x:.2}")
-
-                    st.plotly_chart(fig, use_container_width = True)
-
-                with set_col:
-                    st.subheader("Settings")
-
-                    uniqueRadius = ['min'] + [f'{x:.2}' for x in np.unique(radius)] + ['max']
-
-                    st.select_slider("Select a range of particle radius",
-                        options = uniqueRadius,
-                        key = 'chartRange',
-                        value = ('min', 'max'),
-                        help = help_str
-                    )
-
-                    st.write("You selected ", st.session_state['chartRange'])
-
-                    st.checkbox("Display distribution function?",
-                        key = 'distView',
-                        help = help_str
-                    )
-
-
-        # END colomn
-
-
-        # Nanoparticle parameters
-        with right:
-            with st.container(border = True, height = heightCol):
-                st.subheader("Secondary particle parameters")
-
-                densityPd = 12.02 * 10**-15 # nanograms / nanometer        
-        
-                flag = True
-                if  (st.session_state['scale'] is None) or (st.session_state['mass'] is None):
-                    lowerBound = autoscale.findBorder(grayImage)
-        
-                    if (lowerBound is not None):      
-                        text = autoscale.findText(grayImage[lowerBound:, :])
-
-                        scaleVal = autoscale.scale(text)
-
-                        # Длина шкалы в пикселях
-                        scaleLengthVal = autoscale.scaleLength(grayImage, lowerBound)
-
-                        if (scaleVal is not None) and (scaleLengthVal is not None):
-                            st.session_state['scale'] = scaleVal / scaleLengthVal 
-                            radiusNM = st.session_state['BLOBs'][:, 2] * st.session_state['scale'];
-                            V = 4 / 3 * np.pi * radiusNM ** 3
-                            st.session_state['mass'] = np.sum(V * densityPd)
-                        else:
-                            flag = False
-        
-                if not flag:
-                    st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html=True)
-                else:        
-                        st.markdown(f"""<div class = 'text'>
-                                        Estimated scale: <b>{st.session_state['scale']:0.4} nm/px</b> 
-                                    </div>""", unsafe_allow_html=True)
-                        st.markdown(f"""<div class = 'text'>
-                                        Mass: <b>{st.session_state['mass']:0.2e} nanograms</b> 
-                                    </div>""", unsafe_allow_html=True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Volume: <b>{st.session_state['mass']:0.2e} nanometers<sup>3</sup></b> 
-                                    </div>""", unsafe_allow_html=True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Surface areas: <b>{st.session_state['mass']:0.2e} nanometers<sup>2</sup></b> 
-                                    </div>""", unsafe_allow_html=True) 
-        # END colomn
-    
-
-
-# Articls
 st.markdown("""<div class = 'cite'> <b>How to cite</b>:
                 <ul>
                     <li> <p class = 'cite'>
@@ -387,7 +315,9 @@ st.markdown("""<div class = 'cite'> <b>How to cite</b>:
                 </ul>
             </div>""", unsafe_allow_html = True)
 
-# Footer
+
+
 st.markdown("""<div class = 'footer'>
-        Laboratory of Cognitive Technologies and Simulating Systems, Tula State University © 2025 (Email support: muwsik@mail.ru)
+        Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024
+        <br>Do you need help? Please e-mail to muwsik@mail.ru
     </div>""", unsafe_allow_html = True)
