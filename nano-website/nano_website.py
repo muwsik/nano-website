@@ -76,13 +76,15 @@ with tabDetect:
             st.session_state['imageUpload'] = True
             crsImage = Image.open(uploadedImage)
             grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')
-               
-
+            
             if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
                 st.session_state['uploadedImage'] = grayImage
-                st.session_state['detected'] = False            
-                st.session_state['scale'] = None
-                st.session_state['mass'] = None
+                st.session_state['detected'] = False   
+                
+                #
+                tempScale = autoscale.estimateScale(grayImage)
+                if tempScale is not None:
+                    st.session_state['scale'] = tempScale
 
             if (not st.session_state['detected']):
                 imagePlaceholder.image(crsImage, use_column_width = True, caption = "Uploaded image")
@@ -156,13 +158,14 @@ with tabDetect:
                         help = help_str)
 
 
-        pushProcc = st.button("Nanoparticles detection",
+        detectButtonPush = st.button("Nanoparticles detection",
             use_container_width = True,
             disabled = not st.session_state['imageUpload'],
-            help = "You need to upload an SEM image")
+            help = "You need to upload an SEM image"
+        )
     
         # Detecting
-        if pushProcc:
+        if detectButtonPush:
             currentImage = np.copy(grayImage) 
          
             lowerBound = autoscale.findBorder(grayImage)        
@@ -246,11 +249,6 @@ with tabDetect:
                     use_container_width  = True,
                     help = help_str
                 )
-
-        if (st.session_state['scale'] is None):
-            tempScale = autoscale.estimateScale(grayImage)
-            if tempScale is not None:
-                st.session_state['scale'] = tempScale
     # END right side
 
 
