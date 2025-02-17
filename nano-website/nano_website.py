@@ -194,7 +194,7 @@ with tabDetect:
             #BLOBs = tools.CACHE_ExponentialApproximationMask(
             #            currentImage, 1 / (np.arange(1.0, 7.1, 0.1) ** 2), approxPoint,
             #            False, int(fsize), float(thresCoefOld), 3)
-            BLOBs = tools.randon_BLOBS(1000)
+            BLOBs = tools.randon_BLOBS(250)
 
             st.session_state['BLOBs'] = BLOBs
             st.session_state['detected'] = True
@@ -268,28 +268,29 @@ with tabInfo:
 
         additionalSTR = ''         
         radius_nm = st.session_state['BLOBs'][:, 2] * st.session_state['scale']
+        boolIndexFiltringBLOBs = None
         
         # Particle size distribution
         with db11:
             with st.container(border = True, height = heightCol):                
                 chart_col, set_col = st.columns([4, 2])
                 
-                minRadius = np.min(radius_nm)
-                maxRadius = np.max(radius_nm)
-
-                minVal, maxVal = st.session_state['chartRange']
-                
+                minVal, maxVal = st.session_state['chartRange']                
                 flagCustomRangeRadius = True
                 if (minVal == 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius_nm[radius_nm <= float(maxVal)]
+                    boolIndexFiltringBLOBs = radius_nm <= float(maxVal)
                 elif (minVal != 'min') and (maxVal == 'max'):
-                    radiusFiltered = radius_nm[radius_nm >= float(minVal)]
+                    boolIndexFiltringBLOBs = radius_nm >= float(minVal)
                 elif (minVal != 'min') and (maxVal != 'max'):
-                    radiusFiltered = radius_nm[(radius_nm >= float(minVal)) & (radius_nm <= float(maxVal))]
+                    boolIndexFiltringBLOBs = (radius_nm >= float(minVal)) & (radius_nm <= float(maxVal))
                 else:
                     flagCustomRangeRadius = False
-                    radiusFiltered = radius_nm                
+                    boolIndexFiltringBLOBs = np.ones_like(radius_nm, dtype='bool')
                 
+                radiusFiltered = radius_nm[boolIndexFiltringBLOBs]    
+
+                minRadius = np.min(radius_nm)
+                maxRadius = np.max(radius_nm)
                 if flagCustomRangeRadius:
                     temp1 = minVal if (minVal != "min") else f'{minRadius:.1f}'
                     temp2 = maxVal if (maxVal != "max") else f'{maxRadius:.1f}'
@@ -312,7 +313,7 @@ with tabInfo:
                         help = help_str
                     )
 
-                    st.checkbox("Recalculation parameters?",
+                    st.checkbox("Recalculation parameters for range?",
                         key = 'recalculation',
                         help = help_str
                     )
@@ -397,18 +398,73 @@ with tabInfo:
                                 </div>""", unsafe_allow_html = True)
         # END db12
 
-        # ?
+        # Heatmap of particle count
         with db21:
             with st.container(border = True, height = heightCol):
-                uniformityMap = tools.uniformity(st.session_state['BLOBs'], st.session_state['sizeImage'], 10)
-                fig = px.density_heatmap(uniformityMap)
+                stepSize = 10
+                uniformityMap = tools.uniformity(
+                    st.session_state['BLOBs'][boolIndexFiltringBLOBs] if st.session_state['recalculation'] else st.session_state['BLOBs'],
+                    st.session_state['sizeImage'], stepSize
+                )
+
+                fig = px.imshow(uniformityMap)
+
+                titleChart = "Heatmap of particle count";
+                if st.session_state['recalculation']:
+                    titleChart += additionalSTR
+
+                fig.update_layout(
+                    margin = dict(l=10, r=25, t=45, b=5),
+                    title = dict(text = titleChart, font = dict(size=27)),
+                    xaxis_title_text = f'Width image, {stepSize}*px',
+                    yaxis_title_text = f'Height image, {stepSize}*px',
+                    showlegend = False
+                )
+
                 st.plotly_chart(fig, use_container_width = True)
         # END db21
+
+        def findEuclideanDistances(blobs):
+            nblobs = np.shape(blobs)[0]
+            dist = np.zeros((nblobs, nblobs),dtype = float)
+            for i in range(nblobs):
+                for j in range(i, nblobs):
+                    dist[i,j] = np.sqrt((blobs[i,0]-blobs[j,0])**2 + (blobs[i,1]-blobs[j,1])**2)
+                    dist[j,i] = dist[i,j]
+            return dist
+        
+        def fullDistance(blobs):
+            dist = findEuclideanDistances(blobs)
+        
+            nblobs = np.shape(blobs)[0]
+            minDist = np.min(dist+np.eye(nblobs, nblobs)*99999,0)
+
+            return dist, minDist
+        
+        _, distanse = fullDistance(st.session_state['BLOBs'][boolIndexFiltringBLOBs] if st.session_state['recalculation'] else st.session_state['BLOBs'])
 
         # ?
         with db22:
             with st.container(border = True, height = heightCol):
-                pass
+                fig = ff.create_distplot(
+                    [distanse], [''], bin_size = 2, curve_type = 'kde', histnorm = 'probability',
+                    colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
+                )
+
+                fig.update_layout(
+                    margin = dict(l=10, r=25, t=45, b=5),
+                    title = dict(text = "?" + additionalSTR, font = dict(size=27)),
+                    xaxis_title_text = 'distance to the nearest nanoparticle, nm',
+                    yaxis_title_text = 'Particle fraction',
+                    showlegend = False
+                )
+                    
+                fig.update_xaxes(range = [np.floor(distanse.min()), np.ceil(distanse.max())],
+                    showgrid = True, gridwidth = 0.5, gridcolor = '#606060'
+                )
+                fig.update_traces(hoverinfo = "x", hovertemplate = "distanse: %{x:.2} nm")
+
+                st.plotly_chart(fig, use_container_width = True)
         # END db22
 
         # ?

@@ -11,13 +11,20 @@ def CACHE_FindThresPrep(img, nbr, thrPrepCoef):
 def CACHE_ExponentialApproximationMask(img, c1s, points, maskMain, wsize, thresCoefOld, nproc):
     return mf.ExponentialApproximationMask(img, c1s, points, maskMain, wsize, thresCoefOld, nproc)
 
-def randon_BLOBS(count = 250, x_max = 1200, y_max = 890):
+def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
     fake_BLOBS = np.zeros((count, 3))
 
     for i in range(len(fake_BLOBS)):
         fake_BLOBS[i, 0] = random.randint(0, y_max)
         fake_BLOBS[i, 1] = random.randint(0, x_max)
-        fake_BLOBS[i, 2] = random.uniform(0, 7)
+
+    if type == 'uniform':        
+        for i in range(len(fake_BLOBS)):       
+            fake_BLOBS[i, 2] = random.uniform(0, 7)
+    elif type == 'norm':
+        fake_BLOBS[:, 2] = np.random.normal(3.5, 2.5, size = count)
+    else:
+        raise Exception('!')
 
     return fake_BLOBS
 
