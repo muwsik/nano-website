@@ -194,7 +194,7 @@ with tabDetect:
             #BLOBs = tools.CACHE_ExponentialApproximationMask(
             #            currentImage, 1 / (np.arange(1.0, 7.1, 0.1) ** 2), approxPoint,
             #            False, int(fsize), float(thresCoefOld), 3)
-            BLOBs = tools.randon_BLOBS(250)
+            BLOBs = tools.randon_BLOBS(2500)
 
             st.session_state['BLOBs'] = BLOBs
             st.session_state['detected'] = True
@@ -268,6 +268,7 @@ with tabInfo:
 
         additionalSTR = ''         
         radius_nm = st.session_state['BLOBs'][:, 2] * st.session_state['scale']
+        fullDist, minDist = tools.euclideanDistance(st.session_state['BLOBs'] * st.session_state['scale']) 
         boolIndexFiltringBLOBs = None
         
         # Particle size distribution
@@ -423,43 +424,28 @@ with tabInfo:
 
                 st.plotly_chart(fig, use_container_width = True)
         # END db21
-
-        def findEuclideanDistances(blobs):
-            nblobs = np.shape(blobs)[0]
-            dist = np.zeros((nblobs, nblobs),dtype = float)
-            for i in range(nblobs):
-                for j in range(i, nblobs):
-                    dist[i,j] = np.sqrt((blobs[i,0]-blobs[j,0])**2 + (blobs[i,1]-blobs[j,1])**2)
-                    dist[j,i] = dist[i,j]
-            return dist
         
-        def fullDistance(blobs):
-            dist = findEuclideanDistances(blobs)
         
-            nblobs = np.shape(blobs)[0]
-            minDist = np.min(dist+np.eye(nblobs, nblobs)*99999,0)
-
-            return dist, minDist
-        
-        _, distanse = fullDistance(st.session_state['BLOBs'][boolIndexFiltringBLOBs] if st.session_state['recalculation'] else st.session_state['BLOBs'])
 
         # ?
         with db22:
+            tempDist = minDist[boolIndexFiltringBLOBs] if st.session_state['recalculation'] else minDist
+
             with st.container(border = True, height = heightCol):
                 fig = ff.create_distplot(
-                    [distanse], [''], bin_size = 2, curve_type = 'kde', histnorm = 'probability',
+                    [tempDist], [''], bin_size = 2, curve_type = 'kde', histnorm = 'probability',
                     colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
                 )
 
                 fig.update_layout(
                     margin = dict(l=10, r=25, t=45, b=5),
-                    title = dict(text = "?" + additionalSTR, font = dict(size=27)),
-                    xaxis_title_text = 'distance to the nearest nanoparticle, nm',
+                    title = dict(text = "Distance to the nearest nanoparticle" + additionalSTR, font = dict(size=27)),
+                    xaxis_title_text = 'Distance to the nearest nanoparticle, nm',
                     yaxis_title_text = 'Particle fraction',
                     showlegend = False
                 )
                     
-                fig.update_xaxes(range = [np.floor(distanse.min()), np.ceil(distanse.max())],
+                fig.update_xaxes(range = [np.floor(tempDist.min()), np.ceil(tempDist.max())],
                     showgrid = True, gridwidth = 0.5, gridcolor = '#606060'
                 )
                 fig.update_traces(hoverinfo = "x", hovertemplate = "distanse: %{x:.2} nm")
@@ -469,8 +455,25 @@ with tabInfo:
 
         # ?
         with db23:
+            temp_db23 = tools.thresholdDistance(np.arange(5,100,1), fullDist)
+
             with st.container(border = True, height = heightCol):
-                pass
+                fig = px.bar(temp_db23)
+
+                fig.update_layout(
+                    margin = dict(l=10, r=25, t=45, b=5),
+                    title = dict(text = "Distance to the nearest nanoparticle" + additionalSTR, font = dict(size=27)),
+                    xaxis_title_text = 'Nanoparticle neighborhood size, nm',
+                    yaxis_title_text = 'Particle fraction',
+                    showlegend = False
+                )
+                    
+                fig.update_xaxes(range = [np.floor(tempDist.min()), np.ceil(tempDist.max())],
+                    showgrid = True, gridwidth = 0.5, gridcolor = '#606060'
+                )
+                fig.update_traces(hoverinfo = "x", hovertemplate = "?: %{x:.2}")
+
+                st.plotly_chart(fig, use_container_width = True)
         # END db23
 
 
