@@ -43,8 +43,6 @@ def uniformity(BLOBs, sizeImage, sizeBlock):
 
     return counter
 
-
-@st.cache_data(show_spinner = "Calculating distances...")
 def euclideanDistance(_blobs):
     points = _blobs[:, 0:2]
     fullEuclideanDist = distance.cdist(points, points, 'euclidean')
@@ -54,12 +52,10 @@ def euclideanDistance(_blobs):
 
     return fullEuclideanDist, minEuclideanDist
 
-
-@st.cache_data(show_spinner = False)
 def thresholdDistance(_thresholds, _fullDist):
     distanceLess = np.zeros(len(_thresholds))
 
     for i, threshold in enumerate(_thresholds):
-        distanceLess[i] = np.less(_fullDist, threshold).sum()
+        distanceLess[i] = np.less(_fullDist, threshold).sum() / (len(_fullDist) * np.pi * threshold ** 2)
 
     return distanceLess
