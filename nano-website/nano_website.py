@@ -44,6 +44,7 @@ def load_default_settings():
 
     st.session_state['chartRange'] = ('min','max')
     st.session_state['distView'] = False
+    st.session_state['recalculation'] = True
 
     st.session_state['calcStatictic'] = False
 
