@@ -2,6 +2,7 @@ numpy==1.26.4
 scikit-image==0.25.2
 pillow==10.4.0
 easyocr==1.7.2
+plotly
 scipy
 matplotlib
 streamlit-image-comparison
