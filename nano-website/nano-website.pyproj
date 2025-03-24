@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>autoscale.py</StartupFile>
+    <StartupFile>ExponentialApproximation.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -13,8 +13,7 @@
     <RootNamespace>nano-website</RootNamespace>
     <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
     <SuppressEnvironmentCreationPrompt>True</SuppressEnvironmentCreationPrompt>
-    <InterpreterId>Global|PythonCore|3.8</InterpreterId>
-    <IsWindowsApplication>False</IsWindowsApplication>
+    <InterpreterId>Global|PythonCore|3.12</InterpreterId>
     <SuppressPackageInstallationPrompt>True</SuppressPackageInstallationPrompt>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
@@ -26,15 +25,12 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="MicFunctions_v2.py" />
+    <Compile Include="ExponentialApproximation.py" />
     <Compile Include="nano_website.py" />
     <Compile Include="style.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="autoscale.py">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="tools.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -44,7 +40,6 @@
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
-    <InterpreterReference Include="Global|PythonCore|3.8" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include=".streamlit\" />

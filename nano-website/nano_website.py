@@ -6,11 +6,10 @@ from skimage import morphology
 from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
-   
-import plotly.express as px
-import plotly.figure_factory as ff
+    
+import style, autoscale
+import ExponentialApproximation as EA
 
-import style, tools, autoscale
 
 # Run
 # streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
@@ -23,9 +22,16 @@ def load_default_settings():
     st.session_state['uploadedImage'] = None
 
     st.session_state['settingDefault'] = True
+    st.session_state['param1'] = 16
+    st.session_state['param2'] = (1.0, 4.4)
+    st.session_state['param3'] = 0.3
+    st.session_state['param-pre-1'] = 10
+    
+    st.session_state['rerun'] = True
 
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
+    st.session_state['BLOBs_params'] = None
     st.session_state['imageBLOBs'] = None
     st.session_state['sizeImage'] = None
 
@@ -47,7 +53,7 @@ st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html =
 
 st.markdown("""<div class = 'about'>
                     Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
-                    <br>It will help you to detect palladium nanoparticles in the image and calculate their mass.
+                    <br>It will help you to detect palladium nanoparticles in the image and calculate their statictics.
                </div>""", unsafe_allow_html = True)
 
 st.markdown("""<div class = 'about'>
@@ -118,45 +124,41 @@ with tabDetect:
             key = 'settingDefault',
             help = "You need to upload an SEM image")
     
-        # Preprocessing settings
+        # Preprocessing settings        
         with st.container(border = True):
-            methodPrep = st.selectbox("Image preprocessing method",
-                    ("None", "Top-hat  &  threshold filtering", "New!"),
-                    index = 1 if st.session_state['settingDefault'] else 0,
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
-
-            if methodPrep == "Top-hat  &  threshold filtering":
-                thrPrepCoef = st.text_input("Pretreatment filtering coefficient",
-                    value = "0.2" if st.session_state['settingDefault'] else "0.3",
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
-
-            dispCurrentImage = st.checkbox("Display image after preprocessing?",
-                value = False if st.session_state['settingDefault'] else True,
+            st.slider(
+                "parametar thr_br",
+                key = 'param-pre-1',
                 disabled = st.session_state['settingDefault'],
-                help = help_str)
-    
-        # Nanoparticle detection settings
-        with st.container(border = True):        
-            methodDetect = st.selectbox("Nanoparticle detection method",
-                    ("Exponential approximation", "New!"),
-                    index = 0 if st.session_state['settingDefault'] else 0,
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
+            )
 
-            if methodDetect == "Exponential approximation":
-                thresCoefOld = st.text_input("Nanoparticle brightness filtering threshold",
-                    value = "0.5" if st.session_state['settingDefault'] else "0.4",
-                    disabled = st.session_state['settingDefault'],
-                    help = help_str)
 
-                fsize = st.selectbox("Size of the approximation window (in pixels)",
-                        (5, 7, 9, 11, 13),
-                        index = 1 if st.session_state['settingDefault'] else 0,
-                        disabled = st.session_state['settingDefault'],
-                        help = help_str)
+        # Filtering settings 
+        with st.container(border = True):
+            st.slider(
+                "parametar thr_c0",
+                key = 'param1',
+                disabled = st.session_state['settingDefault'],
+            )
 
+            st.slider(
+                "parametar thr_r",
+                key = 'param2',
+                min_value = 1.0,
+                step = 0.1,
+                max_value = 7.0,
+                disabled = st.session_state['settingDefault'],
+            )
+
+            st.slider(
+                "parametar thr_error",
+                key = 'param3',
+                min_value = 0.0,
+                step = 0.01,
+                max_value = 1.0,
+                disabled = st.session_state['settingDefault'],
+            )
+        
 
         detectButtonPush = st.button("Nanoparticles detection",
             use_container_width = True,
@@ -165,52 +167,90 @@ with tabDetect:
         )
     
         # Detecting
-        if detectButtonPush:
-            currentImage = np.copy(grayImage) 
+        with st.spinner("Nanoparticles detection", show_time = True):
+            if pushProcc:
+                currentImage = np.copy(grayImage) 
          
-            lowerBound = autoscale.findBorder(grayImage)        
-            if (lowerBound is not None):
-                currentImage = currentImage[:lowerBound, :]
+                lowerBound = autoscale.findBorder(grayImage)        
+                if (lowerBound is not None):
+                    currentImage = currentImage[:lowerBound, :] 
+
+                params = {
+                    "sz_med" : 4,   # для предварительной обработки
+                    "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
+                    "thr_br": 10,   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
+                    "min_dist": 5,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
+                    "wsize": 9,     # размер окна аппроксимации
+                    "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
+                    "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                    "msk": 5,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                    "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
+                    "npar": 2       # число параметров аппроксимации
+                }
+
+                # вычисляется только один раз при первом запуске детектирования
+                helpMatrs, xy2 = EA.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+
+                # вычисляется только один раз для одного и тогоже изображения
+                lm, currentImage = EA.CACHE_PrefilteringPoints(
+                    currentImage,
+                    params["sz_med"],
+                    params["sz_th"],
+                    params["min_dist"],
+                    params["thr_br"]
+                )
+
+                BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
+                    currentImage,
+                    lm,
+                    xy2,
+                    helpMatrs,
+                    params
+                )
             
-            st.session_state['sizeImage'] = currentImage.shape
+                st.session_state['BLOBs'] = BLOBs
+                st.session_state['BLOBs_params'] = BLOBs_params
+                st.session_state['detected'] = True
 
-            if methodPrep != "None":
-                # Adaptive threshold
-                thrPrep = tools.CACHE_FindThresPrep(currentImage, 1000, float(thrPrepCoef)) 
+        if (st.session_state['detected']):
+            params_filter = {
+                "thr_c0": st.session_state['param1'],
+                "min_thr_r": st.session_state['param2'][0],   
+                "max_thr_r": st.session_state['param2'][1], 
+                "thr_error": st.session_state['param3'], 
+            }
 
-                # Top-hat
-                currentImage = morphology.white_tophat(currentImage, morphology.disk(4))
-        
-                # Pre-filtering
-                filteredImage = median(currentImage, np.ones((3,3)))
-                approxPoint = filteredImage > thrPrep
-            else:
-                approxPoint = np.ones_like(currentImage)
-        
-            if dispCurrentImage:
-                imagePlaceholder.image(currentImage, use_column_width = True, caption = "Processed image")
-
-            # Approximation 
-            #BLOBs = tools.CACHE_ExponentialApproximationMask(
-            #            currentImage, 1 / (np.arange(1.0, 7.1, 0.1) ** 2), approxPoint,
-            #            False, int(fsize), float(thresCoefOld), 3)
-            BLOBs = tools.randon_BLOBS(2500)
-
-            st.session_state['BLOBs'] = BLOBs
-            st.session_state['detected'] = True
+            BLOBs_filtered, _ = EA.my_FilterBlobs_change(
+                st.session_state['BLOBs'],
+                st.session_state['BLOBs_params'],
+                params_filter
+            )
 
             imageBLOBs = crsImage.convert("RGBA")
             draw = ImageDraw.Draw(imageBLOBs)
-            for BLOB in BLOBs:                
+            for BLOB in BLOBs_filtered:                
                 y, x, r = BLOB          
                 draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
 
-            imagePlaceholder.image(imageBLOBs, use_column_width = True, caption = "Detected nanoparticles")
             st.session_state['imageBLOBs'] = imageBLOBs
+
+            # КОСТЫЛЬ!!!!!
+            # if (not st.session_state['rerun']):
+            #     st.session_state['rerun'] = False
+            #     st.rerun()
+            # else:
+            #     st.session_state['rerun'] = True
+
+
+            if (not st.session_state['comparison']):
+                imagePlaceholder.image(imageBLOBs, use_container_width = True, caption = "Detected nanoparticles")
+            else:
+                imagePlaceholder.empty()
+            
     
         # Info about detected nanoparticles
         if st.session_state['detected']:
-            st.markdown(f"<p class = 'text'>Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b></p>", unsafe_allow_html=True)
+            st.markdown(f"<p class = 'text'>Nanoparticles detected: <b>{BLOBs_filtered.shape[0]}</b></p>", unsafe_allow_html=True)
 
         # Slider for comparing the results before and after detection
         if st.session_state['detected']:        
@@ -487,7 +527,6 @@ with tabInfo:
 
 
 
-# Articls
 st.markdown("""<div class = 'cite'> <b>How to cite</b>:
                 <ul>
                     <li> <p class = 'cite'>
@@ -508,7 +547,9 @@ st.markdown("""<div class = 'cite'> <b>How to cite</b>:
                 </ul>
             </div>""", unsafe_allow_html = True)
 
-# Footer
+
+
 st.markdown("""<div class = 'footer'>
-        Laboratory of Cognitive Technologies and Simulating Systems, Tula State University © 2025 (Email support: muwsik@mail.ru)
+        Laboratory of Cognitive Technologies and Simulating Systems (LCTSS), Tula State University (TulSU) © 2024
+        <br>Do you need help? Please e-mail to muwsik@mail.ru
     </div>""", unsafe_allow_html = True)
