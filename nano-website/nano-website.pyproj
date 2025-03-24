@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>ExponentialApproximation.py</StartupFile>
+    <StartupFile>nanoStatistics.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,6 +27,9 @@
   <ItemGroup>
     <Compile Include="ExponentialApproximation.py" />
     <Compile Include="nano_website.py" />
+    <Compile Include="nanoStatistics.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="style.py">
       <SubType>Code</SubType>
     </Compile>

@@ -47,7 +47,7 @@ def increase(_text):
 
 def scale(_text):
     try:
-        matchesScale = re.findall(r'[0-9]*.?[0-9]+[nup]m', _text)[0]
+        matchesScale = re.findall(r"[0-9]*\.?[0-9]+[nup]m", _text)[0]
         if matchesScale[-2] == 'n':
             _scale = float(matchesScale[:-2])
         if matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
@@ -57,11 +57,22 @@ def scale(_text):
 
     return _scale
 
+def estimateScale(_image):
+    lowerBound = findBorder(_image)
+    if (lowerBound is not None):      
+        text = findText(_image[lowerBound:, :])
+        scaleVal = scale(text)
+        scaleLengthVal = scaleLength(_image, lowerBound)
+
+        if (scaleVal is not None) and (scaleLengthVal is not None):
+            return scaleVal / scaleLengthVal
+        else:
+            return None
 
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"temp.tif"
+    img_path = r"C:\Users\Muwa\Desktop\test-image.tif"
 
 
     img = Image.open(img_path).convert('L')
@@ -97,4 +108,4 @@ if __name__ == "__main__":
             print(f"nm / pixel: {scaleVal / scaleLengthVal}")
             print(f"pixel / nm: {scaleLengthVal / scaleVal}")
 
-
+    print(estimateScale(grayImage))
