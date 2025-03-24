@@ -1,3 +1,5 @@
+# -*- coding: cp1251 -*-
+
 import numpy as np
 import cv2
 import csv
@@ -10,20 +12,21 @@ import sys
 import multiprocessing
 from skimage.feature import peak_local_max
 
+
 # !!!!!!!!!!! 
 def ApproxInWindow_NormExp(wsize, z, c1s, xy2, helpMatrs, npar):
     """Approximation of function z by the exponential function
     c0*exp(-c1(x^2+y^2))+c2
-    npar = 2 - РѕРїСЂРµРґРµР»СЏСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РїР°СЂР°РјРµС‚СЂС‹ c0 Рё СЃ1 (СЃ2=0)
-    npar = 3 - РѕРїСЂРµРґРµР»СЏСЋС‚СЃСЏ РІСЃРµ РїР°СЂР°РјРµС‚СЂС‹
+    npar = 2 - определяются только параметры c0 и с1 (с2=0)
+    npar = 3 - определяются все параметры
     c1s - vector of c1 values, for each of which the approximation is made (only c0 is determined)
     then the optimal c1 is found
     z is a matrix [wsize x wsize]
     ! NO MASK! only full window is used! 
-    helpMatrs is a spacial structure with precomputed matrixes and SLAE coefficients to found СЃ0
+    helpMatrs is a spacial structure with precomputed matrixes and SLAE coefficients to found с0
     !!! it is supposed that helpMatrs shape and z shape are matched!!!
-    РѕРїС‚РёРјР°Р»СЊРЅРѕРµ c1 РІС‹Р±РёСЂР°РµС‚СЃСЏ РїРѕ РјРёРЅРёРјСѓРјСѓ РєСЂРёС‚РµСЂРёСЏ РњРќРљ,
-    Р° РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ Рё Р·РЅР°С‡РµРЅРёРµ РєСЂРёС‚РµСЂРёСЏ, Рё РЅРѕСЂРјРёСЂРѕРІР°РЅРЅР°СЏ РѕС€РёР±РєР°!!!!
+    оптимальное c1 выбирается по минимуму критерия МНК,
+    а возвращается и значение критерия, и нормированная ошибка!!!!
     """
     if (z == 0).all():
         return 0, 0, 0
@@ -39,7 +42,7 @@ def ApproxInWindow_NormExp(wsize, z, c1s, xy2, helpMatrs, npar):
     npoints = wsize*wsize
     i = 0
     for c1 in c1s:
-        # determine the optimal c0 Рё СЃ2 for the given c1
+        # determine the optimal c0 и с2 for the given c1
         m = helpMatrs.get(c1)
         a11 = sum(sum(np.array(m) ** 2))
         b1 = sum(sum(z * m))  
@@ -79,8 +82,8 @@ def ApproxInWindow_NormExp(wsize, z, c1s, xy2, helpMatrs, npar):
     optc0 = c0s[indMNK]
     optc1 = c1s[indMNK]
     optc2 = c2s[indMNK]
-    opt_norm_error = norm_errors[indMNK] # РѕРїС‚РёРјР°Р»СЊРЅРѕРµ c1 РІС‹Р±РёСЂР°РµС‚СЃСЏ РїРѕ РјРёРЅРёРјСѓРјСѓ РєСЂРёС‚РµСЂРёСЏ РњРќРљ,
-                         # Р° РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РЅРѕСЂРјРёСЂРѕРІР°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РєСЂРёС‚РµСЂРёСЏ (РїРѕРєР°Р·Р°С‚РµР»СЊ РєР°С‡РµСЃС‚РІР°)
+    opt_norm_error = norm_errors[indMNK] # оптимальное c1 выбирается по минимуму критерия МНК,
+                         # а возвращается нормированное значение критерия (показатель качества)
     
     return optc0, optc1, optc2, critsMNK[indMNK], opt_norm_error
 
@@ -91,7 +94,7 @@ def MakeHelpMatricesNew(wsize, rs):
     wsize - size of approximation window
     rs - vector of possible radii
     """
-    cs = cs = 1 / (rs * rs)  # РІРѕР·РјРѕР¶РЅС‹Рµ Р·РЅР°С‡РµРЅРёСЏ c1
+    cs = cs = 1 / (rs * rs)  # возможные значения c1
     hsz = wsize // 2  # max and min values of positive and negative coordinate values
     xx = np.array((np.arange(-hsz, hsz+1)))
     xx = xx*xx
@@ -126,8 +129,8 @@ def PreprocessingTopHat(img, th_sz = 4):
 
 def GetSubimage(img, point, wsize): 
     '''
-    РР·РІР»РµС‡РµРЅРёРµ РёР· img РѕРєРѕС€РєР° СЃ С†РµРЅС‚СЂРѕРј РІ point Рё СЂР°Р·РјРµСЂРѕРј wsize
-    Р•СЃР»Рё РѕРєРЅРѕ РЅРµ РїРѕРјРµС‰Р°РµС‚СЃСЏ С†РµР»РёРєРѕРј (С‚РѕС‡РєР° Р±Р»РёР·РєРѕ Рє РєСЂР°СЋ), С‚Рѕ РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ False Рё РїСѓСЃС‚Р°СЏ РјР°С‚СЂРёС†Р°
+    Извлечение из img окошка с центром в point и размером wsize
+    Если окно не помещается целиком (точка близко к краю), то возвращается False и пустая матрица
     '''
     hfwsz = int(wsize/2)
     x = int(point[0])
@@ -240,17 +243,17 @@ def ExtractPointsBySquareMask(point, imgshape, msk):
     return ppx, ppy
 
 def ApproximationWithFindingTheBestCenter(img, point, xy2, helpMatrs, params, prn):
-    # СЂР°СЃСЃРјР°С‚СЂРёРІР°РµРј С‚РѕС‡РєСѓ Р»РѕРєР°Р»СЊРЅРѕРіРѕ РјР°РєСЃРёРјСѓРјР° Рё С‚РѕС‡РєРё РІРѕРєСЂСѓРі РЅРµРіРѕ 
-    # РёР· РѕРєРѕС€РєР° СЂР°Р·РјРµСЂРѕРј params["msk"] 
-    # РґР»СЏ СѓС‚РѕС‡РЅРµРЅРёСЏ РєРѕРѕСЂРґРёРЅР°С‚ С†РµРЅС‚СЂР° РЅР°РЅРѕС‡Р°СЃС‚РёС†С‹, РєРѕС‚РѕСЂС‹Р№ РЅРµ РІСЃРµРіРґР° СЃРѕРІРїР°РґР°РµС‚
-    # СЃ Р»РѕРєР°Р»СЊРЅС‹Рј РјР°РєСЃРёРјСѓРјРѕРј
-    # РІСЃРµРіРѕ npnts=msk*msk С‚РѕС‡РµРє,  ppx, ppy - СЃРїРёСЃРѕРє РєРѕРѕСЂРґРёРЅР°С‚ СЌС‚РёС… С‚РѕС‡РµРє
-    # РїРѕСЂРѕРіРё РґР»СЏ РѕС‚Р±РѕСЂР° С‚РѕС‡РµРє, СѓРґРѕРІР»РµС‚РІРѕСЂСЏСЋС‰РёС… СѓСЃР»РѕРІРёСЋ: 
+    # рассматриваем точку локального максимума и точки вокруг него 
+    # из окошка размером params["msk"] 
+    # для уточнения координат центра наночастицы, который не всегда совпадает
+    # с локальным максимумом
+    # всего npnts=msk*msk точек,  ppx, ppy - список координат этих точек
+    # пороги для отбора точек, удовлетворяющих условию: 
     # params["thr_c0"], params["thr_c1"], params["thr_error"]
-    # params["best_mode"] = 1 РёР»Рё 2: СЃСЂРµРґРё С‚РѕС‡РµРє, СѓРґРѕРІР»РµС‚РІРѕСЂСЏСЋС‰РёС… СѓСЃР»РѕРІРёСЏРј, РІС‹Р±РёСЂР°РµРј РЅР°РёР»СѓС‡С€СѓСЋ 
-    # РїРѕ c1 (best_mode = 1)  РёР»Рё РїРѕ РЅРѕСЂРјРёСЂРѕРІР°РЅРЅРѕР№ РѕС€РёР±РєРµ (best_mode <> 1)
+    # params["best_mode"] = 1 или 2: среди точек, удовлетворяющих условиям, выбираем наилучшую 
+    # по c1 (best_mode = 1)  или по нормированной ошибке (best_mode <> 1)
     # params["met"] = 'exp'
-    # params["npar"] = 3 # С‡РёСЃР»Рѕ РїР°СЂР°РјРµС‚СЂРѕРІ Р°РїРїСЂРѕРєСЃРёРјР°С†РёРё 3 РёР»Рё 2
+    # params["npar"] = 3 # число параметров аппроксимации 3 или 2
     
     msk = params["msk"]
     wsize = params["wsize"]
@@ -274,10 +277,10 @@ def ApproximationWithFindingTheBestCenter(img, point, xy2, helpMatrs, params, pr
     best_found = False
     ibest = 0
     for pp in range(npoints):
-        # РІС‹СЂРµР·Р°РµРј РѕРєРѕС€РєРѕ subimg РёР· РёР·РѕР±СЂР°Р¶РµРЅРёСЏ img
+        # вырезаем окошко subimg из изображения img
         success, subimg = GetSubimage(img, (ppx[pp],ppy[pp]), wsize)
         if success:
-            # РЅРµРїРѕСЃСЂРµРґСЃС‚РІРµРЅРЅРѕ Р°РїРїСЂРѕРєСЃРёРјР°С†РёСЏ
+            # непосредственно аппроксимация
             if met=="exp":
                 c0, c1, c2, crit, norm_error = ApproxInWindow_NormExp(wsize, subimg, c1s, xy2, helpMatrs, npar)        
             if ((c0 > thr_c0) and (norm_error<=thr_error) and (c1 > thr_c1) and (c2 <= thr_c2)): 
@@ -305,15 +308,15 @@ def ApproximationWithFindingTheBestCenter(img, point, xy2, helpMatrs, params, pr
     return best_found, blob_best, optc0, optc1, optc2, opt_error               
 
 def ApproximationWithFindingTheBestCenter_NoFiltering(img, point, xy2, helpMatrs, params, prn):
-    # СЂР°СЃСЃРјР°С‚СЂРёРІР°РµРј С‚РѕС‡РєСѓ Р»РѕРєР°Р»СЊРЅРѕРіРѕ РјР°РєСЃРёРјСѓРјР° Рё С‚РѕС‡РєРё РІРѕРєСЂСѓРі РЅРµРіРѕ 
-    # РёР· РѕРєРѕС€РєР° СЂР°Р·РјРµСЂРѕРј params["msk"] 
-    # РґР»СЏ СѓС‚РѕС‡РЅРµРЅРёСЏ РєРѕРѕСЂРґРёРЅР°С‚ С†РµРЅС‚СЂР° РЅР°РЅРѕС‡Р°СЃС‚РёС†С‹, РєРѕС‚РѕСЂС‹Р№ РЅРµ РІСЃРµРіРґР° СЃРѕРІРїР°РґР°РµС‚
-    # СЃ Р»РѕРєР°Р»СЊРЅС‹Рј РјР°РєСЃРёРјСѓРјРѕРј
-    # РІСЃРµРіРѕ npnts=msk*msk С‚РѕС‡РµРє,  ppx, ppy - СЃРїРёСЃРѕРє РєРѕРѕСЂРґРёРЅР°С‚ СЌС‚РёС… С‚РѕС‡РµРє
-    # params["best_mode"] = 1 РёР»Рё 2: СЃСЂРµРґРё С‚РѕС‡РµРє, СѓРґРѕРІР»РµС‚РІРѕСЂСЏСЋС‰РёС… СѓСЃР»РѕРІРёСЏРј, РІС‹Р±РёСЂР°РµРј РЅР°РёР»СѓС‡С€СѓСЋ 
-    # РїРѕ c0 (best_mode = 1), РїРѕ СЃ1 (best_mode = 2) РёР»Рё РїРѕ РЅРѕСЂРјРёСЂРѕРІР°РЅРЅРѕР№ РѕС€РёР±РєРµ (РёРЅР°С‡Рµ)
+    # рассматриваем точку локального максимума и точки вокруг него 
+    # из окошка размером params["msk"] 
+    # для уточнения координат центра наночастицы, который не всегда совпадает
+    # с локальным максимумом
+    # всего npnts=msk*msk точек,  ppx, ppy - список координат этих точек
+    # params["best_mode"] = 1 или 2: среди точек, удовлетворяющих условиям, выбираем наилучшую 
+    # по c0 (best_mode = 1), по с1 (best_mode = 2) или по нормированной ошибке (иначе)
     # params["met"] = 'exp'
-    # params["npar"] = 3 # С‡РёСЃР»Рѕ РїР°СЂР°РјРµС‚СЂРѕРІ Р°РїРїСЂРѕРєСЃРёРјР°С†РёРё 3 РёР»Рё 2
+    # params["npar"] = 3 # число параметров аппроксимации 3 или 2
     
     msk = params["msk"]
     wsize = params["wsize"]
@@ -332,10 +335,10 @@ def ApproximationWithFindingTheBestCenter_NoFiltering(img, point, xy2, helpMatrs
     blob_best = [0.,0.,0.]
     ibest = 0
     for pp in range(npoints):
-        # РІС‹СЂРµР·Р°РµРј РѕРєРѕС€РєРѕ subimg РёР· РёР·РѕР±СЂР°Р¶РµРЅРёСЏ img
+        # вырезаем окошко subimg из изображения img
         success, subimg = GetSubimage(img, (ppx[pp],ppy[pp]), wsize)
         if success:
-            # РЅРµРїРѕСЃСЂРµРґСЃС‚РІРµРЅРЅРѕ Р°РїРїСЂРѕРєСЃРёРјР°С†РёСЏ
+            # непосредственно аппроксимация
             if met=="exp":
                 c0, c1, c2, crit, norm_error = ApproxInWindow_NormExp(wsize, subimg, c1s, xy2, helpMatrs, npar)        
             if(prn):
@@ -363,40 +366,40 @@ def ApproximationWithFindingTheBestCenter_NoFiltering(img, point, xy2, helpMatrs
     return blob_best, optc0, optc1, optc2, opt_error               
 
 
-def FilterBlobs_change(blobs_ext, blobs_params, params):
+def FilterBlobs(blobs_ext, params):
     thr_c0 = params["thr_c0"]
-    thr_r_min = params["min_thr_r"]
-    thr_r_max = params["max_thr_r"]
+    thr_r = params["thr_r"]
+    thr_c2 = params["thr_c2"]
     thr_error = params["thr_error"]
 
     filtered_blobs = []
     blobs_rest = []
-    for blob, val in zip(blobs_ext, blobs_params):
+    for blob in blobs_ext:
         r = blob[2]
-        c0 = val[0]
-        norm_error = val[3]
-
-        if ((c0 > thr_c0) and (norm_error <= thr_error) and (r <= thr_r_max) and (r >= thr_r_min)):
+        c0 = blob[3]
+        #c1 = blob[4]
+        c2 = blob[5]
+        norm_error = blob[6]
+        #if ((c0 > thr_c0) and (norm_error<=thr_error) and (c1 > thr_c1) and (c2 <= thr_c2)):
+        if ((c0 > thr_c0) and (norm_error<=thr_error) and (r <= thr_r) and (c2 <= thr_c2)):
             filtered_blobs.append(blob)
         else:
             blobs_rest.append(blob)
-
-    return np.array(filtered_blobs), blobs_rest    
-
-    
+    return filtered_blobs, blobs_rest
+ 
 #if ((c0 > thr_c0) and (norm_error<=thr_error) and (c1 > thr_c1) and (c2 <= thr_c2)):
 
 def PrefilteringPoints(img, min_dist, thrBr):
-    # РїРѕРёСЃРє Р»РѕРєР°Р»СЊРЅС‹С… РјР°РєСЃРёРјСѓРјРѕРІ Рё РѕС‚Р±СЂР°СЃС‹РІР°РЅРёРµ С‚РµС…, РєРѕС‚РѕСЂС‹Рµ РїРѕ СЏСЂРєРѕСЃС‚Рё РјРµРЅСЊС€Рµ thrBr
-    # РјРёРЅРёРјР°Р»СЊРЅРѕРµ СЂР°СЃСЃС‚РѕСЏРЅРёРµ РјРµР¶РґСѓ Р»РѕРєР°Р»СЊРЅС‹РјРё РјР°РєСЃРёРјСѓРјР°РјРё min_dist
+    # поиск локальных максимумов и отбрасывание тех, которые по яркости меньше thrBr
+    # минимальное расстояние между локальными максимумами min_dist
     lm = peak_local_max(img, min_distance=min_dist, threshold_abs=0, threshold_rel=None, footprint=None, labels=None)
     nlm = np.shape(lm)[0]
-    print('С‚РѕС‡РµРє РґРѕ С„РёР»СЊС‚СЂР°С†РёРё:', nlm)
+    print('точек до фильтрации:', nlm)
     for i in range(nlm-1,-1,-1):
         if img[lm[i,0], lm[i,1]]<thrBr:    
             lm = np.delete(lm,[i],0)
     nlmax = np.shape(lm)[0]
-    print('С‚РѕС‡РµРє РїРѕСЃР»Рµ С„РёР»СЊС‚СЂР°С†РёРё:', nlmax)
+    print('точек после фильтрации:', nlmax)
     return lm, nlmax
 
 def PaintBlobProfiles(img_init,img_prep, blob, wsize, dop, c0,c1,c2, met):
@@ -438,7 +441,7 @@ def PaintBlobProfiles(img_init,img_prep, blob, wsize, dop, c0,c1,c2, met):
             
 # -------------------------------------------------------------------
 def BlobsExp_Info(blobs_extended, paint_profiles, params):
-    # РІС‹РІРѕРґ РёРЅС„РѕСЂРјР°С†РёРё Рѕ С‡Р°СЃС‚РёС†Р°С…, РЅР°Р№РґРµРЅРЅС‹С… РїСЂРё РїРѕРјРѕС‰Рё СЌРєСЃРїРѕРЅРµРЅС†РёР°Р»СЊРЅРѕР№ Р°РїРїСЂРѕРєСЃРёРјР°С†РёРё
+    # вывод информации о частицах, найденных при помощи экспоненциальной аппроксимации
     t = 0
     for blob in blobs_extended:
         y = int(round(blob[0]))
@@ -458,7 +461,7 @@ def blobs_in_roi(blobs, roi):
     """Check if the center of blob is inside ROI  
     
     Arguments
-    blobs -- list or array of areas oРЎРѓРЎРѓupied by the nanoparticle 
+    blobs -- list or array of areas oСЃСЃupied by the nanoparticle 
             (y, x, r) y and x are coordinates of the center and r - radius    
     roi -- (y,x,h,w)
     
@@ -717,4 +720,139 @@ def Visualization_GT(temp_img, data2show, match_blobs, truedetected_blobs, fake_
     if _save:
         plt.savefig(outfname, dpi=_dpi, facecolor='w', edgecolor='w',
             orientation='portrait', format=None,transparent=False, bbox_inches='tight', pad_inches=0)                    
-# ----------------------------------------
+# ---------------- END LIB ---------------------
+
+
+
+
+# ---------------- CACHE FUN ---------------------
+import streamlit as st
+
+@st.cache_data(show_spinner = False)
+def CACHE_HelpMatricesNew(_wsize, _rs):
+    return MakeHelpMatricesNew(_wsize, _rs)
+
+#@st.cache_data(show_spinner = False)
+def CACHE_PrefilteringPoints(_img, _sz_med, _sz_th, _min_dist, _thr_br):
+    img_med = PreprocessingMedian(_img, _sz_med)
+    img_med_th = PreprocessingTopHat(img_med, _sz_th) 
+    
+    lm, nlmax = PrefilteringPoints(img_med_th, _min_dist, _thr_br)
+
+    return lm, img_med_th
+
+#@st.cache_data(show_spinner = "Nanoparticle detection on process...")
+def CACHE_ExponentialApproximationMask_v3(_img, _lm, _xy2, _helpMatrs, _params, _prn = False):
+    number_blobs = len(_lm)
+
+    blobs_full = np.zeros([number_blobs, 3])      # blobs_full[i] = y, x, r
+    values_full = np.zeros([number_blobs, 4])     # values_full[i] = c0, c1, c2, norm_error
+
+    for i, temp_lm in enumerate(_lm):
+        blob, c0, c1, c2, norm_error = ApproximationWithFindingTheBestCenter_NoFiltering(
+            _img,    
+            temp_lm,
+            _xy2,
+            _helpMatrs,
+            _params,
+            _prn
+        )
+
+        blobs_full[i, :] = blob
+        values_full[i, :] = c0, c1, c2, norm_error
+
+    return blobs_full, values_full
+
+def my_FilterBlobs_change(blobs_ext, blobs_params, params):
+    thr_c0 = params["thr_c0"]
+    thr_r_min = params["min_thr_r"]
+    thr_r_max = params["max_thr_r"]
+    thr_error = params["thr_error"]
+
+    filtered_blobs = []
+    blobs_rest = []
+    for blob, val in zip(blobs_ext, blobs_params):
+        r = blob[2]
+        c0 = val[0]
+        norm_error = val[3]
+
+        if ((c0 > thr_c0) and (norm_error <= thr_error) and (r <= thr_r_max) and (r >= thr_r_min)):
+            filtered_blobs.append(blob)
+        else:
+            blobs_rest.append(blob)
+
+    return np.array(filtered_blobs), blobs_rest
+
+
+
+# -------------DEMO--------------------
+if __name__ == "__main__":
+    
+    from PIL import Image
+    import autoscale
+
+    img_path = r"D:\Cloud\Pd_C_0.1%_8mm_0007.tif"
+
+
+    img = Image.open(img_path).convert('L')
+    grayImage = np.array(img, dtype='uint8')    
+    currentImage = np.copy(grayImage) 
+    
+    # lowerBound = autoscale.findBorder(grayImage)        
+    # if (lowerBound is not None):
+    #     currentImage = currentImage[:lowerBound, :]
+    currentImage = grayImage[:890,:]
+
+    params = {
+            "sz_med" : 4,   # для предварительной обработки
+            "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
+            "thr_br": 10,   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
+            "min_dist": 5,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
+            "wsize": 9,     # размер окна аппроксимации
+            "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
+            "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+            "msk": 5,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+            "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
+            "npar": 2       # число параметров аппроксимации
+        }
+
+    # вычисляется только один раз при первом запуске детектирования
+    helpMatrs, xy2 = CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+
+    # вычисляется только один раз для одного и тогоже изображения
+    lm, currentImage = CACHE_PrefilteringPoints(
+        currentImage,
+        params["sz_med"],
+        params["sz_th"],
+        params["min_dist"],
+        params["thr_br"]
+    )
+
+
+    BLOBs, BLOBs_params = CACHE_ExponentialApproximationMask_v3(
+        currentImage,
+        lm,
+        xy2,
+        helpMatrs,
+        params
+    )
+
+    params_filter = {
+        "thr_c0": 16,
+        "min_thr_r": 1,   
+        "max_thr_r": 3.6, 
+        "thr_error": 0.15, 
+    }
+
+    filtered_blobs, blobs_rest = my_FilterBlobs_change(BLOBs, BLOBs_params, params_filter) 
+    for i in range(np.shape(BLOBs)[0]): 
+        x = BLOBs[i][1]
+        y = BLOBs[i][0]
+        r = BLOBs[i][2]
+        c0 = BLOBs_params[i][0]
+        c1 = BLOBs_params[i][1]
+        c2 = BLOBs_params[i][2]
+        norm_error = BLOBs_params[i][3]
+        print("%d (%d, %d): r=%.1f, c0=%.3f, c1=%.3f, c2=%.3f, error=%.4f " % (i, x, y, r, c0, c1, c2, norm_error))
+
+    VisualizationSimpleNums(grayImage, BLOBs, FIGSIZE = (9,7), _show=True, _save = False, outfname='', _dpi=300, lsize=100, lwidth = 1, nums = False)

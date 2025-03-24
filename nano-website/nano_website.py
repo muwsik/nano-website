@@ -7,7 +7,9 @@ from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
     
-import style, tools, autoscale
+import style, autoscale
+import ExponentialApproximation as EA
+
 
 # Run
 # streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
@@ -21,19 +23,20 @@ def load_default_settings():
 
     st.session_state['settingDefault'] = True
     st.session_state['param1'] = 16
-    st.session_state['param2'] = (1.0, 3.6)
-    st.session_state['param3'] = 0.15
+    st.session_state['param2'] = (1.0, 4.4)
+    st.session_state['param3'] = 0.3
     st.session_state['param-pre-1'] = 10
     
+    st.session_state['rerun'] = True
 
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
+    st.session_state['BLOBs_params'] = None
     st.session_state['imageBLOBs'] = None
 
     st.session_state['comparison'] = False
     
     st.session_state['scale'] = None
-    st.session_state['mass'] = None
 
     st.session_state['chartRange'] = ('min','max')
     st.session_state['distView'] = False
@@ -59,9 +62,8 @@ st.markdown("""<div class = 'about'>
 # Main content area
 left, rigth = st.columns([8, 3])
 
-
 with left:
-    st.header("Upload SEM image")
+    st.subheader("Upload SEM image")
     uploadedImage = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg", "tif"])
     
     imagePlaceholder = st.empty()
@@ -78,13 +80,11 @@ with left:
             st.session_state['uploadedImage'] = grayImage
             st.session_state['detected'] = False            
             st.session_state['scale'] = None
-            st.session_state['mass'] = None
 
-        if (not st.session_state['detected']):
+        if (not st.session_state['detected'] and not st.session_state['comparison']):
             imagePlaceholder.image(crsImage, use_container_width = True, caption = "Uploaded image")
-        elif (not st.session_state['comparison']):
-            imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True, caption = "Detected nanoparticles")        
-        else:
+
+        if (st.session_state['comparison']):
             st.markdown(
                 f"""
                     <style>
@@ -96,19 +96,19 @@ with left:
                 """, unsafe_allow_html = True)
 
             image_comparison(
-               img1 = crsImage,
-               img2 = st.session_state['imageBLOBs'],
-               label1 = "Initial SEM image",
-               label2 = "Detected nanoparticles",
-               in_memory = True)
-
+                img1 = crsImage,
+                img2 = st.session_state['imageBLOBs'],
+                label1 = "Initial SEM image",
+                label2 = "Detected nanoparticles",
+                in_memory = True)
+        
 
 with rigth:
     
     tabDetect, tabMass, tabStruct = st.tabs(["Detection", "Mass", "Structuring"])
     
     with tabDetect:
-        st.header("Settings")
+        st.subheader("Settings")
 
         st.checkbox("Use default settings?",
             disabled = not st.session_state['imageUpload'],
@@ -137,7 +137,7 @@ with rigth:
                 key = 'param2',
                 min_value = 1.0,
                 step = 0.1,
-                max_value = 4.5,
+                max_value = 7.0,
                 disabled = st.session_state['settingDefault'],
             )
 
@@ -157,49 +157,52 @@ with rigth:
             help = "You need to upload an SEM image")
     
         # Detecting
-        if pushProcc:
-            currentImage = np.copy(grayImage) 
+        with st.spinner("Nanoparticles detection", show_time = True):
+            if pushProcc:
+                currentImage = np.copy(grayImage) 
          
-            lowerBound = autoscale.findBorder(grayImage)        
-            if (lowerBound is not None):
-                currentImage = currentImage[:lowerBound, :] 
+                lowerBound = autoscale.findBorder(grayImage)        
+                if (lowerBound is not None):
+                    currentImage = currentImage[:lowerBound, :] 
 
-            params = {
-                "sz_med" : 4,   # для предварительной обработки
-                "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
-                "thr_br": int(st.session_state['param-pre-1']),   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
-                "min_dist": 5,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
-                "wsize": 9,     # размер окна аппроксимации
-                "rs": np.arange(1.0, 7.5, 0.1), # возможные радиусы наночастиц в пикселях
-                "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
-                "msk": 5,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
-                "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
-                "npar": 2       # число параметров аппроксимации
-            }
+                params = {
+                    "sz_med" : 4,   # для предварительной обработки
+                    "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
+                    "thr_br": 10,   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
+                    "min_dist": 5,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
+                    "wsize": 9,     # размер окна аппроксимации
+                    "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
+                    "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                    "msk": 5,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                    "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
+                    "npar": 2       # число параметров аппроксимации
+                }
 
-            st.write(st.session_state['param-pre-1'], st.session_state['param1'], st.session_state['param2'],st.session_state['param3'])
+                # вычисляется только один раз при первом запуске детектирования
+                helpMatrs, xy2 = EA.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
+                # вычисляется только один раз для одного и тогоже изображения
+                lm, currentImage = EA.CACHE_PrefilteringPoints(
+                    currentImage,
+                    params["sz_med"],
+                    params["sz_th"],
+                    params["min_dist"],
+                    params["thr_br"]
+                )
 
-            # вычисляется только один раз при первом запуске детектирования
-            helpMatrs, xy2 = tools.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+                BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
+                    currentImage,
+                    lm,
+                    xy2,
+                    helpMatrs,
+                    params
+                )
+            
+                st.session_state['BLOBs'] = BLOBs
+                st.session_state['BLOBs_params'] = BLOBs_params
+                st.session_state['detected'] = True
 
-            # вычисляется только один раз для одного и тогоже изображения
-            lm = tools.CACHE_PrefilteringPoints(
-                currentImage,
-                params["sz_med"],
-                params["sz_th"],
-                params["min_dist"],
-                params["thr_br"]
-            )
-
-            BLOBs, BLOBs_params = tools.CACHE_ExponentialApproximationMask_v3(
-                currentImage,
-                lm,
-                xy2,
-                helpMatrs,
-                params
-            )
-
+        if (st.session_state['detected']):
             params_filter = {
                 "thr_c0": st.session_state['param1'],
                 "min_thr_r": st.session_state['param2'][0],   
@@ -207,24 +210,37 @@ with rigth:
                 "thr_error": st.session_state['param3'], 
             }
 
-            BLOBs_filtered = tools.my_FilterBlobs(BLOBs, BLOBs_params, params_filter)
-
-
-            st.session_state['BLOBs'] = BLOBs_filtered
-            st.session_state['detected'] = True
+            BLOBs_filtered, _ = EA.my_FilterBlobs_change(
+                st.session_state['BLOBs'],
+                st.session_state['BLOBs_params'],
+                params_filter
+            )
 
             imageBLOBs = crsImage.convert("RGBA")
             draw = ImageDraw.Draw(imageBLOBs)
-            for BLOB in BLOBs:                
+            for BLOB in BLOBs_filtered:                
                 y, x, r = BLOB          
                 draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0))
 
-            imagePlaceholder.image(imageBLOBs, use_container_width = True, caption = "Detected nanoparticles")
             st.session_state['imageBLOBs'] = imageBLOBs
+
+            # КОСТЫЛЬ!!!!!
+            # if (not st.session_state['rerun']):
+            #     st.session_state['rerun'] = False
+            #     st.rerun()
+            # else:
+            #     st.session_state['rerun'] = True
+
+
+            if (not st.session_state['comparison']):
+                imagePlaceholder.image(imageBLOBs, use_container_width = True, caption = "Detected nanoparticles")
+            else:
+                imagePlaceholder.empty()
+            
     
         # Info about detected nanoparticles
         if st.session_state['detected']:
-            st.markdown(f"<p class = 'text'>Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b></p>", unsafe_allow_html=True)
+            st.markdown(f"<p class = 'text'>Nanoparticles detected: <b>{BLOBs_filtered.shape[0]}</b></p>", unsafe_allow_html=True)
 
         # Slider for comparing the results before and after detection
         if st.session_state['detected']:        
@@ -318,6 +334,7 @@ with rigth:
                 </div>""", unsafe_allow_html=True)
 
     # END tabStruct       
+
 
 st.markdown("""<div class = 'cite'> <b>How to cite</b>:
                 <ul>
