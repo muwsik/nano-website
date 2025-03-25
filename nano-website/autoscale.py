@@ -3,10 +3,10 @@ import numpy as np
 import easyocr
 import re
 
-# Дополнительные функции, необходимые для обработки изображений
+import streamlit as st
 
-def findBorder(_fullImage, thr = 0.5):    
-    row_sum = np.sum(_fullImage, axis = 1, dtype = np.int64)
+def findBorder(c_fullImage, thr = 0.5):    
+    row_sum = np.sum(c_fullImage, axis = 1, dtype = np.int64)
 
     for i in range(len(row_sum) - 1):
         if np.abs(row_sum[i] - row_sum[i + 1]) >= row_sum[i] * thr:
@@ -14,13 +14,13 @@ def findBorder(_fullImage, thr = 0.5):
     
     return None
 
-def scaleLength(_fullImage, start_y):
-    __, width = _fullImage.shape
+def scaleLength(c_fullImage, start_y):
+    _, width = c_fullImage.shape
     first_white_index = None
     last_white_index = None
 
     for x in range(1, width):
-        if (_fullImage[start_y, x] >= 230 ) and (_fullImage[start_y, x-1] <= 25):
+        if (c_fullImage[start_y, x] >= 230 ) and (c_fullImage[start_y, x-1] <= 25):
             if first_white_index is None:
                 first_white_index = x
             last_white_index = x
@@ -31,23 +31,23 @@ def scaleLength(_fullImage, start_y):
     return None
 
 
-def findText(_footnoteImage):
+def findText(c_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
-    result = reader.readtext(_footnoteImage, detail = 0, blocklist = 'SOo')
+    result = reader.readtext(c_footnoteImage, detail = 0, blocklist = 'SOo')
     return ' '.join(result).lower()  
 
-def increase(_text):
+def increase(c_text):
     try:
-        matchesIncrease = re.findall(r'[x][0-9]*.?[0-9]+[k]', _text)[0]
+        matchesIncrease = re.findall(r'[x][0-9]*\.?[0-9]+[k]', c_text)[0]
         _increase = float(matchesIncrease[1:-1])
     except Exception:
         _increase = None
 
     return _increase
 
-def scale(_text):
+def scale(c_text):
     try:
-        matchesScale = re.findall(r"[0-9]*\.?[0-9]+[nup]m", _text)[0]
+        matchesScale = re.findall(r"[0-9]*\.?[0-9]+[nup]m", c_text)[0]
         if matchesScale[-2] == 'n':
             _scale = float(matchesScale[:-2])
         if matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
@@ -57,12 +57,13 @@ def scale(_text):
 
     return _scale
 
-def estimateScale(_image):
-    lowerBound = findBorder(_image)
+@st.cache_data(show_spinner = False)
+def estimateScale(c_image):
+    lowerBound = findBorder(c_image)
     if (lowerBound is not None):      
-        text = findText(_image[lowerBound:, :])
+        text = findText(c_image[lowerBound:, :])
         scaleVal = scale(text)
-        scaleLengthVal = scaleLength(_image, lowerBound)
+        scaleLengthVal = scaleLength(c_image, lowerBound)
 
         if (scaleVal is not None) and (scaleLengthVal is not None):
             return scaleVal / scaleLengthVal

@@ -12,6 +12,8 @@ import sys
 import multiprocessing
 from skimage.feature import peak_local_max
 
+import streamlit as st
+
 
 # !!!!!!!!!!! 
 def ApproxInWindow_NormExp(wsize, z, c1s, xy2, helpMatrs, npar):
@@ -726,7 +728,6 @@ def Visualization_GT(temp_img, data2show, match_blobs, truedetected_blobs, fake_
 
 
 # ---------------- CACHE FUN ---------------------
-import streamlit as st
 
 @st.cache_data(show_spinner = False)
 def CACHE_HelpMatricesNew(ñ_wsize, ñ_rs):

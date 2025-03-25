@@ -2,11 +2,10 @@ import streamlit as st
 
 import io, csv
 import numpy as np
-from skimage import morphology
-from skimage.filters import median
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
-    
+import time    
+
 import style, autoscale, nanoStatistics
 import ExponentialApproximation as EA
 
@@ -29,8 +28,6 @@ def load_default_settings():
     st.session_state['param3'] = 0.8
     st.session_state['param-pre-1'] = 10
     
-    st.session_state['rerun'] = True
-
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
     st.session_state['BLOBs_params'] = None
@@ -47,6 +44,8 @@ def load_default_settings():
     st.session_state['recalculation'] = True
 
     st.session_state['calcStatictic'] = False
+
+    st.session_state['timeDetection'] = None
 
 if 'imageUpload' not in st.session_state:
     load_default_settings()
@@ -146,7 +145,8 @@ with tabDetect:
                 
         # Detecting
         with st.spinner("Nanoparticles detection", show_time = True):
-            if pushProcc:                
+            if pushProcc:
+                timeStart = time.time()                
                 currentImage = np.copy(grayImage) 
          
                 lowerBound = autoscale.findBorder(grayImage)        
@@ -186,9 +186,13 @@ with tabDetect:
                 st.session_state['BLOBs'] = BLOBs
                 st.session_state['BLOBs_params'] = BLOBs_params
                 st.session_state['detected'] = True
-                
+                st.session_state['timeDetection'] = time.time() - timeStart
+        
         if st.session_state['detected']:
-            st.markdown(f"<p class = 'text'>Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b></p>", unsafe_allow_html=True)
+            st.markdown(f"""<p class = 'text'>
+                            Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b>
+                            ({st.session_state['timeDetection']:.2f} sec)
+                        </p>""", unsafe_allow_html=True)
 
 
         # Filtering settings and results
