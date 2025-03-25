@@ -729,33 +729,33 @@ def Visualization_GT(temp_img, data2show, match_blobs, truedetected_blobs, fake_
 import streamlit as st
 
 @st.cache_data(show_spinner = False)
-def CACHE_HelpMatricesNew(_wsize, _rs):
-    return MakeHelpMatricesNew(_wsize, _rs)
+def CACHE_HelpMatricesNew(ñ_wsize, ñ_rs):
+    return MakeHelpMatricesNew(ñ_wsize, ñ_rs)
 
-#@st.cache_data(show_spinner = False)
-def CACHE_PrefilteringPoints(_img, _sz_med, _sz_th, _min_dist, _thr_br):
-    img_med = PreprocessingMedian(_img, _sz_med)
-    img_med_th = PreprocessingTopHat(img_med, _sz_th) 
+@st.cache_data(show_spinner = False)
+def CACHE_PrefilteringPoints(ñ_img, c_params):
+    img_med = PreprocessingMedian(ñ_img, c_params['sz_med'])
+    img_med_th = PreprocessingTopHat(img_med, c_params['sz_th']) 
     
-    lm, nlmax = PrefilteringPoints(img_med_th, _min_dist, _thr_br)
+    lm, _ = PrefilteringPoints(img_med_th, c_params['min_dist'], c_params['thr_br'])
 
     return lm, img_med_th
 
-#@st.cache_data(show_spinner = "Nanoparticle detection on process...")
-def CACHE_ExponentialApproximationMask_v3(_img, _lm, _xy2, _helpMatrs, _params, _prn = False):
-    number_blobs = len(_lm)
+@st.cache_data(show_spinner = False)
+def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_params, c_prn = False):
+    number_blobs = len(c_lm)
 
     blobs_full = np.zeros([number_blobs, 3])      # blobs_full[i] = y, x, r
     values_full = np.zeros([number_blobs, 4])     # values_full[i] = c0, c1, c2, norm_error
 
-    for i, temp_lm in enumerate(_lm):
+    for i, temp_lm in enumerate(c_lm):
         blob, c0, c1, c2, norm_error = ApproximationWithFindingTheBestCenter_NoFiltering(
-            _img,    
+            c_img,    
             temp_lm,
-            _xy2,
-            _helpMatrs,
-            _params,
-            _prn
+            c_xy2,
+            c_helpMatrs,
+            c_params,
+            c_prn
         )
 
         blobs_full[i, :] = blob
