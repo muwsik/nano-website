@@ -60,7 +60,7 @@ st.markdown("""<div class = 'about'>
                     <br>It will help you to detect palladium nanoparticles in the image and calculate their statictics.
                </div>""", unsafe_allow_html = True)
 
-st.markdown("""<div class = 'about'>
+st.markdown("""<div style = "padding-bottom: 25px" class = 'about'>
                     Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
                </div>""", unsafe_allow_html = True)
 
@@ -92,20 +92,24 @@ with tabDetect:
                 st.session_state['detected'] = False
                 st.session_state['calcStatictic'] = False
                 
-                tempScale = autoscale.estimateScale(grayImage)
+                tempScale = autoscale.estimateScale(grayImage)  
+                #st.session_state['sizeImage'] = grayImage.shape
+
                 if tempScale is not None:
                     st.session_state['scale'] = tempScale
 
             if (not st.session_state['detected'] and not st.session_state['comparison']):
                 imagePlaceholder.image(crsImage, use_container_width = True, caption = "Uploaded image")
+            else:                 
+                imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True, caption = "Detected nanoparticles")
 
             if (st.session_state['comparison']):
                 st.markdown(
                     f"""
                         <style>
                         iframe {{
-                            width: inherit;
-                            height: 1150px;
+                           width: 100%;                           
+                           height: {st.session_state['sizeImage'][0]}px;
                         }}
                         </style>
                     """, unsafe_allow_html = True)

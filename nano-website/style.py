@@ -8,15 +8,27 @@ def set_style():
             background-color: #f0f0f0;
         }
 
-        .stTabs [data-baseweb="tab-list"] {
-		    gap: 20px;
+	    .stTabs [data-baseweb="tab"] {
+		    height: 40px;
+		    border-radius: 4px 4px 0px 0px;
+            white-space: pre-wrap;
+            padding: 0px 10px 0px 10px;
         }
 
-	    .stTabs [data-baseweb="tab"] {
-		    height: 50px;
-            white-space: pre-wrap;
-		    padding-top: 10px;
+        .stTabs [data-baseweb="tab"] p {
+            font-size: 20px;            
         }
+
+        .stTabs [data-baseweb="tab-panel"] {
+            border: medium solid rgba(49, 51, 63, 0.1);
+            padding: 0px 10px 10px 10px;
+		    border-radius: 0px 0px 4px 4px;
+            
+        }
+
+        .stTabs [aria-selected="true"] {
+  		    background-color: #abd8ac;
+	    }
 
         .text {
             font-size: 20px;
