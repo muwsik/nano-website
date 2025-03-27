@@ -4,7 +4,7 @@ import io, csv
 import numpy as np
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
-import time    
+import time, datetime   
 
 import style, autoscale, nanoStatistics
 import ExponentialApproximation as EA
@@ -186,12 +186,14 @@ with tabDetect:
                 st.session_state['BLOBs'] = BLOBs
                 st.session_state['BLOBs_params'] = BLOBs_params
                 st.session_state['detected'] = True
-                st.session_state['timeDetection'] = time.time() - timeStart
+                
+                st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
         
         if st.session_state['detected']:
+            time = st.session_state['timeDetection']
             st.markdown(f"""<p class = 'text'>
                             Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b>
-                            ({st.session_state['timeDetection']:.2f} sec)
+                            ({time//60}m : {time%60:02}s)
                         </p>""", unsafe_allow_html=True)
 
 
