@@ -4,6 +4,11 @@ def set_style():
     st.set_page_config(page_title="Nanoparticles", layout="wide")
     st.markdown("""
     <style>
+        .main {
+            overflow: hidden
+        }
+
+
         body {
             background-color: #f0f0f0;
         }
@@ -16,19 +21,25 @@ def set_style():
         }
 
         .stTabs [data-baseweb="tab"] p {
-            font-size: 20px;            
+            font-size: 1.0vw;            
         }
 
         .stTabs [data-baseweb="tab-panel"] {
-            border: medium solid rgba(49, 51, 63, 0.1);
-            padding: 0px 10px 10px 10px;
-		    border-radius: 0px 0px 4px 4px;
-            
+            #border: medium solid rgba(49, 51, 63, 0.1);
+            padding: 10px 10px 10px 10px;
+		    border-radius: 0px 0px 4px 4px;            
         }
 
-        .stTabs [aria-selected="true"] {
-  		    background-color: #abd8ac;
-	    }
+        .stExpander details {
+            border-top: 1px dashed gray;
+            border-right: 0px dashed gray;
+            border-bottom: 1px dashed gray;
+            border-left: 0px dashed gray;
+        }
+
+        .st-key-right_button button{
+            float: right;
+        }
 
         .text {
             font-size: 20px;

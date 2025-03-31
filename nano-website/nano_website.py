@@ -34,6 +34,7 @@ def load_default_settings():
     st.session_state['BLOBs_filter'] = None
     st.session_state['imageBLOBs'] = None
     st.session_state['sizeImage'] = None
+    st.session_state['countParticles'] = 0
 
     st.session_state['comparison'] = False
     
@@ -53,6 +54,7 @@ if 'imageUpload' not in st.session_state:
 
 # Header
 style.set_style()
+
 st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
 
 st.markdown("""<div class = 'about'>
@@ -66,7 +68,7 @@ st.markdown("""<div style = "padding-bottom: 25px" class = 'about'>
 
 
 # Main content area
-tabDetect, tabMark, tabInfo = st.tabs(["Automatic detection nanoparticls", "Manual marking nanoparticls", "Statistics dashboard"])
+tabDetect, tabLable, tabInfo = st.tabs(["Automatic detection nanoparticles", "Manual labeling nanoparticles", "Statistics dashboard"])
 
 # TAB 1
 with tabDetect:
@@ -99,6 +101,7 @@ with tabDetect:
                 imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True, caption = "Detected nanoparticles")
 
             if (st.session_state['comparison']):
+                imagePlaceholder.empty()
                 st.markdown(
                     f"""
                         <style>
@@ -189,17 +192,30 @@ with tabDetect:
                 st.session_state['detected'] = True
                 
                 st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
+                st.session_state['countParticles'] = BLOBs.shape[0]
         
+        # Detection results
         if st.session_state['detected']:
             time = st.session_state['timeDetection']
             st.markdown(f"""<p class = 'text'>
-                            Nanoparticles detected: <b>{st.session_state['BLOBs'].shape[0]}</b>
+                            Nanoparticles detected: <b>{st.session_state['countParticles']}</b>
                             ({time//60}m : {time%60:02}s)
-                        </p>""", unsafe_allow_html=True)
+                        </p>""", unsafe_allow_html = True)
 
 
-        # Filtering settings and results
-        if (st.session_state['detected']):
+        # Warning about not correctly detection results 
+        if (st.session_state['detected'] and st.session_state['countParticles'] < 1):
+            st.markdown(f"""<p class = 'text' style = "color: red;">
+                                <b>
+                                    Nanoparticles not found! 
+                                    Please change the detection settings or upload another SEM image!
+                                </b>
+                        </p>""", unsafe_allow_html = True)
+        
+        # Action with correctly detection results
+        if (st.session_state['detected'] and st.session_state['countParticles'] > 0):
+
+            # Filtration settings
             st.subheader("Filtration settings",
                          help = "Choosing among the detected nanoparticles those that meet the relevant criteria")
             
@@ -254,20 +270,14 @@ with tabDetect:
 
             if (not st.session_state['comparison']):
                 imagePlaceholder.image(imageBLOBs, use_container_width = True, caption = "Detected nanoparticles")
-            else:
-                imagePlaceholder.empty()
-            
     
-        # Info about detected nanoparticles
-        if st.session_state['detected']:
-            st.markdown(f"<p class = 'text'>Nanoparticles after filtration: <b>{st.session_state['BLOBs_filter'].shape[0]}</b></p>", unsafe_allow_html=True)
+            # Info about filtered nanoparticles
+            st.markdown(f"<p class = 'text'>Nanoparticles after filtration: <b>{st.session_state['BLOBs_filter'].shape[0]}</b></p>", unsafe_allow_html = True)
 
-        # Slider for comparing the results before and after detection
-        if st.session_state['detected']:        
+            # Slider for comparing the results before and after detection
             st.checkbox("Comparison mode", key = 'comparison', help = help_str)
 
-        # Saving
-        if st.session_state['detected']:
+            # Saving
             safeImgCol, safeBLOBCol = st.columns(2)
 
             with safeImgCol:
@@ -303,10 +313,10 @@ with tabDetect:
 
 
 # TAB 2
-with tabMark:
+with tabLable:
          st.markdown(f"""<div class = 'about'>
                             The section is under development and coming soon!
-                        </div>""", unsafe_allow_html=True)
+                        </div>""", unsafe_allow_html = True)
 
 
 # TAB 3
@@ -315,29 +325,58 @@ with tabInfo:
     marginChart = dict(l=10, r=10, t=40, b=5)
 
     if (not st.session_state['detected']): 
-         st.markdown(f"""<div class = 'about'>
+        st.markdown(f"""<div class = 'about'>
                             Nanoparticle detection is necessary to calculate their statistics.
                             Please go to "Detection" tab.
-                        </div>""", unsafe_allow_html=True)
-    elif (not st.session_state['calcStatictic']):
-        temp_push = st.button("Calculate statistics",
-            use_container_width = True,
-            disabled = not st.session_state['imageUpload'],
-            help = "You need to upload an SEM image")
-
-        if (temp_push):
-            st.session_state['calcStatictic'] = True
+                        </div>""", unsafe_allow_html = True)
+    elif (st.session_state['BLOBs_filter'] is None):
+        st.markdown(f"""<p class = 'text' style = "color: red; text-align: center;">
+                            <b>
+                                Nanoparticles not found! 
+                                Please change the detection settings or upload another SEM image!
+                            </b>
+                    </p>""", unsafe_allow_html = True)        
     else:
+        with st.expander("Global dashboard settings", expanded = True, icon = ":material/rule_settings:"):
+
+            option_map = {
+                0: "Automatically detected (AD)",
+                1: "Manual labeled (ML)",
+                2: "Union of AD and ML",
+                3: "Intersection of AD and ML",
+            }
+
+            selection = st.radio(
+                "Which nanoparticles to use?",
+                index = 0,
+                options = option_map.keys(),
+                format_func = lambda option: option_map[option],
+                horizontal = True,
+                disabled = True
+            )
+
+          
+            temp_push = st.button("Calculate statistics", key = 'right_button')
+            
+
+            if temp_push:
+                st.session_state['calcStatictic'] = True
+
+    if (st.session_state['calcStatictic']):
         additionalSTR = ''         
         radius_nm = st.session_state['BLOBs_filter'][:, 2] * st.session_state['scale']
         fullDist, minDist = nanoStatistics.euclideanDistance(st.session_state['BLOBs_filter'] * st.session_state['scale']) 
         boolIndexFiltringBLOBs = None
         
-        with st.expander("Global settings", icon = ":material/rule_settings:"):
-            st.toggle("Activate feature")
 
-        with st.expander("lable1", expanded = True, icon = ":material/app_registration:"):
-            st.header("some text information")
+        with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
+            st.markdown(f"""<p class = 'text'>
+                            The main parameters of nanoparticles can be represented as primary values: 
+                            the average radius, its deviations, or a histogram of the radius distribution. 
+                            Or secondary values: particle mass, volume, area (projection onto a two-dimensional plane), 
+                            which can be normalized to the area of the SEM image.
+                    </p>""", unsafe_allow_html = True)
+
             db11, db12, db13 = st.columns([4, 4, 4])            
 
             minVal, maxVal = st.session_state['chartRange']                
@@ -388,7 +427,7 @@ with tabInfo:
                     # END settings db1
                     
                     fig = ff.create_distplot(
-                        [radiusFiltered], [''], bin_size = 0.25, curve_type = 'kde', histnorm = 'probability',
+                        [radiusFiltered], [''], bin_size = 0.25, curve_type = 'normal', histnorm = 'probability',
                         colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
                     )
 
@@ -426,10 +465,10 @@ with tabInfo:
                         st.subheader("Primary parameters")                    
                         st.markdown(f"""<div class = 'text'>
                                         Average radius: <b>{np.mean(radius_nm):0.3} nm</b> 
-                                    </div>""", unsafe_allow_html=True)
+                                    </div>""", unsafe_allow_html = True)
                         st.markdown(f"""<div class = 'text'>
-                                        Variance radius: <b>{np.var(radius_nm):0.3} nm</b> 
-                                    </div>""", unsafe_allow_html=True)
+                                        Standart deviation radius: <b>{np.std(radius_nm):0.3} nm</b> 
+                                    </div>""", unsafe_allow_html = True)
 
 
                         st.subheader("Secondary parameters")  
@@ -464,13 +503,16 @@ with tabInfo:
 
             # ?
             with db13.container(border = True, height = heightCol):
-                left, rigth = st.columns([8, 1], vertical_alignment = 'center')
-                left.subheader("???" + additionalSTR)
+                st.markdown(f"""<div class = 'about' style = "text-align: center;">
+                            Any other information or chart
+                        </div>""", unsafe_allow_html = True)
 
-                with rigth.popover('', icon=":material/settings:"):
-                    st.write("here!")
+        with st.expander("Some information charts ", icon = ":material/data_thresholding:"):
+            st.markdown(f"""<p class = 'text'>
+                            Visual representation of nanoparticle-based statistics in an image
+                    </p>""", unsafe_allow_html = True)
 
-        with st.expander("lable2", icon = ":material/data_thresholding:"):           
+
             db21, db22, db23 = st.columns([4, 4, 4])
 
             # Heatmap of particle count
