@@ -92,11 +92,6 @@ with tabDetect:
                 st.session_state['detected'] = False
                 st.session_state['calcStatictic'] = False
                 
-                tempScale = autoscale.estimateScale(grayImage)  
-                #st.session_state['sizeImage'] = grayImage.shape
-
-                if tempScale is not None:
-                    st.session_state['scale'] = tempScale
 
             if (not st.session_state['detected'] and not st.session_state['comparison']):
                 imagePlaceholder.image(crsImage, use_container_width = True, caption = "Uploaded image")
@@ -150,6 +145,8 @@ with tabDetect:
         # Detecting
         with st.spinner("Nanoparticles detection", show_time = True):
             if pushProcc:
+                st.session_state['scale'] = autoscale.estimateScale(grayImage)
+
                 timeStart = time.time()                
                 currentImage = np.copy(grayImage) 
          
