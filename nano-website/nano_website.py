@@ -4,7 +4,7 @@ import io, csv
 import numpy as np
 from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
-import time, datetime   
+import time   
 
 import style, autoscale, nanoStatistics
 import ExponentialApproximation as EA
@@ -39,6 +39,7 @@ def load_default_settings():
     st.session_state['comparison'] = False
     
     st.session_state['scale'] = None
+    st.session_state['displayScale'] = False
 
     st.session_state['chartRange'] = ('min','max')
     st.session_state['distView'] = False
@@ -275,7 +276,10 @@ with tabDetect:
             st.markdown(f"<p class = 'text'>Nanoparticles after filtration: <b>{st.session_state['BLOBs_filter'].shape[0]}</b></p>", unsafe_allow_html = True)
 
             # Slider for comparing the results before and after detection
-            st.checkbox("Comparison mode", key = 'comparison', help = help_str)
+            st.toggle("Comparison mode", key = 'comparison', help = help_str)
+
+            # Displaying the scale
+            st.toggle("Display scale", key = 'displayScale')
 
             # Saving
             safeImgCol, safeBLOBCol = st.columns(2)
