@@ -26,8 +26,8 @@ def load_default_settings():
 
     st.session_state['settingDefault'] = True
     st.session_state['param1'] = 10
-    st.session_state['param2'] = (1.0, 4.5)
-    st.session_state['param3'] = 0.75
+    st.session_state['param2'] = (1.0, 5.0)
+    st.session_state['param3'] = 0.65
     st.session_state['param-pre-1'] = 10
     st.session_state['parallel'] = True
     
@@ -37,7 +37,7 @@ def load_default_settings():
     st.session_state['BLOBs_filter'] = None
     st.session_state['sizeImage'] = None
     st.session_state['countParticles'] = 0    
-    st.session_state['fig_plotly'] = None
+    st.session_state['imageBLOBs'] = None
 
     st.session_state['comparison'] = False
     st.session_state['shift'] = 50
@@ -99,20 +99,12 @@ with tabDetect:
                 st.session_state['detected'] = False
                 st.session_state['comparison'] = False
                 st.session_state['calcStatictic'] = False
+                st.session_state['imageBLOBs'] = None
         
-        if (st.session_state['comparison']):
-            st.slider('Slider position',
-                    key = 'shift',
-                    min_value = 0,
-                    max_value = 100,
-                    value = 50,
-                    step = 1,
-                    format = f"%d%%"
-                )
         
-        imagePlaceholder = st.empty()
-        if (st.session_state['fig_plotly'] is not None):
-            imagePlaceholder.plotly_chart(st.session_state['fig_plotly'], use_container_width = True) 
+            imagePlaceholder = st.empty()
+            if (st.session_state['imageBLOBs'] is not None):
+                imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True)
 
     # END left side        
 
@@ -241,7 +233,7 @@ with tabDetect:
 
                 st.slider("Range of nanoparticle radii, nm",
                     key = 'param2',
-                    value = (1.0, 4.5),
+                    value = (1.0, 5.0),
                     min_value = 1.0,
                     step = 0.1,
                     max_value = 7.0,
@@ -250,7 +242,7 @@ with tabDetect:
 
                 st.slider("Nanoparticle reliability",
                     key = 'param3',
-                    value = 0.75,
+                    value = 0.65,
                     min_value = 0.0,
                     step = 0.01,
                     max_value = 1.0,
@@ -290,7 +282,7 @@ with tabDetect:
                         
             # Saving image
             with safeImgCol:
-                temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'])
+                temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
                 draw = ImageDraw.Draw(temp)
                 for BLOB in st.session_state['BLOBs_filter']:                
                     y, x, r = BLOB          
@@ -323,48 +315,24 @@ with tabDetect:
 
     # Display source image by plotly
     if (st.session_state['imageUpload']):
-        fig = px.imshow(
-            st.session_state['uploadedImage'], color_continuous_scale = 'gray',
-            aspect = 'equal'
+        viewImage = crsImage
+
+        if (st.session_state['detected'] and not st.session_state['comparison']):
+            if (st.session_state['imageBLOBs'] is not None):                
+                viewImage = st.session_state['imageBLOBs']
+            else:
+                imageBLOBs = crsImage.convert("RGBA")
+                draw = ImageDraw.Draw(imageBLOBs)
+                for BLOB in st.session_state['BLOBs_filter']:                
+                    y, x, r = BLOB          
+                    draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0, 200))
+
+                viewImage = imageBLOBs
+        
+        imagePlaceholder.image(
+            viewImage,
+            use_container_width = True
         )
-                
-        fig.update_layout(coloraxis_showscale=False)
-        fig.update_xaxes(showticklabels=False)
-        fig.update_yaxes(showticklabels=False)
-
-        fig.update_layout(
-            width = st.session_state['uploadedImage'].shape[1],
-            height = st.session_state['uploadedImage'].shape[0],
-            margin = dict(l = 5, r = 5, b = 5, t = 5)
-        )
-            
-        # Display detected particles
-        if (st.session_state['detected']):
-            # All detected particles by default
-            displayParticles = st.session_state['BLOBs_filter']
-
-            # Only particles to the right of shift
-            if (st.session_state['comparison']):
-                shift = int(st.session_state['shift'] * st.session_state['uploadedImage'].shape[1] / 100)                
-                indexDispayParticles = st.session_state['BLOBs_filter'][:, 1] > shift
-                displayParticles = st.session_state['BLOBs_filter'][indexDispayParticles]
-
-                # Vertical border
-                fig.add_shape(type = "line",
-                    x0 = shift, y0 = 0, x1 = shift, y1 = st.session_state['uploadedImage'].shape[0],
-                    line_color = "green", line_width = 1
-                )
-
-
-            # for BLOB in displayParticles:                
-            #     y, x, r = BLOB          
-            #     fig.add_shape(type = "circle",
-            #         x0 = x-r, y0 = y-r, x1 = x+r, y1 = y+r,
-            #         line_color = "green", line_width = 1
-            #     ) 
-            
-        imagePlaceholder.plotly_chart(fig, key = 'unique-key', use_container_width = True)
-        st.session_state['fig_plotly'] = fig
 
 
 # TAB 2
