@@ -29,6 +29,7 @@ def load_default_settings():
     st.session_state['param2'] = (1.0, 4.5)
     st.session_state['param3'] = 0.75
     st.session_state['param-pre-1'] = 10
+    st.session_state['parallel'] = True
     
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
@@ -42,6 +43,7 @@ def load_default_settings():
     st.session_state['shift'] = 50
     
     st.session_state['scale'] = None
+    st.session_state['scaleData'] = None
     st.session_state['displayScale'] = False
 
     st.session_state['chartRange'] = ('min','max')
@@ -133,6 +135,8 @@ with tabDetect:
                 disabled = st.session_state['settingDefault'],
                 help = "The average brightness of nanoparticles and its surroundings in the image"
             )
+
+            st.toggle("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'],)
         
         pushDetectButton = st.button("Nanoparticles detection",
             use_container_width = True,
@@ -145,7 +149,7 @@ with tabDetect:
             with st.spinner("Nanoparticles detection", show_time = True):
                 timeStart = time.time()
                 
-                st.session_state['scale'], _ = autoscale.estimateScale(grayImage)
+                st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(grayImage)
                
                 currentImage = np.copy(grayImage) 
          
@@ -175,13 +179,22 @@ with tabDetect:
                 lm, currentImage = EA.CACHE_PrefilteringPoints(currentImage, params)
 
                 # вычисляется только один раз для одного набора параметров
-                BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
-                    currentImage,
-                    lm,
-                    xy2,
-                    helpMatrs,
-                    params
-                )
+                if st.session_state['parallel']:
+                    BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3_parallel(
+                        currentImage,
+                        lm,
+                        xy2,
+                        helpMatrs,
+                        params
+                    )
+                else:
+                    BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
+                        currentImage,
+                        lm,
+                        xy2,
+                        helpMatrs,
+                        params
+                    )
             
                 st.session_state['BLOBs'] = BLOBs
                 st.session_state['BLOBs_params'] = BLOBs_params
@@ -267,7 +280,7 @@ with tabDetect:
             )
 
             # Slider for comparing the results before and after detection
-            st.toggle("Comparison mode", key = 'comparison', help = help_str)
+            st.toggle("Comparison mode", key = 'comparison', disabled = True, help = help_str)
 
             # Displaying the scale
             st.toggle("Display scale", key = 'displayScale', help = help_str)
@@ -308,7 +321,7 @@ with tabDetect:
                 )
     # END right side
 
-    # Display source image
+    # Display source image by plotly
     if (st.session_state['imageUpload']):
         fig = px.imshow(
             st.session_state['uploadedImage'], color_continuous_scale = 'gray',
@@ -343,14 +356,14 @@ with tabDetect:
                 )
 
 
-            for BLOB in displayParticles:                
-                y, x, r = BLOB          
-                fig.add_shape(type = "circle",
-                    x0 = x-r, y0 = y-r, x1 = x+r, y1 = y+r,
-                    line_color = "green", line_width = 1
-                ) 
+            # for BLOB in displayParticles:                
+            #     y, x, r = BLOB          
+            #     fig.add_shape(type = "circle",
+            #         x0 = x-r, y0 = y-r, x1 = x+r, y1 = y+r,
+            #         line_color = "green", line_width = 1
+            #     ) 
             
-        imagePlaceholder.plotly_chart(fig, use_container_width = True)
+        imagePlaceholder.plotly_chart(fig, key = 'unique-key', use_container_width = True)
         st.session_state['fig_plotly'] = fig
 
 

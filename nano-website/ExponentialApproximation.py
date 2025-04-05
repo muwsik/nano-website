@@ -2,18 +2,14 @@
 
 import numpy as np
 import cv2
-import csv
 from skimage import morphology
 import matplotlib.pyplot as plt
-import os
-import math
-import time
-import sys
-import multiprocessing
 from skimage.feature import peak_local_max
 
 import streamlit as st
 
+from joblib import Parallel, delayed
+from functools import partial
 
 # !!!!!!!!!!! 
 def ApproxInWindow_NormExp(wsize, z, c1s, xy2, helpMatrs, npar):
@@ -396,12 +392,12 @@ def PrefilteringPoints(img, min_dist, thrBr):
     # минимальное расстояние между локальными максимумами min_dist
     lm = peak_local_max(img, min_distance=min_dist, threshold_abs=0, threshold_rel=None, footprint=None, labels=None)
     nlm = np.shape(lm)[0]
-    print('точек до фильтрации:', nlm)
+    #print('точек до фильтрации:', nlm)
     for i in range(nlm-1,-1,-1):
         if img[lm[i,0], lm[i,1]]<thrBr:    
             lm = np.delete(lm,[i],0)
     nlmax = np.shape(lm)[0]
-    print('точек после фильтрации:', nlmax)
+    #print('точек после фильтрации:', nlmax)
     return lm, nlmax
 
 def PaintBlobProfiles(img_init,img_prep, blob, wsize, dop, c0,c1,c2, met):
@@ -764,6 +760,7 @@ def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_par
 
     return blobs_full, values_full
 
+@st.cache_data(show_spinner = False)
 def my_FilterBlobs_change(blobs_ext, blobs_params, params):
     thr_c0 = params["thr_c0"]
     thr_r_min = params["min_thr_r"]
@@ -784,6 +781,49 @@ def my_FilterBlobs_change(blobs_ext, blobs_params, params):
 
     return np.array(filtered_blobs), blobs_rest
 
+@st.cache_data(show_spinner = False)
+def CACHE_ExponentialApproximationMask_v3_parallel(c_img, c_lm, c_xy2, c_helpMatrs, c_params, nProc = 4, c_prn = False):
+    # обертка для функции, которая должна выполняться параллельно (у нее по определению должен быть только 1 параметр i)
+    def Parall_Approx(i, _par_ext):
+        _params = _par_ext["main_params"]
+        _img = _par_ext["img"]
+        _lm = _par_ext["lm"] 
+        _xy2 = _par_ext["xy2"]
+        _helpMatrs = _par_ext["helpMatrs"]
+        _prn = _par_ext["prn"]
+
+        blob, c0, c1, c2, norm_error = ApproximationWithFindingTheBestCenter_NoFiltering(
+            _img,
+            _lm[i],
+            _xy2,
+            _helpMatrs,
+            _params,
+            _prn
+        )
+
+        blobs = np.hstack([blob, [c0, c1, c2, norm_error]])
+
+        return blobs
+
+    number_lm = len(c_lm)
+    
+    par_ext = {
+        "main_params": c_params,
+        "img": c_img,
+        "lm": c_lm,
+        "xy2": c_xy2,
+        "helpMatrs": c_helpMatrs,
+        "prn": c_prn
+    }
+
+    Parall_Approx_i = partial(Parall_Approx, _par_ext = par_ext)
+
+    blobs = np.array(Parallel(n_jobs = nProc)(delayed(Parall_Approx_i)(i) for i in range(number_lm)))
+
+    blobs_full = blobs[:, :3]
+    values_full = blobs[:, 3:]
+
+    return blobs_full, values_full
 
 
 # -------------DEMO--------------------
@@ -792,17 +832,17 @@ if __name__ == "__main__":
     from PIL import Image
     import autoscale
 
-    img_path = r"D:\Cloud\Pd_C_0.1%_8mm_0007.tif"
+    img_path = r"D:\Cloud\Mycroscopy\test SEM image\test-image.tif"
 
 
     img = Image.open(img_path).convert('L')
     grayImage = np.array(img, dtype='uint8')    
     currentImage = np.copy(grayImage) 
     
-    # lowerBound = autoscale.findBorder(grayImage)        
-    # if (lowerBound is not None):
-    #     currentImage = currentImage[:lowerBound, :]
-    currentImage = grayImage[:890,:]
+    lowerBound = autoscale.findBorder(grayImage)        
+    if (lowerBound is not None):
+        currentImage = currentImage[:lowerBound, :]
+    #currentImage = grayImage[:890,:]
 
     params = {
             "sz_med" : 4,   # для предварительной обработки
@@ -823,14 +863,11 @@ if __name__ == "__main__":
     # вычисляется только один раз для одного и тогоже изображения
     lm, currentImage = CACHE_PrefilteringPoints(
         currentImage,
-        params["sz_med"],
-        params["sz_th"],
-        params["min_dist"],
-        params["thr_br"]
+        params
     )
 
 
-    BLOBs, BLOBs_params = CACHE_ExponentialApproximationMask_v3(
+    BLOBs, BLOBs_params = CACHE_ExponentialApproximationMask_v3_parallel(
         currentImage,
         lm,
         xy2,
