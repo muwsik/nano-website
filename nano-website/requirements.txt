@@ -1,6 +1,7 @@
 numpy==1.26.4
 easyocr==1.7.2
 scikit-image==0.25.2
+opencv-python-headless
 pillow
 joblib
 plotly
