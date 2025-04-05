@@ -4,6 +4,5 @@ joblib
 plotly
 scipy
 matplotlib
-opencv-python
 easyocr==1.7.2
 scikit-image==0.25.2
