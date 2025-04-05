@@ -1,7 +1,6 @@
 # -*- coding: cp1251 -*-
 
 import numpy as np
-import cv2
 from skimage import morphology
 import matplotlib.pyplot as plt
 from skimage.feature import peak_local_max
