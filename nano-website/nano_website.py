@@ -2,20 +2,15 @@ import streamlit as st
 
 import io, csv
 import numpy as np
-from streamlit_image_comparison import image_comparison
 from PIL import Image, ImageDraw
 import time
-import cv2
 
 import style, autoscale, nanoStatistics
 import ExponentialApproximation as EA
 
-import plotly.express as px
-import plotly.graph_objects as go
-import plotly.figure_factory as ff
-
 # Run
 # streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
+
 
 help_str = "be added soon"
 
