@@ -318,9 +318,6 @@ with tabDetect:
         viewImage = crsImage
 
         if (st.session_state['detected'] and not st.session_state['comparison']):
-            if (st.session_state['imageBLOBs'] is not None):                
-                viewImage = st.session_state['imageBLOBs']
-            else:
                 imageBLOBs = crsImage.convert("RGBA")
                 draw = ImageDraw.Draw(imageBLOBs)
                 for BLOB in st.session_state['BLOBs_filter']:                
@@ -333,6 +330,7 @@ with tabDetect:
             viewImage,
             use_container_width = True
         )
+        st.session_state['imageBLOBs'] = viewImage
 
 
 # TAB 2
