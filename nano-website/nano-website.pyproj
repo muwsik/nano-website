@@ -26,7 +26,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ExponentialApproximation.py" />
-    <Compile Include="nano_website.py" />
+    <Compile Include="app.py" />
     <Compile Include="nanoStatistics.py">
       <SubType>Code</SubType>
     </Compile>
