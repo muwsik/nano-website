@@ -8,8 +8,12 @@ import time
 import style, autoscale, nanoStatistics
 import ExponentialApproximation as EA
 
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
+
 # Run
-# streamlit run .\nano-website\nano_website.py --server.enableXsrfProtection false
+# streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 
 help_str = "be added soon"
@@ -58,18 +62,26 @@ style.set_style()
 
 st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
 
-st.markdown("""<div class = 'about'>
-                    Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
-                    <br>It will help you to detect palladium nanoparticles in the image and calculate their statictics.
-               </div>""", unsafe_allow_html = True)
+st.markdown("""
+    <div class = 'about'>
+        Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
+        <br>It will help you to detect palladium nanoparticles in the image and calculate their statictics.
+    </div>
+""", unsafe_allow_html = True)
 
-st.markdown("""<div style = "padding-bottom: 25px" class = 'about'>
-                    Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
-               </div>""", unsafe_allow_html = True)
+st.markdown("""
+    <div style = "padding-bottom: 25px" class = 'about'>
+        Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
+    </div>
+""", unsafe_allow_html = True)
 
 
 # Main content area
-tabDetect, tabLable, tabInfo = st.tabs(["Automatic detection nanoparticles", "Manual labeling nanoparticles", "Statistics dashboard"])
+tabDetect, tabLable, tabInfo = st.tabs([
+    "Automatic detection nanoparticles",
+    "Manual labeling nanoparticles",
+    "Statistics dashboard"
+])
 
 # TAB 1
 with tabDetect:
@@ -318,12 +330,11 @@ with tabDetect:
 
                     viewImage = imageBLOBs
         
-            imagePlaceholder.image(
-                viewImage,
-                use_container_width = True
-            )
-
         st.session_state['imageBLOBs'] = viewImage
+        imagePlaceholder.image(
+            viewImage,
+            use_container_width = True
+        )
 
 
 # TAB 2
