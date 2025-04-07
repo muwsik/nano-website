@@ -31,7 +31,7 @@ def scaleLength(c_fullImage, start_y):
     if first_white_index is not None and last_white_index is not None:
         return last_white_index - first_white_index, first_white_index
 
-    return None
+    return None, None
 
 
 def findText(c_footnoteImage):
@@ -77,7 +77,7 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Cloud\Mycroscopy\test SEM image\test-image.tif"
+    img_path = r"D:\Cloud\Mycroscopy\test SEM image\Pd_C_0.1%_8mm_0044_PREP_thr2_filterBr10_szm3_szth7.png"
 
 
     img = Image.open(img_path).convert('L')

@@ -8,7 +8,6 @@ def set_style():
             overflow: hidden
         }
 
-
         body {
             background-color: #f0f0f0;
         }

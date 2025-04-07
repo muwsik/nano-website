@@ -805,24 +805,26 @@ def CACHE_ExponentialApproximationMask_v3_parallel(c_img, c_lm, c_xy2, c_helpMat
         return blobs
 
     number_lm = len(c_lm)
-    
-    par_ext = {
-        "main_params": c_params,
-        "img": c_img,
-        "lm": c_lm,
-        "xy2": c_xy2,
-        "helpMatrs": c_helpMatrs,
-        "prn": c_prn
-    }
+    if number_lm > 0:
+        par_ext = {
+            "main_params": c_params,
+            "img": c_img,
+            "lm": c_lm,
+            "xy2": c_xy2,
+            "helpMatrs": c_helpMatrs,
+            "prn": c_prn
+        }
 
-    Parall_Approx_i = partial(Parall_Approx, _par_ext = par_ext)
+        Parall_Approx_i = partial(Parall_Approx, _par_ext = par_ext)
 
-    blobs = np.array(Parallel(n_jobs = nProc)(delayed(Parall_Approx_i)(i) for i in range(number_lm)))
+        blobs = np.array(Parallel(n_jobs = nProc)(delayed(Parall_Approx_i)(i) for i in range(number_lm)))
 
-    blobs_full = blobs[:, :3]
-    values_full = blobs[:, 3:]
+        blobs_full = blobs[:, :3]
+        values_full = blobs[:, 3:]
 
-    return blobs_full, values_full
+        return blobs_full, values_full
+
+    return  np.zeros([0, 3]), np.zeros([0, 4])
 
 
 # -------------DEMO--------------------

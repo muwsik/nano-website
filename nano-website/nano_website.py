@@ -201,15 +201,11 @@ with tabDetect:
                         )
 
         # Warning about not correctly detection results 
-        if (st.session_state['detected'] and st.session_state['countParticles'] < 1):
-            st.markdown(f"""
-                <p class = 'text' style = "color: red;">
-                    <b>
-                        Nanoparticles not found! 
-                        Please change the detection settings or upload another SEM image!
-                    </b>
-                </p>""", unsafe_allow_html = True
-            )
+        if (st.session_state['detected'] and st.session_state['countParticles'] < 1):            
+            st.warning("""
+                Nanoparticles not found!
+                Please change the detection settings or upload another SEM image!
+            """, icon = ":material/warning:")
         
         # Action with correctly detection results
         if (st.session_state['detected'] and st.session_state['countParticles'] > 0):
@@ -308,33 +304,33 @@ with tabDetect:
                 )
     # END right side
 
-    # Display source image by plotly
+    # Display source image by st.image
     if (st.session_state['imageUpload']):
         viewImage = crsImage
 
-        if (st.session_state['detected'] and not st.session_state['comparison']):
-                imageBLOBs = crsImage.convert("RGBA")
-                draw = ImageDraw.Draw(imageBLOBs)
-                for BLOB in st.session_state['BLOBs_filter']:                
-                    y, x, r = BLOB          
-                    draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0, 200))
+        if (st.session_state['countParticles'] > 1):
+            if (st.session_state['detected'] and not st.session_state['comparison']):
+                    imageBLOBs = crsImage.convert("RGBA")
+                    draw = ImageDraw.Draw(imageBLOBs)
+                    for BLOB in st.session_state['BLOBs_filter']:                
+                        y, x, r = BLOB          
+                        draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 225, 0, 200))
 
-                viewImage = imageBLOBs
+                    viewImage = imageBLOBs
         
-        imagePlaceholder.image(
-            viewImage,
-            use_container_width = True
-        )
+            imagePlaceholder.image(
+                viewImage,
+                use_container_width = True
+            )
+
         st.session_state['imageBLOBs'] = viewImage
 
 
 # TAB 2
 with tabLable:
-    st.markdown(f"""
-        <div class = 'about'>
-            The section is under development and coming soon!
-        </div>""", unsafe_allow_html = True
-    )
+    st.warning("""
+            The section is temporarily unavailable, but it will appear soon!
+        """, icon = ":material/warning:")
 
 
 # TAB 3
@@ -342,22 +338,16 @@ with tabInfo:
     heightCol = 550
     marginChart = dict(l=10, r=10, t=40, b=5)
 
-    if (not st.session_state['detected']): 
-        st.markdown(f"""
-            <div class = 'about'>
-                Nanoparticle detection is necessary to calculate their statistics.
-                Please go to "Detection" tab.
-            </div>""", unsafe_allow_html = True
-        )
-    elif (st.session_state['BLOBs_filter'] is None):
-        st.markdown(f"""
-            <p class = 'text' style = "color: red; text-align: center;">
-                <b>
-                    Nanoparticles not found! 
-                    Please change the detection settings or upload another SEM image!
-                </b>
-            </p>""", unsafe_allow_html = True
-        )        
+    if (not st.session_state['detected']):
+        st.warning("""
+            Nanoparticle detection is necessary to calculate their statistics.
+            Please go to "Detection" tab.
+        """, icon = ":material/warning:")
+    elif (st.session_state['BLOBs_filter'] is None):                  
+        st.warning("""
+            Nanoparticles not found!
+            Please go to "Detection" tab and change the detection settings or upload another SEM image!
+        """, icon = ":material/warning:")
     else:
         with st.expander("Global dashboard settings", expanded = not st.session_state['calcStatictic'], icon = ":material/rule_settings:"):
 
@@ -381,7 +371,6 @@ with tabInfo:
                 st.session_state['calcStatictic'] = True
           
             temp_push = st.button("Calculate statistics", key = 'right_button', on_click = temp_fun)           
-
 
     if (st.session_state['calcStatictic']):
         additionalSTR = ''
