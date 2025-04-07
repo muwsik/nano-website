@@ -655,10 +655,6 @@ try:
                     st.plotly_chart(fig, use_container_width = True)
                 # END db22
 
-                
-    if st.button("Сгенерировать ошибку"):
-        raise ValueError("Произошла ошибка в приложении!")
-
     st.markdown("""
         <div class = 'cite'> <b>How to cite</b>:
             <ul>
