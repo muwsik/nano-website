@@ -5,6 +5,7 @@ try:
     import streamlit as st
 
     import io, csv
+    from pathlib import Path
     import numpy as np
     from PIL import Image, ImageDraw
     import time, datetime
@@ -337,7 +338,7 @@ try:
                     st.download_button(
                         label = "Download nanoparticles image",
                         data = file.getvalue(),
-                        file_name = "processed-image.tif",
+                        file_name = Path(uploadedImage.name).stem + "-image.tif",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -345,12 +346,18 @@ try:
                 # Saving coords
                 with safeBLOBCol:
                     file = io.StringIO()
+
+                    if st.session_state['scale'] is not None: 
+                        csv.writer(file).writerow([f"{st.session_state['scale']:.3} nm/px"])
+                    
+                    csv.writer(file).writerow(['y (px)', 'x (px)', 'radius (px)'])
+
                     csv.writer(file).writerows(st.session_state['BLOBs_filter'])
 
                     st.download_button(
                         label = "Download nanoparticles *.csv",
                         data = file.getvalue(),
-                        file_name = "nanoparticles.csv",
+                        file_name = Path(uploadedImage.name).stem + "-particles.csv",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -490,7 +497,7 @@ try:
                         st.checkbox("Recalculation parameters for range?",
                             key = 'recalculation',
                             help = help_str
-                        )
+                        )                        
                     # END settings db1
                     
                     fig = ff.create_distplot(
