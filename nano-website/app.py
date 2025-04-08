@@ -45,23 +45,24 @@ try:
         st.session_state['BLOBs_params'] = None
         st.session_state['BLOBs_filter'] = None
         st.session_state['sizeImage'] = None
-        st.session_state['countParticles'] = 0    
+        st.session_state['detectedParticles'] = 0    
+        st.session_state['filteredParticles'] = 0 
         st.session_state['imageBLOBs'] = None
+        st.session_state['timeDetection'] = None
 
         st.session_state['comparison'] = False
-        st.session_state['shift'] = 50
     
         st.session_state['scale'] = None
         st.session_state['scaleData'] = None
         st.session_state['displayScale'] = False
 
-        st.session_state['chartRange'] = ('min','max')
+        st.session_state['chartRange'] = st.session_state['param2']
         st.session_state['distView'] = False
-        st.session_state['recalculation'] = True
+        st.session_state['normalize'] = False
+        st.session_state['recalculation'] = False
 
         st.session_state['calcStatictic'] = False
 
-        st.session_state['timeDetection'] = None
 
     def get_session_state():
        return str(st.session_state)
@@ -87,6 +88,8 @@ try:
             st.session_state['rerun'] = True
             st.rerun()
 
+        with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
+            st.write(traceback.format_exc())
 
     ### Main app ###
     
@@ -176,7 +179,7 @@ try:
                     help = "The average brightness of nanoparticles and its surroundings in the image"
                 )
 
-                st.toggle("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'],)
+                st.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'],)
         
             pushDetectButton = st.button("Nanoparticles detection",
                 use_container_width = True,
@@ -241,27 +244,26 @@ try:
                     st.session_state['detected'] = True
                 
                     st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
-                    st.session_state['countParticles'] = BLOBs.shape[0]
+                    st.session_state['detectedParticles'] = BLOBs.shape[0]
         
             # Detection results
             if st.session_state['detected']:
                 time = st.session_state['timeDetection']
                 st.markdown(f"""
-                <p class = 'text'>
-                                Nanoparticles detected: <b>{st.session_state['countParticles']}</b>
-                                ({time//60}m : {time%60:02}s)
-                            </p>""", unsafe_allow_html = True
-                            )
+                    <p class = 'text'>
+                        Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({time//60}m : {time%60:02}s)
+                    </p>""", unsafe_allow_html = True
+                )
 
             # Warning about not correctly detection results 
-            if (st.session_state['detected'] and st.session_state['countParticles'] < 1):            
+            if (st.session_state['detected'] and st.session_state['detectedParticles'] < 1):            
                 st.warning("""
                     Nanoparticles not found!
                     Please change the detection settings or upload another SEM image!
                 """, icon = ":material/warning:")
         
             # Action with correctly detection results
-            if (st.session_state['detected'] and st.session_state['countParticles'] > 0):
+            if (st.session_state['detected'] and st.session_state['detectedParticles'] > 0):
                 # Filtration settings
                 st.subheader("Filtration settings",
                     help = "Choosing among the detected nanoparticles those that meet the relevant criteria"
@@ -307,11 +309,12 @@ try:
                     st.session_state['BLOBs_params'],
                     params_filter
                 )
+                st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
 
                 # Info about filtered nanoparticles
                 st.markdown(f"""
                     <p class = 'text'>
-                        Nanoparticles after filtration: <b>{st.session_state['BLOBs_filter'].shape[0]}</b>
+                        Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
                     </p>""", unsafe_allow_html = True
                 )
 
@@ -350,9 +353,8 @@ try:
                     if st.session_state['scale'] is not None: 
                         csv.writer(file).writerow([f"{st.session_state['scale']:.3} nm/px"])
                     
-                    csv.writer(file).writerow(['y (px)', 'x (px)', 'radius (px)'])
-
-                    csv.writer(file).writerows(st.session_state['BLOBs_filter'])
+                    csv.writer(file, delimiter = ';').writerow(['coord y, px', 'coord x, px', 'radius, px'])
+                    csv.writer(file, delimiter = ';').writerows(st.session_state['BLOBs_filter'])
 
                     st.download_button(
                         label = "Download nanoparticles *.csv",
@@ -367,7 +369,7 @@ try:
         if (st.session_state['imageUpload']):
             viewImage = crsImage
 
-            if (st.session_state['countParticles'] > 1):
+            if (st.session_state['filteredParticles'] > 1):
                 if (st.session_state['detected'] and not st.session_state['comparison']):
                         imageBLOBs = crsImage.convert("RGBA")
                         draw = ImageDraw.Draw(imageBLOBs)
@@ -401,10 +403,10 @@ try:
                 Nanoparticle detection is necessary to calculate their statistics.
                 Please go to "Detection" tab.
             """, icon = ":material/warning:")
-        elif (st.session_state['BLOBs_filter'] is None):                  
+        elif (st.session_state['filteredParticles'] < 10):                  
             st.warning("""
-                Nanoparticles not found!
-                Please go to "Detection" tab and change the detection settings or upload another SEM image!
+                Nanoparticles after detection and filtration are less than 10! 
+                Please go to the "Detection" tab and change the detection, filtering settings or upload another SEM image!
             """, icon = ":material/warning:")
         else:
             with st.expander("Global dashboard settings", expanded = not st.session_state['calcStatictic'], icon = ":material/rule_settings:"):
@@ -431,7 +433,6 @@ try:
                 temp_push = st.button("Calculate statistics", key = 'right_button', on_click = temp_fun)           
 
         if (st.session_state['calcStatictic']):
-            additionalSTR = ''
             if st.session_state['scale'] is None:
                 radius_nm = st.session_state['BLOBs_filter'][:, 2]            
                 fullDist, minDist = nanoStatistics.euclideanDistance(st.session_state['BLOBs_filter']) 
@@ -439,7 +440,9 @@ try:
                 radius_nm = st.session_state['BLOBs_filter'][:, 2] * st.session_state['scale']
                 fullDist, minDist = nanoStatistics.euclideanDistance(st.session_state['BLOBs_filter'] * st.session_state['scale']) 
 
-            boolIndexFiltringBLOBs = None        
+            boolIndexFiltringBLOBs = None       
+            
+            additionalSTR = ""
 
             with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
                 st.markdown(f"""
@@ -453,40 +456,26 @@ try:
 
                 db11, db12, db13 = st.columns([4, 4, 4])            
 
-                minVal, maxVal = st.session_state['chartRange']                
-                flagCustomRangeRadius = True
-                if (minVal == 'min') and (maxVal != 'max'):
-                    boolIndexFiltringBLOBs = radius_nm <= float(maxVal)
-                elif (minVal != 'min') and (maxVal == 'max'):
-                    boolIndexFiltringBLOBs = radius_nm >= float(minVal)
-                elif (minVal != 'min') and (maxVal != 'max'):
-                    boolIndexFiltringBLOBs = (radius_nm >= float(minVal)) & (radius_nm <= float(maxVal))
-                else:
-                    flagCustomRangeRadius = False
-                    boolIndexFiltringBLOBs = np.ones_like(radius_nm, dtype='bool')
-                
-                radiusFiltered = radius_nm[boolIndexFiltringBLOBs]    
-
-                minRadius = np.min(radius_nm)
-                maxRadius = np.max(radius_nm)
-                if flagCustomRangeRadius:
-                    temp1 = minVal if (minVal != "min") else f'{minRadius:.1f}'
-                    temp2 = maxVal if (maxVal != "max") else f'{maxRadius:.1f}'
-                    additionalSTR = f" (from {temp1} to {temp2})"
+                minRadius, maxRadius = st.session_state['chartRange']
+                boolIndexFiltringBLOBs = (radius_nm >= minRadius) & (radius_nm <= maxRadius)
+                radiusFiltered = radius_nm[boolIndexFiltringBLOBs]
+                additionalSTR = f" (from {minRadius:.1f} to {maxRadius:.1f})"
 
                 # Particle size distribution
                 with db11.container(border = True, height = heightCol):
-                    left, rigth = st.columns([8, 1], vertical_alignment = 'center')
+                    left, rigth = st.columns([7, 1], vertical_alignment = 'center')
                     left.subheader("Distribution of particle radius" + additionalSTR)
 
-                    with rigth.popover("", icon=":material/settings:"):
-                        uniqueRadius = ['min'] + [f'{x:.1f}' for x in np.unique(radius_nm)] + ['max']
+                    buttonPlaceholder = None
 
-                        st.select_slider("Select a range of particle radius",
-                            options = uniqueRadius,
+                    with rigth.popover("", icon=":material/settings:"):
+                        minVal, maxVal = st.session_state['param2']
+                        st.slider("Range of nanoparticle radii, nm",
                             key = 'chartRange',
-                            value = ('min', 'max'),
-                            help = help_str
+                            value = (minVal, maxVal),
+                            min_value = minVal,
+                            step = 0.1,
+                            max_value = maxVal
                         )
 
                         st.checkbox("Display distribution function?",
@@ -494,29 +483,92 @@ try:
                             help = help_str
                         )
 
+                        st.checkbox("Normalize the vertical axis?",
+                            key = 'normalize',
+                            help = help_str
+                        )
+
                         st.checkbox("Recalculation parameters for range?",
                             key = 'recalculation',
                             help = help_str
-                        )                        
-                    # END settings db1
-                    
-                    fig = ff.create_distplot(
-                        [radiusFiltered], [''], bin_size = 0.25, curve_type = 'normal', histnorm = 'probability',
-                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
+                        )
+                        
+                        buttonPlaceholder = st.empty()
+                                        
+                    start = 1; step = 0.25; end = maxRadius + step
+                    counts, bins = np.histogram(radiusFiltered, bins = np.arange(start, end, step, dtype = float))
+                                        
+                    name_x = "Radius, nm"
+                    temp = [[float(i), float(i+step)] for i in bins]
+                    fraction = counts / np.sum(counts) * 100
+                    if st.session_state['normalize']:
+                        bar_y = fraction
+                        name_y = "Particles fraction, %"
+                        hover_y = "%{y:.1f}% (%{customdata[2]:d})"
+                        dataChart = [list(pair) for pair in zip(temp, fraction)]
+                        customDataChart = list(zip(bins, bins + step, counts))
+                    else:
+                        bar_y = counts
+                        name_y = "Particles counts"
+                        hover_y = "%{y:d} (%{customdata[2]:.1f}%)"
+                        dataChart = [list(pair) for pair in zip(temp, counts)]
+                        customDataChart = list(zip(bins, bins + step, fraction))
+                                            
+                    file = io.StringIO()
+                    csv.writer(file, delimiter = ';').writerow([name_x, name_y])
+                    csv.writer(file, delimiter = ';').writerows(dataChart)
+
+                    buttonPlaceholder.download_button(
+                        label = "Download data chart *.csv",
+                        data = file.getvalue(),
+                        file_name = Path(uploadedImage.name).stem + "-dist-radius.csv",
+                        use_container_width  = True,
+                        help = help_str
                     )
+
+                    fig = go.Figure()
+
+                    fig = fig.add_trace(go.Bar(
+                        x = 0.5 * (bins[:-1] + bins[1:]),
+                        y = bar_y,
+                        customdata = customDataChart,
+                        hovertemplate = (
+                            "Radius: [%{customdata[0]}, %{customdata[1]}) nm<br>"
+                            "Particls: " + hover_y +
+                            "<extra></extra>"
+                        )
+                    ))
+
+                    if st.session_state['distView']:
+                        mu = np.mean(radiusFiltered)
+                        sigma = np.std(radiusFiltered)
+
+                        dist_x = np.arange(start, end, step * 0.1, dtype = float)
+
+                        fig.add_trace(go.Scatter(
+                            x = dist_x, 
+                            y = np.max(bar_y) / (sigma * np.sqrt(2*np.pi)) * np.exp(-(dist_x - mu)**2 / (2 * sigma**2)),
+                            mode = 'lines',
+                            name = '',
+                            hoverinfo = 'skip'
+                        ))         
 
                     fig.update_layout(
                         margin = marginChart,
-                        xaxis_title_text = 'Radius, nm',
-                        yaxis_title_text = 'Particle fraction',
+                        xaxis_title_text = name_x,
+                        yaxis_title_text = name_y,
                         showlegend = False
                     )
-                    
-                    fig.update_xaxes(range = [np.floor(minRadius), np.ceil(maxRadius)],
-                        showgrid = True, gridwidth = 0.5, gridcolor = '#606060'
-                    )
-                    fig.update_traces(hovertemplate = "radius: %{x:.2f} nm" + "<br>" + "particls: %{y:.3f}")
 
+                    fig.update_xaxes(
+                        tickmode = 'linear',
+                        dtick = step,
+                        tick0 = start,
+                        tickwidth = 2,
+                        showgrid = True,
+                        gridwidth = 1,
+                    )
+                    
                     st.plotly_chart(fig, use_container_width = True)
                 # END db11
 
@@ -526,22 +578,34 @@ try:
                     materialDensity = 12.02 * 10**-15 # nanogram / nanometer   
 
                     if st.session_state['scale'] is None:
-                        st.markdown(f"""<div class = 'text'>The image scale could not be determined automatically!</div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                The image scale could not be determined automatically!
+                                Using default scale: 1 nm/px
+                            </div>""", unsafe_allow_html = True)
                     else:                    
-                        st.markdown(f"""<div class = 'text'>
-                                        Estimated scale: <b>{st.session_state['scale']:.3} nm/px</b> 
-                                    </div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Estimated scale: <b>{st.session_state['scale']:.3} nm/px</b> 
+                            </div>""", unsafe_allow_html = True)
 
                         if st.session_state['recalculation']:
                             radius_nm = radiusFiltered
+                        
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Particles number: <b>{st.session_state['filteredParticles']}</b> 
+                            </div>""", unsafe_allow_html = True)
 
                         st.subheader("Primary parameters")                    
-                        st.markdown(f"""<div class = 'text'>
-                                        Average radius: <b>{np.mean(radius_nm):0.3} nm</b> 
-                                    </div>""", unsafe_allow_html = True)
-                        st.markdown(f"""<div class = 'text'>
-                                        Standart deviation radius: <b>{np.std(radius_nm):0.3} nm</b> 
-                                    </div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Average radius: <b>{np.mean(radius_nm):0.3} nm</b> 
+                            </div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Standart deviation radius: <b>{np.std(radius_nm):0.3} nm</b> 
+                            </div>""", unsafe_allow_html = True)
 
 
                         st.subheader("Secondary parameters")  
@@ -549,29 +613,35 @@ try:
                         areaParticls =  np.sum(2 * np.pi * radius_nm ** 2)
                         massParticls = np.sum(volumeParticls * materialDensity)
 
-                        st.markdown(f"""<div class = 'text'>
-                                        Mass: <b>{massParticls:0.2e} nanograms</b> 
-                                    </div>""", unsafe_allow_html = True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Volume: <b>{np.sum(volumeParticls):0.2e} nanometers<sup>3</sup></b> 
-                                    </div>""", unsafe_allow_html = True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Area: <b>{areaParticls:0.2e} nanometers<sup>2</sup></b> 
-                                    </div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Mass: <b>{massParticls:0.2e} nanograms</b> 
+                            </div>""", unsafe_allow_html = True)                        
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Volume: <b>{np.sum(volumeParticls):0.2e} nanometers<sup>3</sup></b> 
+                            </div>""", unsafe_allow_html = True)                        
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Area: <b>{areaParticls:0.2e} nanometers<sup>2</sup></b> 
+                            </div>""", unsafe_allow_html = True)
                     
 
                         st.subheader("Secondary parameters (norm)", help = help_str)
                         imageArea = st.session_state['sizeImage'][0] * st.session_state['sizeImage'][1] * st.session_state['scale'] ** 2
                     
-                        st.markdown(f"""<div class = 'text'>
-                                        Mass: <b>{massParticls/imageArea:0.2e} nanograms/nanometers<sup>2</sup></b> 
-                                    </div>""", unsafe_allow_html = True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Volume: <b>{np.sum(volumeParticls)/imageArea:0.2e} nanometers</b> 
-                                    </div>""", unsafe_allow_html = True)                        
-                        st.markdown(f"""<div class = 'text'>
-                                        Area: <b>{areaParticls/imageArea*100:0.2f}</b> %
-                                    </div>""", unsafe_allow_html = True)
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Mass: <b>{massParticls/imageArea:0.2e} nanograms/nanometers<sup>2</sup></b> 
+                            </div>""", unsafe_allow_html = True)                        
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Volume: <b>{np.sum(volumeParticls)/imageArea:0.2e} nanometers</b> 
+                            </div>""", unsafe_allow_html = True)                        
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Area: <b>{areaParticls/imageArea*100:0.2f}</b> %
+                            </div>""", unsafe_allow_html = True)
                 # END db12
 
                 # Heatmap of particle count
@@ -600,18 +670,20 @@ try:
                 # END db13
 
             with st.expander("Some information charts ", icon = ":material/data_thresholding:"):
-                st.markdown(f"""<p class = 'text'>
-                                Visual representation of nanoparticle-based statistics in an image
-                        </p>""", unsafe_allow_html = True)
+                st.markdown(f"""
+                    <p class = 'text'>
+                        Visual representation of nanoparticle-based statistics in an image
+                    </p>""", unsafe_allow_html = True)
 
 
                 db21, db22, db23 = st.columns([1, 1, 1])
 
                 # ?
                 with db23.container(border = True, height = heightCol):
-                    st.markdown(f"""<div class = 'about' style = "text-align: center;">
-                                Any other information or chart
-                            </div>""", unsafe_allow_html = True)
+                    st.markdown(f"""
+                        <div class = 'about' style = "text-align: center;">
+                            Any other information or chart
+                        </div>""", unsafe_allow_html = True)
                 # END db23
 
                 # ?
@@ -619,8 +691,8 @@ try:
                     tempDist = minDist[boolIndexFiltringBLOBs] if st.session_state['recalculation'] else minDist
 
                     fig = ff.create_distplot(
-                        [tempDist], [''], bin_size = 2, curve_type = 'normal', histnorm = 'probability',
-                        colors = ['green'], show_curve = st.session_state['distView'], show_rug = False
+                        [tempDist], [''], bin_size = 2, histnorm = 'probability',
+                        colors = ['green'], show_curve = False, show_rug = False
                     )
 
                     fig.update_layout(
