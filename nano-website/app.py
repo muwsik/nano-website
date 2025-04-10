@@ -18,7 +18,7 @@ try:
     import plotly.figure_factory as ff
 
     import traceback
-
+    from email.mime.text import MIMEText
 
     ### Function ###
     
@@ -72,7 +72,7 @@ try:
         st.write("""
             An error occurred while the application was running.
             *The latest detection and marking results are saved.*
-            Refresh the site with the "Return page" button below
+            Refresh the site with the "Rerun page" button below
             (if you refresh the page through the browser, some data may not be saved).
         """)
 
@@ -83,13 +83,18 @@ try:
             f"{traceback.format_exc()} \n" + \
             "CRASH !!!\n"
         print(err_msg)
-            
+
         if st.button("Rerun page"):
             st.session_state['rerun'] = True
             st.rerun()
 
         with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
             st.write(traceback.format_exc())
+
+    def send_email_report(_email, _password, _text):
+        pass
+
+
 
     ### Main app ###
     
@@ -105,7 +110,6 @@ try:
     ## Header
     st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
     
-
     st.markdown("""
         <div class = 'about'>
             Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
