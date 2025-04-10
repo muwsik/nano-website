@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /temp/29b9ed24-7cab-4576-96f7-d5f7d6976938.jpg
+/.streamlit/secrets.toml
