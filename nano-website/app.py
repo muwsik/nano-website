@@ -18,7 +18,7 @@ try:
     import plotly.figure_factory as ff
 
     import traceback
-    from email.mime.text import MIMEText
+    
 
     ### Function ###
     
@@ -91,8 +91,37 @@ try:
         with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
             st.write(traceback.format_exc())
 
-    def send_email_report(_email, _password, _text):
-        pass
+    # not used
+    def send_email_report(_email, _password, _text, _uploadedFile):        
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from email.mime.base import MIMEBase
+        from email import encoders
+        
+        # Создание MIME-сообщения
+        msg = MIMEMultipart()
+        msg["From"] = _email
+        msg["To"] = _email
+        msg["Subject"] = f"Crash on {datetime.datetime.now().ctime()}"
+
+        # Добавление текста письма
+        msg.attach(MIMEText(_text, "plain"))
+
+        # Добавление вложения
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(_uploadedFile.getvalue())
+        encoders.encode_base64(part)  # Кодировка в Base64
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename={_uploadedFile.name}",  # Имя файла
+        )
+        msg.attach(part)
+
+        # Отправка через SMTP (для Gmail)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(_email, _password)
+            server.sendmail(_email, _email, msg.as_string())
 
 
 
