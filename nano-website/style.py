@@ -8,10 +8,6 @@ def set_style():
             overflow: hidden
         }
 
-        body {
-            background-color: #f0f0f0;
-        }
-
 	    .stTabs [data-baseweb="tab"] {
 		    height: 40px;
 		    border-radius: 4px 4px 0px 0px;

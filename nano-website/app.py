@@ -788,6 +788,51 @@ try:
             </ul>
         </div>""", unsafe_allow_html = True)
 
+    with st.expander("User's Guide", expanded = False, icon = ":material/not_listed_location:"):
+        st.subheader("Nanoparticles detection and filtration")
+        st.markdown("""
+        <div>
+            <ul>
+                <li>
+                    <p class = 'cite'>
+                        123
+                    </p>
+                </li>
+                <li>
+                    <p class = 'cite'>
+                        456
+                    </p>
+                </li>
+                <li>
+                    <p class = 'cite'>
+                        789
+                    </p>
+                </li>
+            </ul>
+        </div>""", unsafe_allow_html = True)
+
+        st.subheader("Calculating statistics")
+        st.markdown("""
+        <div>
+            <ul>
+                <li>
+                    <p class = 'cite'>
+                        aaa
+                    </p>
+                </li>
+                <li>
+                    <p class = 'cite'>
+                        bbb
+                    </p>
+                </li>
+                <li>
+                    <p class = 'cite'>
+                        ccc
+                    </p>
+                </li>
+            </ul>
+        </div>""", unsafe_allow_html = True)
+
     st.markdown("""
         <div class = 'footer'>
             Laboratory of Cognitive Technologies and Simulating Systems, Tula State University © 2025 (E-mail: muwsik@mail.ru)
