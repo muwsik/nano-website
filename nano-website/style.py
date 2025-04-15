@@ -38,6 +38,7 @@ def set_style():
 
         .text {
             font-size: 20px;
+            text-align: justify;
         }
 
         .cite {

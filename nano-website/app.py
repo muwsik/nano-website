@@ -355,7 +355,7 @@ try:
                 st.toggle("Comparison mode", key = 'comparison', disabled = True, help = help_str)
 
                 # Displaying the scale
-                st.toggle("Display scale", key = 'displayScale', help = help_str)
+                st.toggle("Display scale", key = 'displayScale', disabled = True, help = help_str)
 
                 # Saving
                 safeImgCol, safeBLOBCol = st.columns(2)
@@ -789,49 +789,116 @@ try:
         </div>""", unsafe_allow_html = True)
 
     with st.expander("User's Guide", expanded = False, icon = ":material/not_listed_location:"):
-        st.subheader("Nanoparticles detection and filtration")
-        st.markdown("""
-        <div>
-            <ul>
-                <li>
-                    <p class = 'cite'>
-                        123
-                    </p>
-                </li>
-                <li>
-                    <p class = 'cite'>
-                        456
-                    </p>
-                </li>
-                <li>
-                    <p class = 'cite'>
-                        789
-                    </p>
-                </li>
-            </ul>
-        </div>""", unsafe_allow_html = True)
+                
+        st.subheader("Детектирование и фильтрация наночастиц")
+        text_col, media_col = st.columns([1, 1])
 
-        st.subheader("Calculating statistics")
-        st.markdown("""
-        <div>
-            <ul>
-                <li>
-                    <p class = 'cite'>
-                        aaa
-                    </p>
-                </li>
-                <li>
-                    <p class = 'cite'>
-                        bbb
-                    </p>
-                </li>
-                <li>
-                    <p class = 'cite'>
-                        ccc
-                    </p>
-                </li>
-            </ul>
-        </div>""", unsafe_allow_html = True)
+        text_col.markdown(f"""
+            <div>
+                <p class = 'text'>Все дальнейшие шаги выполняются на владке "Automatic detection nanoparticles"!</p>
+                <ul>
+                    <li>
+                        <p class = 'text'>
+                            Шаг 1. Загрузка исходного СЭМ-изображения (кнопка "Browse file").
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Шаг 2. Детектирование наночастиц (кнопка "Nanoparticles detection" становится 
+                            активной после загрузки изображения). Процесс детектирования занимает некоторое время,
+                            в среднем до одной минуты.                      
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                           Шаг 3. После успешного детектирования производится фильтрация найденных наночастиц
+                           (используются параметры по умолчанию). Отфильтрованные частицы отображаются
+                           на изображении в виде окружностей.
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                           Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
+                           (снять галочку "Use default settings"). ВАЖНО, подтверждение параметров детектирования 
+                           осуществяется нажанием кнопки "Nanoparticles detection". Параметры фильтрации применяются
+                           автоматически.
+                        </p>
+                    </li>
+                </ul>
+            </div>""", unsafe_allow_html = True)
+
+        media_col.markdown(f"""
+            <div class = 'text' style = "text-align: center;">
+                A video guide will be added here soon!
+            </div>""", unsafe_allow_html = True)
+
+
+        st.subheader("Взаимодейтсвие с результатами детектирования")
+        text_col, media_col = st.columns([1, 1])
+
+        text_col.markdown(f"""
+            <div>
+                <p class = 'text'>Указанный функционал доступен на владке "Automatic detection nanoparticles" после детектирования наночастиц!</p>
+                <ul>
+                    <li>
+                        <p class = 'text'>
+                            Найденные частицы можно скачать в виде изображения 
+                            (кнопка "Download nanoparticles image") или в формате с указанием 
+                            координат центра и радиуса каждой частицы 
+                            (кнопка "Download nanoparticles *.csv")
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Если на изображении присутсвует мерная шкала и её физический размер,
+                            то масштаб определяется автоматически. Визуализировать оценённый масштаб
+                            можно с помощью переключателя "Display scale".
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Режим сравнения находится на доработке.
+                        </p>
+                    </li>
+                </ul>
+            </div>""", unsafe_allow_html = True)
+       
+        media_col.markdown(f"""
+            <div class = 'text' style = "text-align: center;">
+                A video guide will be added here soon!
+            </div>""", unsafe_allow_html = True)
+
+
+        st.subheader("Вычисление статистик и построение графиков")
+        text_col, media_col = st.columns([1, 1])
+
+        text_col.markdown(f"""
+            <div>
+                <p class = 'text'>Указанный функционал доступен на владке "Statistics dashboard" после детектирования наночастиц!</p>
+                <ul>
+                    <li>
+                        <p class = 'text'>
+                            123
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            456
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            789
+                        </p>
+                    </li>
+                </ul>
+            </div>""", unsafe_allow_html = True)
+       
+        media_col.markdown(f"""
+            <div class = 'text' style = "text-align: center;">
+                A video guide will be added here soon!
+            </div>""", unsafe_allow_html = True)
+
 
     st.markdown("""
         <div class = 'footer'>
