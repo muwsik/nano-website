@@ -741,7 +741,7 @@ def CACHE_PrefilteringPoints(ñ_img, c_params):
 def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_params, c_prn = False):
     number_blobs = len(c_lm)
 
-    blobs_full = np.zeros([number_blobs, 3])      # blobs_full[i] = y, x, r
+    blobs_full = np.zeros([number_blobs, 3])      # blobs_full[i] = y, x, d
     values_full = np.zeros([number_blobs, 4])     # values_full[i] = c0, c1, c2, norm_error
 
     for i, temp_lm in enumerate(c_lm):
@@ -753,6 +753,9 @@ def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_par
             c_params,
             c_prn
         )
+        
+        # diameter. Not radius 
+        blob[2] = blob[2] * 2
 
         blobs_full[i, :] = blob
         values_full[i, :] = c0, c1, c2, norm_error
@@ -762,18 +765,18 @@ def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_par
 @st.cache_data(show_spinner = False)
 def my_FilterBlobs_change(blobs_ext, blobs_params, params):
     thr_c0 = params["thr_c0"]
-    thr_r_min = params["min_thr_r"]
-    thr_r_max = params["max_thr_r"]
+    thr_d_min = params["min_thr_d"]
+    thr_d_max = params["max_thr_d"]
     thr_error = params["thr_error"]
 
     filtered_blobs = []
     blobs_rest = []
     for blob, val in zip(blobs_ext, blobs_params):
-        r = blob[2]
+        d = blob[2]
         c0 = val[0]
         norm_error = val[3]
 
-        if ((c0 > thr_c0) and (norm_error <= thr_error) and (r <= thr_r_max) and (r >= thr_r_min)):
+        if ((c0 > thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
             filtered_blobs.append(blob)
         else:
             blobs_rest.append(blob)
@@ -799,6 +802,9 @@ def CACHE_ExponentialApproximationMask_v3_parallel(c_img, c_lm, c_xy2, c_helpMat
             _params,
             _prn
         )
+
+        # diameter. Not radius 
+        blob[2] = blob[2] * 2
 
         blobs = np.hstack([blob, [c0, c1, c2, norm_error]])
 

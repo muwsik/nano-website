@@ -45,26 +45,24 @@ def euclideanDistance(_blobs):
 
     return fullEuclideanDist, minEuclideanDist
 
-def thresholdDistance(_thresholds, _fullDist):
+def averageDensityInNeighborhood(_thresholds, _fullDist):
     distanceLess = np.zeros(len(_thresholds))
 
     for i, threshold in enumerate(_thresholds):
-        distanceLess[i] = np.less(_fullDist, threshold).sum() / (len(_fullDist) * np.pi * threshold ** 2)
+        distanceLess[i] = (np.less(_fullDist, threshold).sum() - len(_fullDist)) / (np.pi * threshold**2)
 
     return distanceLess
-
 
 ### main
 if __name__ == "__main__":
 
-    BLOB = randon_BLOBS()
+    BLOB = randon_BLOBS(2500)
     
     fullDist, minDist = euclideanDistance(BLOB)
     
-    x = np.arange(5,100,1)
-    temp_db23 = thresholdDistance(x, fullDist)
-    
-    temp_123 = temp_db23 / (np.pi * x**2)
+    x = np.arange(5, 100, 1)
 
-    fig = px.bar(x = x, y = temp_123)
+    temp_2 = averageDensityInNeighborhood(x, fullDist)
+
+    fig = px.bar(x = x, y = temp_2)
     fig.show()

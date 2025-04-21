@@ -4,8 +4,16 @@ def set_style():
     st.set_page_config(page_title="Nanoparticles", layout="wide")
     st.markdown("""
     <style>
-        .main {
-            overflow: hidden
+
+        h3 {
+            font-size: 25px !important;
+            padding: 8px 0px 5px 0px !important;
+        }
+
+        .stApp {
+            height: 100vh !important;
+            overflow-y: auto !important;
+            overscroll-behavior-y: contain !important;
         }
 
 	    .stTabs [data-baseweb="tab"] {
@@ -46,7 +54,7 @@ def set_style():
         }
 
         .header {
-            background-color: #90E593;
+            background-color: #00AFE1;
             color: black;
             font-weight: bold;
             font-size: 3vw;
@@ -71,24 +79,6 @@ def set_style():
             left: 0;
             bottom: 0;
             width: 100%;
-        }
-
-        .calculations {
-            color: white;
-            font-weight: bold;
-            font-size: 1.5vw;
-            padding-bottom: 10px;
-        }
-
-        .image-container {
-            background: transparent;
-            text-align: center;
-        }
-
-        .image-display {
-            width: inherit;
-            height: 400px;
-            object-fit: contain;
         }
 
     </style>
