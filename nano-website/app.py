@@ -707,6 +707,11 @@ try:
 
                     fig = px.imshow(uniformityMap, aspect = "equal")
 
+                    fig.update_traces(
+                        hoverinfo = "z",
+                        hovertemplate = "Particle in subarea %{z:.2}<extra></extra>"
+                    )
+
                     fig.update_layout(
                         margin = marginChartLess,
                         xaxis_title_text = f'Width image, {stepSize}*px',
