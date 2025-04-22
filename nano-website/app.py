@@ -1,9 +1,6 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
-import enum
-
-
 try:
     import streamlit as st
 
@@ -508,7 +505,7 @@ try:
                         buttonPlaceholder = st.empty()
                                         
                     start = st.session_state['param2'][0]
-                    step = 0.25
+                    step = 0.2
                     end = st.session_state['param2'][1] + step
 
                     counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
@@ -548,7 +545,7 @@ try:
                         y = bar_y,
                         customdata = customDataChart,
                         hovertemplate = (
-                            "Radius: [%{customdata[0]}, %{customdata[1]}) nm<br>"
+                            "Diameter: [%{customdata[0]}, %{customdata[1]}) nm<br>"
                             "Particls: " + hover_y +
                             "<extra></extra>"
                         )
@@ -559,14 +556,15 @@ try:
                         sigma = np.std(diameter_nm)
 
                         dist_x = np.arange(start, end, step * 0.1, dtype = float)
+                        dist_y = np.exp(-1/2 * ((dist_x - mu)/sigma)**2) / (sigma * np.sqrt(2 * np.pi))
 
                         fig.add_trace(go.Scatter(
                             x = dist_x, 
-                            y = np.max(bar_y) / (sigma * np.sqrt(2*np.pi)) * np.exp(-(dist_x - mu)**2 / (2 * sigma**2)),
-                            #color = 'black',
+                            y = dist_y * step * (100 if st.session_state['normalize'] else len(diameter_nm)),
                             mode = 'lines',
                             name = '',
-                            hoverinfo = 'skip'
+                            hoverinfo = 'skip',
+                            line = dict(color = 'rgba(0,0,255,0.75)')
                         ))         
 
                     fig.update_layout(
