@@ -6,14 +6,12 @@ def set_style():
     <style>
 
         h3 {
-            font-size: 25px !important;
+            font-size: 21px !important;
             padding: 8px 0px 5px 0px !important;
         }
 
-        .stApp {
-            height: 100vh !important;
-            overflow-y: auto !important;
-            overscroll-behavior-y: contain !important;
+        ::-webkit-scrollbar {
+            display: none;
         }
 
 	    .stTabs [data-baseweb="tab"] {
@@ -54,7 +52,7 @@ def set_style():
         }
 
         .header {
-            background-color: #00AFE1;
+            background-color: rgba(0,0,255,0.25);
             color: black;
             font-weight: bold;
             font-size: 3vw;

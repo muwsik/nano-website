@@ -39,6 +39,7 @@ try:
         st.session_state['param3'] = 0.65
         st.session_state['param-pre-1'] = 10
         st.session_state['parallel'] = True
+        st.session_state['processes'] = 4
             
         st.session_state['detected'] = False
         st.session_state['BLOBs'] = None
@@ -181,7 +182,15 @@ try:
                     help = "The average brightness of nanoparticles and its surroundings in the image"
                 )
 
-                st.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'],)
+                l, r = st.columns([3,1])
+                l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
+
+                r.number_input(label = "", min_value = 1, max_value  = 50, step = 1,
+                    format = "%i", placeholder = "Processes",
+                    key = 'processes',
+                    disabled = st.session_state['settingDefault'],
+                    label_visibility = 'collapsed'
+                )
 
                 warningPlaceholder = st.empty()
                 if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
@@ -239,7 +248,8 @@ try:
                             lm,
                             xy2,
                             helpMatrs,
-                            params
+                            params,
+                            nProc = st.session_state['processes']
                         )
                     else:
                         BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
@@ -358,7 +368,7 @@ try:
                         for BLOB in st.session_state['BLOBs_filter']:                
                             y, x, d = BLOB
                             r = d/2          
-                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 175, 225))
+                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (192, 192, 255))
 
                         file = io.BytesIO()
                         temp.save(file, format = "PNG")
@@ -403,7 +413,7 @@ try:
                         for BLOB in st.session_state['BLOBs_filter']:                
                             y, x, d = BLOB
                             r = d/2
-                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 175, 225, 200))
+                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 0, 192, 64))
 
                         viewImage = imageBLOBs
         
@@ -545,7 +555,7 @@ try:
                         y = bar_y,
                         customdata = customDataChart,
                         hovertemplate = (
-                            "Diameter: [%{customdata[0]}, %{customdata[1]}) nm<br>"
+                            "Diameter: [%{customdata[0]:.1f}, %{customdata[1]:.1f}) nm<br>"
                             "Particls: " + hover_y +
                             "<extra></extra>"
                         )
@@ -957,17 +967,17 @@ try:
                 <ul>
                     <li>
                         <p class = 'text'>
-                            123
+                            be add it soon!
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            456
+                            be add it soon!
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            789
+                            be add it soon!
                         </p>
                     </li>
                 </ul>
