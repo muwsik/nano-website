@@ -811,7 +811,10 @@ try:
                         )
                         emptySubareas[i] = np.sum(temp == 0) / (len(temp) * len(temp[0]))
                     
-                    fig = px.bar(x = x * st.session_state['scale'], y = emptySubareas)
+                    if (st.session_state['scale'] is not None):
+                        fig = px.bar(x = x * st.session_state['scale'], y = emptySubareas)
+                    else:
+                        fig = px.bar(x = x, y = emptySubareas)
 
                     fig.update_layout(
                         margin = marginChart,
@@ -874,7 +877,11 @@ try:
                     x = np.arange(5, 100, 1)
                     averageDensity = nanoStatistics.averageDensityInNeighborhood(x, fullDist)
 
-                    fig = px.bar(x = x * st.session_state['scale'], y = averageDensity)
+                    if (st.session_state['scale'] is not None):
+                        fig = px.bar(x = x * st.session_state['scale'], y = averageDensity)
+                    else:
+                        fig = px.bar(x = x , y = averageDensity)
+
 
                     fig.update_layout(
                         margin = marginChart,
