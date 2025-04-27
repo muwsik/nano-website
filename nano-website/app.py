@@ -1,103 +1,108 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
-try:
-    import streamlit as st
 
-    import io, csv
-    from pathlib import Path
-    import numpy as np
-    from PIL import Image, ImageDraw
-    import time, datetime
+import streamlit as st
 
-    import style, autoscale, nanoStatistics
-    import ExponentialApproximation as EA
+import io, csv
+from pathlib import Path
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+import time, datetime
 
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import plotly.figure_factory as ff
+import style, autoscale, nanoStatistics
+import ExponentialApproximation as EA
 
-    import traceback
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.figure_factory as ff
+
+import traceback
     
 
-    ### Function ###
+### Function ###
     
-    help_str = "be added soon"
+help_str = "be added soon"
 
-    def load_default_session_state(_dispToast = False):
-        if _dispToast:
-            st.toast('Default configuration loaded!')
+colorRGBA = (0, 0, 192, 64)
+colorRGBA_str = 'rgba(0,0,255,0.25)'
+colorRGB = (192, 192, 255)
 
-        st.session_state['rerun'] = False
+def load_default_session_state(_dispToast = False):
+    if _dispToast:
+        st.toast('Default configuration loaded!')
 
-        st.session_state['imageUpload'] = False
-        st.session_state['uploadedImage'] = None
+    st.session_state['rerun'] = False
 
-        st.session_state['settingDefault'] = True
-        st.session_state['param1'] = 10
-        st.session_state['param2'] = (1.0, 10.0)
-        st.session_state['param3'] = 0.65
-        st.session_state['param-pre-1'] = 10
-        st.session_state['parallel'] = True
-        st.session_state['processes'] = 4
+    st.session_state['imageUpload'] = False
+    st.session_state['uploadedImage'] = None
+
+    st.session_state['settingDefault'] = True
+    st.session_state['param1'] = 10
+    st.session_state['param2'] = (1.0, 10.0)
+    st.session_state['param3'] = 0.65
+    st.session_state['param-pre-1'] = 10
+    st.session_state['parallel'] = True
+    st.session_state['processes'] = 4
             
-        st.session_state['detected'] = False
-        st.session_state['BLOBs'] = None
-        st.session_state['BLOBs_params'] = None
-        st.session_state['BLOBs_filter'] = None
-        st.session_state['sizeImage'] = None
-        st.session_state['detectedParticles'] = 0    
-        st.session_state['filteredParticles'] = 0 
-        st.session_state['imageBLOBs'] = None
-        st.session_state['timeDetection'] = None
-        st.session_state['detectionSettings'] = None
+    st.session_state['detected'] = False
+    st.session_state['BLOBs'] = None
+    st.session_state['BLOBs_params'] = None
+    st.session_state['BLOBs_filter'] = None
+    st.session_state['sizeImage'] = None
+    st.session_state['detectedParticles'] = 0    
+    st.session_state['filteredParticles'] = 0 
+    st.session_state['imageBLOBs'] = None
+    st.session_state['timeDetection'] = None
+    st.session_state['detectionSettings'] = None
 
-        st.session_state['comparison'] = False
+    st.session_state['comparison'] = False
     
-        st.session_state['scale'] = None
-        st.session_state['scaleData'] = None
-        st.session_state['displayScale'] = False
+    st.session_state['scale'] = None
+    st.session_state['scaleData'] = None
+    st.session_state['displayScale'] = False
 
-        st.session_state['distView'] = False
-        st.session_state['normalize'] = False
-        st.session_state['selection'] = False
+    st.session_state['distView'] = False
+    st.session_state['normalize'] = False
+    st.session_state['selection'] = False
 
-        st.session_state['calcStatictic'] = False
+    st.session_state['calcStatictic'] = False
 
-    def get_session_state():
-       return str(st.session_state)
+def get_session_state():
+    return str(st.session_state)
 
-    @st.dialog("Something went wrong...")
-    def dialog_exception(_exception):
-        st.write("""
-            An error occurred while the application was running.
-            *The latest detection and marking results are saved.*
-            Refresh the site with the "Rerun page" button below
-            (if you refresh the page through the browser, some data may not be saved).
-        """)
+@st.dialog("Something went wrong...")
+def dialog_exception(_exception):
+    st.write("""
+        An error occurred while the application was running.
+        *The latest detection and marking results are saved.*
+        Refresh the site with the "Rerun page" button below
+        (if you refresh the page through the browser, some data may not be saved).
+    """)
 
-        err_msg = "!!! CRASH\t" +\
-            f"{datetime.datetime.now().ctime()} \n\t" + \
-            f"{get_session_state()} \n\t" + \
-            f"{str(_exception)} \n\t" + \
-            f"{traceback.format_exc()} \n" + \
-            "CRASH !!!\n"
-        print(err_msg)
+    err_msg = "!!! CRASH\t" +\
+        f"{datetime.datetime.now().ctime()} \n\t" + \
+        f"{get_session_state()} \n\t" + \
+        f"{str(_exception)} \n\t" + \
+        f"{traceback.format_exc()} \n" + \
+        "CRASH !!!\n"
+    print(err_msg)
 
-        if st.button("Rerun page"):
-            st.session_state['rerun'] = True
-            st.rerun()
+    if st.button("Rerun page"):
+        st.session_state['rerun'] = True
+        st.rerun()
 
-        with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
-            st.write(traceback.format_exc())
+    with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
+        st.write(traceback.format_exc())
 
-    def update_calcStatictic():                
-        st.session_state['calcStatictic'] = True
+def update_calcStatictic():                
+    st.session_state['calcStatictic'] = True
 
 
-    ### Main app ###
-    
+### Main app ###
+try:
     # Loading CSS styles
+    st.set_page_config(page_title = "Nanoparticles", layout = "wide")
     style.set_style()
     
     # Initial loading of session states
@@ -124,10 +129,10 @@ try:
 
 
     ## Main content area
-    tabDetect, tabLable, tabInfo = st.tabs([
+    tabDetect, tabInfo, tabLable  = st.tabs([
         "Automatic detection nanoparticles",
-        "Manual labeling nanoparticles",
-        "Statistics dashboard"
+        "Statistics dashboard",
+        "Manual labeling nanoparticles"
     ])
 
     ## TAB 1
@@ -154,6 +159,8 @@ try:
                     st.session_state['comparison'] = False
                     st.session_state['calcStatictic'] = False
                     st.session_state['imageBLOBs'] = None
+                    st.session_state['scale'] = None
+                    st.session_state['scaleData'] = None
         
         
                 imagePlaceholder = st.empty()
@@ -185,7 +192,7 @@ try:
                 l, r = st.columns([3,1])
                 l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
 
-                r.number_input(label = "", min_value = 1, max_value  = 50, step = 1,
+                r.number_input(label = "not_visibility", min_value = 1, max_value  = 50, step = 1,
                     format = "%i", placeholder = "Processes",
                     key = 'processes',
                     disabled = st.session_state['settingDefault'],
@@ -203,7 +210,7 @@ try:
             pushDetectButton = st.button("Nanoparticles detection",
                 use_container_width = True,
                 disabled = not st.session_state['imageUpload'],
-                help = "You need to upload an SEM image"
+                help = help_str
             )
                 
             # Detecting
@@ -340,7 +347,7 @@ try:
 
 
                 if (st.session_state['filteredParticles'] < 1):
-                     st.warning("""
+                    st.warning("""
                         There are no nanoparticles satisfying the filtration settings!
                         Please change the filtering settings!
                     """, icon = ":material/warning:")
@@ -352,11 +359,16 @@ try:
                         </p>""", unsafe_allow_html = True
                     )
 
+                    # Displaying the scale
+                    st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
+                    if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
+                        st.warning("""
+                            The image scale could not be determined automatically!
+                            Using default scale: 1.0 nm/px
+                        """, icon = ":material/warning:")
+
                     # Slider for comparing the results before and after detection
                     st.toggle("Comparison mode", key = 'comparison', disabled = True, help = help_str)
-
-                    # Displaying the scale
-                    st.toggle("Display scale", key = 'displayScale', disabled = True, help = help_str)
 
                     # Saving
                     safeImgCol, safeBLOBCol = st.columns(2)
@@ -368,7 +380,7 @@ try:
                         for BLOB in st.session_state['BLOBs_filter']:                
                             y, x, d = BLOB
                             r = d/2          
-                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (192, 192, 255))
+                            draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
                         file = io.BytesIO()
                         temp.save(file, format = "PNG")
@@ -404,21 +416,52 @@ try:
 
         # Display source image by st.image
         if (st.session_state['imageUpload']):
-            viewImage = crsImage
+            viewImage = None
+
+            if (st.session_state['displayScale'] and st.session_state['scaleData'] is not None):
+                imageBLOBs = crsImage.convert("RGBA")
+                draw = ImageDraw.Draw(imageBLOBs)
+
+                y, x, length, text_scale = st.session_state['scaleData']
+                diff_line = 5 # vertical line size
+                y = y + 10 # vertical line shift
+
+                # Line of metric scale
+                scaleLineCoords = [
+                    (x, y-diff_line),
+                    (x, y+diff_line),
+                    (x, y),
+                    (x+length, y),
+                    (x+length, y+diff_line),
+                    (x+length, y-diff_line)
+                ]
+                draw.line(scaleLineCoords, fill = colorRGBA, width = 3)
+                
+                # Text of metric scale
+                draw.text(
+                    (x + int(length/8), y + 10), 
+                    f"{length}px / {text_scale}",
+                    fill = colorRGBA,
+                    font = ImageFont.load_default(size = 30) 
+                )
+
+                viewImage = imageBLOBs
 
             if (st.session_state['filteredParticles'] > 1):
                 if (st.session_state['detected'] and not st.session_state['comparison']):
+                    if (viewImage is None):
                         imageBLOBs = crsImage.convert("RGBA")
                         draw = ImageDraw.Draw(imageBLOBs)
-                        for BLOB in st.session_state['BLOBs_filter']:                
-                            y, x, d = BLOB
-                            r = d/2
-                            draw.ellipse((x-r, y-r, x+r, y+r), outline = (0, 0, 192, 64))
 
-                        viewImage = imageBLOBs
-        
-            st.session_state['imageBLOBs'] = viewImage
-            imagePlaceholder.image(viewImage, use_container_width = True)
+                    for BLOB in st.session_state['BLOBs_filter']:                
+                        y, x, d = BLOB
+                        r = d/2
+                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGBA)
+
+                    viewImage = imageBLOBs
+
+            st.session_state['imageBLOBs'] = viewImage if (viewImage is not None) else crsImage
+            imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True)
 
 
     ## TAB 2
@@ -600,7 +643,7 @@ try:
                     )
                     
                     fig.update_traces(
-                        marker_color = 'rgba(0,0,255,0.25)',
+                        marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1  
                     )
@@ -652,7 +695,7 @@ try:
                     st.subheader("Primary parameters")                    
                     st.markdown(f"""
                         <div class = 'text'>
-                            Average diameters: <b>{np.mean(currentDiameter):.3f} nm</b> 
+                            Average diameter: <b>{np.mean(currentDiameter):.3f} nm</b> 
                         </div>""", unsafe_allow_html = True)
                     st.markdown(f"""
                         <div class = 'text'>
@@ -667,17 +710,17 @@ try:
 
                     st.markdown(f"""
                         <div class = 'text'>
-                            Mass: <b>{massParticls:0.2e} nanograms</b> 
+                            Mass: <b>{massParticls:0.2e} ng</b> 
                         </div>""", unsafe_allow_html = True)   
                     
                     st.markdown(f"""
                         <div class = 'text'>
-                            Volume: <b>{np.sum(volumeParticls):0.2e} nanometers<sup>3</sup></b> 
+                            Volume: <b>{np.sum(volumeParticls):0.2e} nm<sup>3</sup></b> 
                         </div>""", unsafe_allow_html = True) 
                     
                     st.markdown(f"""
                         <div class = 'text'>
-                            Area: <b>{areaParticls:0.2e} nanometers<sup>2</sup></b> 
+                            Area: <b>{areaParticls:0.2e} nm<sup>2</sup></b> 
                         </div>""", unsafe_allow_html = True)
                     
 
@@ -693,7 +736,7 @@ try:
 
                     st.markdown(f"""
                         <div class = 'text'>
-                            Mass: <b>{massParticls/imageArea:0.2e} nanograms/nanometers<sup>2</sup></b> 
+                            Mass: <b>{massParticls/imageArea:0.2e} ng/nm<sup>2</sup></b> 
                         </div>""", unsafe_allow_html = True)                        
                                     
                 # END db12
@@ -738,7 +781,8 @@ try:
             with st.expander("Some information charts (demo)", icon = ":material/data_thresholding:"):
                 st.markdown(f"""
                     <p class = 'text'>
-                        Visual representation of nanoparticle-based statistics in an image
+                        Visual representation of nanoparticle-based statistics in an image.
+                        A detailed description is provided in the work on the second link below.
                     </p>""", unsafe_allow_html = True)
 
                 currentBLOBs = st.session_state['BLOBs_filter']
@@ -785,7 +829,7 @@ try:
                     fig.update_traces(
                         hoverinfo = "x+y",
                         hovertemplate = "Size: %{x:.2} nm <br>Empty: %{y:.2}",
-                        marker_color = 'rgba(0,0,255,0.25)',
+                        marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1
                     )
@@ -817,7 +861,7 @@ try:
                     fig.update_traces(
                         hoverinfo = "x",
                         hovertemplate = "Distanse: %{x:.2} nm",
-                        marker_color = 'rgba(0,0,255,0.25)',
+                        marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1,  
                     )
@@ -848,7 +892,7 @@ try:
                     fig.update_traces(
                         hoverinfo = "x+y",
                         hovertemplate = "Size: %{x:.2} nm <br>Density: %{y:.2}",
-                        marker_color = 'rgba(0,0,255,0.25)',
+                        marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
                     )

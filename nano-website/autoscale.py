@@ -8,6 +8,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 def findBorder(c_fullImage, thr = 0.5):    
     row_sum = np.sum(c_fullImage, axis = 1, dtype = np.int64)
 
@@ -119,27 +120,30 @@ if __name__ == "__main__":
     scaleLineCoords = np.array([
         [x, y-diff], [x, y+diff], [x, y], [x+length, y], [x+length, y+diff], [x+length, y-diff]
     ])
-        
-    fig = px.imshow(grayImage, color_continuous_scale='gray')
+       
+    
 
-    fig.add_trace(
-        go.Scatter(x = scaleLineCoords[:,0], y = scaleLineCoords[:,1],
-            mode='lines', line = dict(color = 'red', width = 3, dash = 'dot')
-        )
-    )
+    # plotly
+    # fig = px.imshow(grayImage, color_continuous_scale='gray')
 
-    fig.add_annotation(x = x + int(length/2), y = y,
-        text = f"{length}px / {dispScale[3]}",
-        showarrow = False,
-        yshift = 40,
-        font = dict(
-                color = "red",
-                size = 35
-            )
-    )
+    # fig.add_trace(
+    #     go.Scatter(x = scaleLineCoords[:,0], y = scaleLineCoords[:,1],
+    #         mode='lines', line = dict(color = 'red', width = 3, dash = 'dot')
+    #     )
+    # )
 
-    fig.update_layout(coloraxis_showscale=False)
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)
-    fig.show()
+    # fig.add_annotation(x = x + int(length/2), y = y,
+    #     text = f"{length}px / {dispScale[3]}",
+    #     showarrow = False,
+    #     yshift = 40,
+    #     font = dict(
+    #             color = "red",
+    #             size = 35
+    #         )
+    # )
+
+    # fig.update_layout(coloraxis_showscale=False)
+    # fig.update_xaxes(showticklabels=False)
+    # fig.update_yaxes(showticklabels=False)
+    # fig.show()
     

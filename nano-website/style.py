@@ -1,7 +1,6 @@
 import streamlit as st
 
 def set_style():
-    st.set_page_config(page_title="Nanoparticles", layout="wide")
     st.markdown("""
     <style>
 
@@ -14,19 +13,22 @@ def set_style():
             display: none;
         }
 
-	    .stTabs [data-baseweb="tab"] {
+	    .stTabs [data-baseweb = "tab"] {
 		    height: 40px;
 		    border-radius: 4px 4px 0px 0px;
-            white-space: pre-wrap;
+            border: medium solid rgba(49, 51, 63, 0.1);
             padding: 0px 10px 0px 10px;
         }
 
-        .stTabs [data-baseweb="tab"] p {
-            font-size: 1.0vw;            
+        .stTabs [aria-selected = "false"] {
+             background-color: rgba(49, 51, 63, 0.1);
         }
 
-        .stTabs [data-baseweb="tab-panel"] {
-            #border: medium solid rgba(49, 51, 63, 0.1);
+        .stTabs [data-baseweb = "tab"] p {
+            font-size: 20px;            
+        }
+
+        .stTabs [data-baseweb = "tab-panel"] {
             padding: 10px 10px 10px 10px;
 		    border-radius: 0px 0px 4px 4px;            
         }
