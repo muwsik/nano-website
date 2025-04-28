@@ -2,6 +2,7 @@
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 
+from email.mime import image
 import streamlit as st
 
 import io, csv
@@ -67,6 +68,8 @@ def load_default_session_state(_dispToast = False):
     st.session_state['selection'] = False
 
     st.session_state['calcStatictic'] = False
+
+    st.session_state['defImage'] = None
 
 def get_session_state():
     return str(st.session_state)
@@ -144,7 +147,15 @@ try:
         # Viewing images
         with colImage:
             st.subheader("Upload SEM image")
+            
             uploadedImage = st.file_uploader("Choose an SEM image", type = ["png", "jpg", "jpeg", "tif"])
+            
+            if st.button("Use example SEM image"):
+                imageIndex = np.random.randint(low = 1, high = 5, size = 1)
+                st.session_state['defImage'] = r".\nano-website\images\\" + str(imageIndex[0]) + ".tif"
+            
+            if st.session_state['defImage'] is not None:
+                uploadedImage = st.session_state['defImage']
 
             if uploadedImage is None:
                 load_default_session_state()
@@ -384,11 +395,12 @@ try:
 
                         file = io.BytesIO()
                         temp.save(file, format = "PNG")
-
+                        
                         st.download_button(
                             label = "Download nanoparticles image",
                             data = file.getvalue(),
-                            file_name = Path(uploadedImage.name).stem + "-image.tif",
+                            #file_name = Path(uploadedImage.name).stem + "-image.tif",
+                            file_name = "image.tif",
                             use_container_width  = True,
                             help = help_str
                         )
@@ -408,7 +420,8 @@ try:
                         st.download_button(
                             label = "Download nanoparticles *.csv",
                             data = file.getvalue(),
-                            file_name = Path(uploadedImage.name).stem + "-particles.csv",
+                            #file_name = Path(uploadedImage.name).stem + "-particles.csv",
+                            file_name = "particles.csv",
                             use_container_width  = True,
                             help = help_str
                         )
@@ -586,7 +599,8 @@ try:
                     buttonPlaceholder.download_button(
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
-                        file_name = Path(uploadedImage.name).stem + "-dist-diameters.csv",
+                        #file_name = Path(uploadedImage.name).stem + "-dist-diameters.csv",
+                        file_name = "dist-diameters.csv",
                         use_container_width  = True,
                         help = help_str
                     )
