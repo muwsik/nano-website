@@ -2,6 +2,7 @@
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 
+from ast import match_case
 from email.mime import image
 import streamlit as st
 
@@ -35,8 +36,10 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['rerun'] = False
 
-    st.session_state['imageUpload'] = False
-    st.session_state['uploadedImage'] = None
+    st.session_state['imgUpload'] = False
+    st.session_state['uploadedImg'] = None
+
+    st.session_state['imgPlaceholder'] = None
 
     st.session_state['settingDefault'] = True
     st.session_state['param1'] = 10
@@ -44,7 +47,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['param3'] = 0.65
     st.session_state['param-pre-1'] = 10
     st.session_state['parallel'] = True
-    st.session_state['processes'] = 4
+    st.session_state['processes'] = 6
             
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
@@ -53,7 +56,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['sizeImage'] = None
     st.session_state['detectedParticles'] = 0    
     st.session_state['filteredParticles'] = 0 
-    st.session_state['imageBLOBs'] = None
+    st.session_state['imgBLOB'] = None
     st.session_state['timeDetection'] = None
     st.session_state['detectionSettings'] = None
 
@@ -142,48 +145,50 @@ try:
     with tabDetect:
         colImage, colSetting = st.columns([6, 2])
 
-        imagePlaceholder = None
+        imgPlaceholder = None
 
         # Viewing images
         with colImage:
             st.subheader("Upload SEM image")
             
-            uploadedImage = st.file_uploader("Choose an SEM image", type = ["png", "jpg", "jpeg", "tif"])
+            uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff","png", "jpg", "jpeg" ])
             
-            if st.button("Use example SEM image"):
-                imageIndex = np.random.randint(low = 1, high = 5, size = 1)
-                st.session_state['defImage'] = r".\nano-website\images\\" + str(imageIndex[0]) + ".tif"
+            # if st.button("Use example SEM image"):
+            #     imageIndex = np.random.randint(low = 1, high = 5, size = 1)
+            #     st.session_state['defImage'] = r".\nano-website\images\\" + str(imageIndex[0]) + ".tif"
             
-            if st.session_state['defImage'] is not None:
-                uploadedImage = st.session_state['defImage']
+            # if st.session_state['defImage'] is not None:
+            #     uploadedImg = st.session_state['defImage']
 
-            if uploadedImage is None:
+            if uploadedImg is None:
                 load_default_session_state()
             else:
-                st.session_state['imageUpload'] = True
-                crsImage = Image.open(uploadedImage)
+                st.session_state['imgUpload'] = True
+                crsImage = Image.open(uploadedImg)
                 grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')               
 
-                if (not np.array_equal(st.session_state['uploadedImage'], grayImage)):
-                    st.session_state['uploadedImage'] = grayImage
+                if (not np.array_equal(st.session_state['uploadedImg'], grayImage)):
+                    st.session_state['uploadedImg'] = grayImage
                     st.session_state['detected'] = False
                     st.session_state['comparison'] = False
                     st.session_state['calcStatictic'] = False
-                    st.session_state['imageBLOBs'] = None
+                    st.session_state['imgBLOB'] = None
                     st.session_state['scale'] = None
                     st.session_state['scaleData'] = None
         
         
-                imagePlaceholder = st.empty()
-                if (st.session_state['imageBLOBs'] is not None):
-                    imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True)
+                if (st.session_state['imgPlaceholder'] is None):
+                    st.session_state['imgPlaceholder'] = st.empty()
+
+                if (st.session_state['imgBLOB'] is not None):
+                    st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
         # END left side        
 
         # Detection settings and results
         with colSetting:        
             st.checkbox("Use default settings?",
-                disabled = not st.session_state['imageUpload'],
+                disabled = not st.session_state['imgUpload'],
                 key = 'settingDefault',
                 help = "You need to upload an SEM image"
             )
@@ -220,7 +225,7 @@ try:
         
             pushDetectButton = st.button("Nanoparticles detection",
                 use_container_width = True,
-                disabled = not st.session_state['imageUpload'],
+                disabled = not st.session_state['imgUpload'],
                 help = help_str
             )
                 
@@ -370,6 +375,9 @@ try:
                         </p>""", unsafe_allow_html = True
                     )
 
+                    #
+                    st.subheader("Visualization and saving results")
+
                     # Displaying the scale
                     st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
                     if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
@@ -379,74 +387,96 @@ try:
                         """, icon = ":material/warning:")
 
                     # Slider for comparing the results before and after detection
-                    st.toggle("Comparison mode", key = 'comparison', disabled = True, help = help_str)
+                    st.toggle("Comparison mode", key = 'comparison', help = help_str)
 
                     # Saving
-                    safeImgCol, safeBLOBCol = st.columns(2)
-                        
-                    # Saving image
-                    with safeImgCol:
-                        temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
-                        draw = ImageDraw.Draw(temp)
-                        for BLOB in st.session_state['BLOBs_filter']:                
-                            y, x, d = BLOB
-                            r = d/2          
-                            draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                    selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
 
-                        file = io.BytesIO()
-                        temp.save(file, format = "PNG")
-                        
-                        st.download_button(
-                            label = "Download nanoparticles image",
-                            data = file.getvalue(),
-                            #file_name = Path(uploadedImage.name).stem + "-image.tif",
-                            file_name = "image.tif",
-                            use_container_width  = True,
-                            help = help_str
-                        )
-            
-                    # Saving coords
-                    with safeBLOBCol:
-                        file = io.StringIO()
+                    option_saving = {
+                        0: "Particles on clear background (*.tif)",
+                        1: "Particles on EM-image (*.tif)",
+                        2: "Info about particles (*.csv)",
+                    }
 
-                        if st.session_state['scale'] is not None: 
-                            csv.writer(file, delimiter = ';').writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
-                        else:
-                            csv.writer(file, delimiter = ';').writerow([f"Using default scale:", "1.0", "nm/px"])
+                    selection = selectboxCol.selectbox(
+                        "What results should be saved?",
+                        index = 1,
+                        placeholder = "Select options...",
+                        options = option_saving.keys(),
+                        format_func = lambda option: option_saving[option]
+                    )
+
+                    fileResult = io.BytesIO()
+                    fileResultName = 'None'
+                    button_download_disabled = False
+
+                    match selection:
+                        case 0:
+                            temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
+                            draw = ImageDraw.Draw(temp)
+                            for BLOB in st.session_state['BLOBs_filter']:                
+                                y, x, d = BLOB; r = d/2          
+                                draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+
+                            temp.save(fileResult, format = 'png')
+                            fileResultName = "particls-" + Path(uploadedImg.name).stem + ".tif"
+
+                        case 1:
+                            imgBLOB = crsImage.convert("RGB")
+                            draw = ImageDraw.Draw(imgBLOB)                            
+                            for BLOB in st.session_state['BLOBs_filter']:                
+                                y, x, d = BLOB; r = d/2
+                                draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+
+                            imgBLOB.save(fileResult, format = 'png')
+                            fileResultName = "particls+image-" + Path(uploadedImg.name).stem + ".tif"
+
+                        case 2:
+                            fileResult = io.StringIO()
+
+                            temp_writer = csv.writer(fileResult, delimiter = ';')
+                            if st.session_state['scale'] is not None: 
+                                temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
+                            else:
+                               temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
                     
-                        csv.writer(file, delimiter = ';').writerow(['coord y, px', 'coord x, px', 'diameters, px'])
-                        csv.writer(file, delimiter = ';').writerows(st.session_state['BLOBs_filter'])
+                            temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
+                            temp_writer.writerows(st.session_state['BLOBs_filter'])
 
-                        st.download_button(
-                            label = "Download nanoparticles *.csv",
-                            data = file.getvalue(),
-                            #file_name = Path(uploadedImage.name).stem + "-particles.csv",
-                            file_name = "particles.csv",
-                            use_container_width  = True,
-                            help = help_str
-                        )
+                            fileResultName = "particls_info-" + Path(uploadedImg.name).stem + ".csv"
+
+                        case _:
+                            button_download_disabled = True
+
+
+                    buttonCol.download_button(
+                        label = "",
+                        icon = ":material/download:",
+                        data = fileResult.getvalue(),
+                        file_name = fileResultName,
+                        disabled = button_download_disabled
+                    )
         # END right side
 
         # Display source image by st.image
-        if (st.session_state['imageUpload']):
-            viewImage = None
+        if (st.session_state['imgUpload']):
+            viewImage = crsImage.convert("RGBA")
+            draw = ImageDraw.Draw(viewImage)
 
-            if (st.session_state['displayScale'] and st.session_state['scaleData'] is not None):
-                imageBLOBs = crsImage.convert("RGBA")
-                draw = ImageDraw.Draw(imageBLOBs)
-
+            if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
                 y, x, length, text_scale = st.session_state['scaleData']
                 diff_line = 5 # vertical line size
                 y = y + 10 # vertical line shift
+                x = x + 2 # horizontal line shift
 
                 # Line of metric scale
                 scaleLineCoords = [
-                    (x, y-diff_line),
-                    (x, y+diff_line),
-                    (x, y),
-                    (x+length, y),
-                    (x+length, y+diff_line),
-                    (x+length, y-diff_line)
+                    (x,         y-diff_line),
+                    (x,         y+diff_line),
+                    (x,         y),
+                    (x+length,  y),
+                    (x+length,  y+diff_line),
+                    (x+length,  y-diff_line)
                 ]
                 draw.line(scaleLineCoords, fill = colorRGBA, width = 3)
                 
@@ -458,23 +488,17 @@ try:
                     font = ImageFont.load_default(size = 30) 
                 )
 
-                viewImage = imageBLOBs
+            if ((st.session_state['filteredParticles'] > 0) and st.session_state['detected']):
+                for BLOB in st.session_state['BLOBs_filter']:                
+                    y, x, d = BLOB; r = d/2
+                    draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGBA)
 
-            if (st.session_state['filteredParticles'] > 1):
-                if (st.session_state['detected'] and not st.session_state['comparison']):
-                    if (viewImage is None):
-                        imageBLOBs = crsImage.convert("RGBA")
-                        draw = ImageDraw.Draw(imageBLOBs)
+            st.session_state['imgBLOB'] = viewImage
 
-                    for BLOB in st.session_state['BLOBs_filter']:                
-                        y, x, d = BLOB
-                        r = d/2
-                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGBA)
-
-                    viewImage = imageBLOBs
-
-            st.session_state['imageBLOBs'] = viewImage if (viewImage is not None) else crsImage
-            imagePlaceholder.image(st.session_state['imageBLOBs'], use_container_width = True)
+            if (st.session_state['comparison']):
+                st.session_state['imgPlaceholder'].write('be wait!')
+            else:
+                st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
 
     ## TAB 2
@@ -599,8 +623,7 @@ try:
                     buttonPlaceholder.download_button(
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
-                        #file_name = Path(uploadedImage.name).stem + "-dist-diameters.csv",
-                        file_name = "dist-diameters.csv",
+                        file_name = Path(uploadedImg.name).stem + "-dist-diameters.csv",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -796,7 +819,7 @@ try:
                 st.markdown(f"""
                     <p class = 'text'>
                         Visual representation of nanoparticle-based statistics in an image.
-                        A detailed description is provided in the work on the second link below.
+                        A detailed description is provided in the work on the first link below.
                     </p>""", unsafe_allow_html = True)
 
                 currentBLOBs = st.session_state['BLOBs_filter']
