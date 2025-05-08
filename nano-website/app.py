@@ -9,15 +9,16 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import time, datetime
 
-import style, autoscale, nanoStatistics
-import ExponentialApproximation as EA
+import style, autoscale
+import NanoStatistics as NanoStat
+import ExponentialApproximation as ExpApp
+import CustomComponents as CustComp
 
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 
 import traceback
-import base64
     
 
 ### Function ###
@@ -257,14 +258,14 @@ try:
                     }
 
                     # вычисляется только один раз при первом запуске детектирования
-                    helpMatrs, xy2 = EA.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+                    helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
                     # вычисляется только один раз для одного и того же изображения
-                    lm, currentImage = EA.CACHE_PrefilteringPoints(currentImage, params)
+                    lm, currentImage = ExpApp.CACHE_PrefilteringPoints(currentImage, params)
 
                     # вычисляется только один раз для одного набора параметров
                     if st.session_state['parallel']:
-                        BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3_parallel(
+                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
                             currentImage,
                             lm,
                             xy2,
@@ -273,7 +274,7 @@ try:
                             nProc = st.session_state['processes']
                         )
                     else:
-                        BLOBs, BLOBs_params = EA.CACHE_ExponentialApproximationMask_v3(
+                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3(
                             currentImage,
                             lm,
                             xy2,
@@ -352,7 +353,7 @@ try:
                 }
             
                 # Filtering
-                st.session_state['BLOBs_filter'], _ = EA.my_FilterBlobs_change(
+                st.session_state['BLOBs_filter'], _ = ExpApp.my_FilterBlobs_change(
                     st.session_state['BLOBs'],
                     st.session_state['BLOBs_params'],
                     params_filter
@@ -495,268 +496,7 @@ try:
 
             if (st.session_state['comparison']):
                 with st.session_state['imgPlaceholder'].container():                    
-                    def pil_to_base64(image):
-                        buffered = io.BytesIO()
-                        image.save(buffered, format = "PNG")
-                        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-                        return img_str 
-                    
-                    import streamlit.components.v1 as components
-
-                    custom_component = f"""
-                        <!-- HTML структура -->
-                        <div id="imgBox">
-                          <img src="data:image/png;base64,{pil_to_base64(crsImage)}" id="magnifiable-image1" class="default1" draggable="false" alt="">
-                          <img src="data:image/png;base64,{pil_to_base64(st.session_state['imgBLOB'])}" id="magnifiable-image2" class="default2" draggable="false" alt="">
-                        </div>
-                        """\
-                        +\
-                        """
-                        <!-- CSS стили -->
-                        <style>
-                            #imgBox{
-                                resize: both;
-                                position: relative;
-                                margin: 5vw auto;
-                                margin-bottom: 1vw;
-                                width: 1000px;
-                                height: 550px;
-                                overflow: hidden;
-                            }
-
-                            .default1, .default2 {
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                width: 100%;
-                                height: 100%;
-                                background-size: cover;
-                            }
-
-                            .default1{
-                                z-index: 1;
-                            }
-
-                            .default2{
-                                z-index: 0;
-                            }
-
-                            .magnifier-lens {
-                                position: absolute;
-                                border: 1px solid #000;
-                                cursor: crosshair;
-                                box-shadow: 0 0 5px #000;
-                                pointer-events: none;
-                                visibility: hidden;
-                                background-repeat: no-repeat;
-                                z-index: 2;
-                            }
-                        </style>
-
-                        <!-- JavaScript логика -->
-                        <script>
-                            var lastMouseX = 0;
-                            var lastMouseY = 0;
-                            var currentImageElement = null;
-                            var magnifierLens = document.createElement('div');
-                            magnifierLens.classList.add('magnifier-lens');
-                            document.body.appendChild(magnifierLens);
-                            var isLensEnabled = true;
-                            var magnificationFactor = 7;
-                            // Добавленные переменные для фикса съезжания:
-                            var magnifierSize = 200;
-                            var currentBgPosX = 0;
-                            var currentBgPosY = 0;
-
-                            function setupMagnifier(imageElement) {
-                                magnifierLens.style.backgroundRepeat = 'no-repeat';
-                                magnifierLens.style.pointerEvents = 'none';
-                                magnifierLens.style.position = 'absolute';
-                                magnifierLens.style.border = '1px solid #000';
-                                //magnifierLens.style.borderRadius = '50%';
-                                magnifierLens.style.width = magnifierSize + 'px';
-                                magnifierLens.style.height = magnifierSize + 'px';
-                                magnifierLens.style.visibility = 'hidden';
-                                magnifierLens.style.boxShadow = '0 0 5px #000';
-                                magnifierLens.style.cursor = 'crosshair';
-
-                                // Обновленная функция с фиксом позиционирования:
-                                function updateMagnifierSize(deltaY) {
-                                    if (!currentImageElement) return;
-
-                                    // Сохраним текущую позицию мыши относительно изображения
-                                    var bounds = currentImageElement.getBoundingClientRect();
-                                    var mouseX = lastMouseX - bounds.left;
-                                    var mouseY = lastMouseY - bounds.top;
-
-                                    // Сохраним текущую позицию центра линзы в координатах изображения
-                                    var currentCenterX = mouseX;
-                                    var currentCenterY = mouseY;
-
-                                    // Сохраняем текущее смещение фона относительно центра
-                                    var currentBgCenterX = -currentBgPosX + magnifierSize/2;
-                                    var currentBgCenterY = -currentBgPosY + magnifierSize/2;
-
-                                    // Обновили размер линзы
-                                    var oldSize = magnifierSize;
-                                    magnifierSize += deltaY > 0 ? -20 : 20;
-                                    magnifierSize = Math.max(100, Math.min(magnifierSize, 400));
-
-                                    // Обновляем коэффициент увеличения
-                                    var oldMagnification = magnificationFactor;
-                                    magnificationFactor = 2 + (magnifierSize - 100) * (5 - 2) / (400 - 100);
-
-                                    // Обновляем размеры линзы
-                                    magnifierLens.style.width = magnifierSize + 'px';
-                                    magnifierLens.style.height = magnifierSize + 'px';
-
-                                    // Пересчет позиции фона чтобы линза осталась на месте
-                                    var bgCenterX = currentCenterX * magnificationFactor;
-                                    var bgCenterY = currentCenterY * magnificationFactor;
-
-                                    currentBgPosX = -(bgCenterX - magnifierSize/2);
-                                    currentBgPosY = -(bgCenterY - magnifierSize/2);
-
-                                    // Обновляем позицию линзы
-                                    var lensX = mouseX - (magnifierSize / 2);
-                                    var lensY = mouseY - (magnifierSize / 2);
-
-                                    magnifierLens.style.left = (bounds.left + window.pageXOffset + lensX) + 'px';
-                                    magnifierLens.style.top = (bounds.top + window.pageYOffset + lensY) + 'px';
-
-                                    updateLensBackground(currentImageElement);
-                                }
-    
-                                // Новая вспомогательная функция:
-                                function updateLensBackground(imgElement) {
-                                    magnifierLens.style.backgroundImage = `url('${imgElement.src}')`;
-                                    magnifierLens.style.backgroundSize = `${imgElement.width * magnificationFactor}px ${imgElement.height * magnificationFactor}px`;
-                                    magnifierLens.style.backgroundPosition = `${currentBgPosX}px ${currentBgPosY}px`;
-                                }
-
-                                function updateLensMagnification() {
-                                    if (!imageElement || !isLensEnabled) return;
-      
-                                    var bounds = imageElement.getBoundingClientRect();
-                                    currentBgPosX = -((magnifierLens.offsetLeft - bounds.left) * magnificationFactor - magnifierSize / 2);
-                                    currentBgPosY = -((magnifierLens.offsetTop - bounds.top) * magnificationFactor - magnifierSize / 2);
-      
-                                    updateLensBackground(imageElement);
-                                    magnifierLens.offsetHeight;
-                                }
-      
-                                imageElement.addEventListener('mousemove', function(e) {
-                                    if (!isLensEnabled) return;
-                                    magnifierLens.style.visibility = 'visible';
-                                    lastMouseX = e.clientX;
-                                    lastMouseY = e.clientY;
-          
-                                    var bounds = e.target.getBoundingClientRect();
-                                    var mouseX = e.clientX - bounds.left;
-                                    var mouseY = e.clientY - bounds.top;
-      
-                                    var lensX = mouseX - (magnifierSize / 2);
-                                    var lensY = mouseY - (magnifierSize / 2);
-      
-                                    magnifierLens.style.left = (bounds.left + window.pageXOffset + lensX) + 'px';
-                                    magnifierLens.style.top = (bounds.top + window.pageYOffset + lensY) + 'px';
-      
-                                    currentBgPosX = -((mouseX * magnificationFactor) - magnifierSize / 2);
-                                    currentBgPosY = -((mouseY * magnificationFactor) - magnifierSize / 2);
-      
-                                    updateLensBackground(imageElement);
-                                    imageElement.style.cursor = 'none';
-                                    currentImageElement = imageElement;
-                                });
-
-      
-                                imageElement.addEventListener('wheel', function(e) {
-                                    if (!isLensEnabled) return;
-                                    e.preventDefault();
-                                    updateMagnifierSize(e.deltaY);
-                                }, { passive: false });
-    
-                                imageElement.addEventListener('mouseleave', function() {
-                                    magnifierLens.style.visibility = 'hidden';
-                                    imageElement.style.cursor = 'default';
-                                });
-                                let contextMenuHandler = function(e) {
-                                e.preventDefault();
-                                //alert("Контекстное меню заблокировано!");
-                                };
-                                imageElement.addEventListener('contextmenu', contextMenuHandler);
-                            }
-                            function updateLens() {
-                            if (!isLensEnabled || !currentImageElement) return;
-    
-                            // Переключаем изображение
-                            if (currentImageElement === imageElement) {
-                                currentImageElement = imageElement2;
-                            } else {
-                                currentImageElement = imageElement;
-                            }
-    
-                            const bounds = currentImageElement.getBoundingClientRect();
-                            // Используем последние известные координаты мыши
-                            const mouseX = lastMouseX - bounds.left;
-                            const mouseY = lastMouseY - bounds.top;
-    
-                            // Вычисляем новую позицию линзы
-                            const lensX = mouseX - (magnifierSize / 2);
-                            const lensY = mouseY - (magnifierSize / 2);
-    
-                            // Обновляем позицию линзы
-                            magnifierLens.style.left = (bounds.left + window.pageXOffset + lensX) + 'px';
-                            magnifierLens.style.top = (bounds.top + window.pageYOffset + lensY) + 'px';
-    
-                            // Обновляем фон
-                            currentBgPosX = -((mouseX * magnificationFactor) - magnifierSize / 2);
-                            currentBgPosY = -((mouseY * magnificationFactor) - magnifierSize / 2);
-    
-                            magnifierLens.style.backgroundImage = `url('${currentImageElement.src}')`;
-                            magnifierLens.style.backgroundSize = `${currentImageElement.width * magnificationFactor}px ${currentImageElement.height * magnificationFactor}px`;
-                            magnifierLens.style.backgroundPosition = `${currentBgPosX}px ${currentBgPosY}px`;
-                            }
-                            function forceRefreshLens() {
-                            updateLens();
-                            }
-                            var imageElement = document.getElementById('magnifiable-image1');
-                            var imageElement2 = document.getElementById('magnifiable-image2');
-                            setupMagnifier(imageElement);
-                            setupMagnifier(imageElement2);
-                            document.addEventListener('mousedown', function(e) {
-                                if (e.button === 2) {
-                                    e.preventDefault();
-                                    forceRefreshLens();
-                                }
-                            });
-
-                            let isFirstImageOnTop = true;
-                            document.addEventListener('mousedown', function(e) {
-                                if (e.button === 1) {
-                                    if (isFirstImageOnTop) {
-                                        imageElement.style.zIndex = 0;
-                                        imageElement2.style.zIndex = 1;
-                                    } else {
-                                        imageElement.style.zIndex = 1;
-                                        imageElement2.style.zIndex = 0;
-                                    }
-                                    isFirstImageOnTop = !isFirstImageOnTop;
-                                }
-                            });
-
-                            var imageElement = document.getElementById('magnifiable-image1');
-                            var imageElement2 = document.getElementById('magnifiable-image2');
-                            setupMagnifier(imageElement);
-                            setupMagnifier(imageElement2);
-                        </script>
-                        """
-
-                    components.html(
-                        custom_component,
-                        height = 800,
-                        #scrolling = True
-                    )
+                    CustComp.img_box(crsImage, st.session_state['imgBLOB'])
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
@@ -1047,7 +787,7 @@ try:
                         currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
 
                     stepSize = 10
-                    uniformityMap = nanoStatistics.uniformity(
+                    uniformityMap = NanoStat.uniformity(
                         currentBLOBs,
                         st.session_state['sizeImage'],
                         stepSize
@@ -1086,7 +826,7 @@ try:
                 if st.session_state['scale'] is not None:         
                     currentBLOBs = currentBLOBs * st.session_state['scale']
 
-                fullDist, minDist = nanoStatistics.euclideanDistance(currentBLOBs) 
+                fullDist, minDist = NanoStat.euclideanDistance(currentBLOBs) 
 
                 db21, db22, db23 = st.columns([1, 1, 1])
                 st.markdown(f"""
@@ -1101,7 +841,7 @@ try:
                     emptySubareas = np.zeros_like(x, dtype = 'float')
 
                     for i, size in enumerate(x):
-                        temp = nanoStatistics.uniformity(
+                        temp = NanoStat.uniformity(
                             st.session_state['BLOBs_filter'],
                             st.session_state['sizeImage'],
                             size
@@ -1172,7 +912,7 @@ try:
                 # ?
                 with db23.container(border = True, height = heightCol):                
                     x = np.arange(5, 100, 1)
-                    averageDensity = nanoStatistics.averageDensityInNeighborhood(x, fullDist)
+                    averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
 
                     if (st.session_state['scale'] is not None):
                         fig = px.bar(x = x * st.session_state['scale'], y = averageDensity)
