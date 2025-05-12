@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>NanoStatistics.py</StartupFile>
+    <StartupFile>autoscale.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

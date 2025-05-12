@@ -13,7 +13,7 @@ def pil_to_base64(image):
     return img_str 
    
 
-def img_box(img1, img2):
+def img_box(img1, img2, imgSize):
     html_part = f"""
         <div id="imgBox">
             <img src="data:image/png;base64,{pil_to_base64(img1)}" id="magnifiable-image1" class="default1" draggable="false" alt="">
@@ -264,6 +264,5 @@ def img_box(img1, img2):
 
     return components.html(
         html_part + css_part + JS_part,
-        height = 800,
-        #scrolling = True
+        height = imgSize[0],
     )

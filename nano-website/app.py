@@ -6,7 +6,7 @@ import streamlit as st
 import io, csv
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import time, datetime
 
 import style, autoscale
@@ -23,11 +23,10 @@ import traceback
 
 ### Function ###
     
-help_str = "be added soon"
+help_str = "hint be added soon"
 
-colorRGBA = (0, 0, 192, 64)
-colorRGBA_str = 'rgba(0,0,255,0.25)'
-colorRGB = (192, 192, 255)
+colorRGBA_str = 'rgb(150, 225, 150)'
+colorRGB = (150, 225, 150)
 
 def load_default_session_state(_dispToast = False):
     if _dispToast:
@@ -41,10 +40,10 @@ def load_default_session_state(_dispToast = False):
     st.session_state['imgPlaceholder'] = None
 
     st.session_state['settingDefault'] = True
+    st.session_state['param-pre-1'] = 10
     st.session_state['param1'] = 10
     st.session_state['param2'] = (1.0, 10.0)
     st.session_state['param3'] = 0.65
-    st.session_state['param-pre-1'] = 10
     st.session_state['parallel'] = True
     st.session_state['processes'] = 6
             
@@ -71,7 +70,9 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['calcStatictic'] = False
 
-    #st.session_state['defImage'] = None
+    st.session_state['equalize'] = False
+    st.session_state['invers'] = False    
+    st.session_state['reprocess'] = True
 
 def get_session_state():
     return str(st.session_state)
@@ -93,7 +94,7 @@ def dialog_exception(_exception):
         "CRASH !!!\n"
     print(err_msg)
 
-    if st.button("Rerun page"):
+    if st.button("Rerun page", type = "primary"):
         st.session_state['rerun'] = True
         st.rerun()
 
@@ -103,12 +104,15 @@ def dialog_exception(_exception):
 def update_calcStatictic():                
     st.session_state['calcStatictic'] = True
 
+def update_detected():
+    st.session_state['detected'] = True
+
 
 ### Main app ###
 try:
     # Loading CSS styles
     st.set_page_config(page_title = "Nanoparticles", layout = "wide")
-    style.set_style()
+    style.set_style(colorRGBA_str)
     
     # Initial loading of session states
     if 'rerun' not in st.session_state:
@@ -142,324 +146,334 @@ try:
 
     ## TAB 1
     with tabDetect:
-        colImage, colSetting = st.columns([6, 2])
-
         imgPlaceholder = None
+        
+        st.subheader("Upload SEM image")            
+        uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff","png", "jpg", "jpeg" ])
 
-        # Viewing images
-        with colImage:
-            st.subheader("Upload SEM image")
-            
-            uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff","png", "jpg", "jpeg" ])
-            
-            # if st.button("Use example SEM image"):
-            #     imageIndex = np.random.randint(low = 1, high = 5, size = 1)
-            #     st.session_state['defImage'] = r".\nano-website\images\\" + str(imageIndex[0]) + ".tif"
-            
-            # if st.session_state['defImage'] is not None:
-            #     uploadedImg = st.session_state['defImage']
+        if uploadedImg is None:
+            load_default_session_state()
+        else:
+            crsImage = Image.open(uploadedImg).convert("RGB")
 
-            if uploadedImg is None:
+            if (st.session_state['uploadedImg'] != crsImage):
                 load_default_session_state()
-            else:
-                st.session_state['imgUpload'] = True
-                crsImage = Image.open(uploadedImg)
-                grayImage = np.array(crsImage.convert('L'), dtype = 'uint8')               
+                st.session_state['uploadedImg'] = crsImage
 
-                if (not np.array_equal(st.session_state['uploadedImg'], grayImage)):
-                    st.session_state['uploadedImg'] = grayImage
-                    st.session_state['detected'] = False
-                    st.session_state['comparison'] = False
-                    st.session_state['calcStatictic'] = False
-                    st.session_state['imgBLOB'] = None
-                    st.session_state['scale'] = None
-                    st.session_state['scaleData'] = None
+            st.session_state['imgUpload'] = True    
         
-        
+        if (st.session_state['imgUpload']):
+            colImage, colSetting = st.columns([6, 2])
+
+            with colImage:
                 if (st.session_state['imgPlaceholder'] is None):
                     st.session_state['imgPlaceholder'] = st.empty()
 
                 if (st.session_state['imgBLOB'] is not None):
-                    st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
+                    if (not st.session_state['comparison']):
+                        st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
+            # END left side
 
-        # END left side        
-
-        # Detection settings and results
-        with colSetting:        
-            st.checkbox("Use default settings?",
-                disabled = not st.session_state['imgUpload'],
-                key = 'settingDefault',
-                help = "You need to upload an SEM image"
-            )
-    
-            # Preprocessing and detection settings       
-            st.subheader("Detection settings",
-                help = "After changing the value, it is necessary to re-detect the nanoparticles"
-            )    
-        
-            with st.container(border = True):
-                st.slider("Nanoparticle brightness",
-                    key = 'param-pre-1',
-                    disabled = st.session_state['settingDefault'],
-                    help = "The average brightness of nanoparticles and its surroundings in the image"
+            # Detection settings and results
+            with colSetting:        
+                st.checkbox("Use default settings?",
+                    disabled = not st.session_state['imgUpload'],
+                    key = 'settingDefault'
                 )
 
-                l, r = st.columns([3,1])
-                l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
-
-                r.number_input(label = "not_visibility", min_value = 1, max_value  = 50, step = 1,
-                    format = "%i", placeholder = "Processes",
-                    key = 'processes',
-                    disabled = st.session_state['settingDefault'],
-                    label_visibility = 'collapsed'
-                )
-
-                warningPlaceholder = st.empty()
-                if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
-                    if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['parallel']]):
-                        warningPlaceholder.warning("""
-                            The detection settings have been changed.
-                            To accept the new settings, click the button "Nanoparticles detection"! 
-                        """, icon = ":material/warning:")
-        
-            pushDetectButton = st.button("Nanoparticles detection",
-                use_container_width = True,
-                disabled = not st.session_state['imgUpload'],
-                help = help_str
-            )
+                # Preprocessing settings
+                with st.expander("Preprocessing settings", expanded = not st.session_state['detected'], icon = ":material/more_vert:"): 
+                    st.toggle("Invers image", key = 'invers', help = help_str)
                 
-            # Detecting
-            if pushDetectButton:
-                warningPlaceholder.empty()
-                with st.spinner("Nanoparticles detection", show_time = True):
-                    timeStart = time.time()
+                    st.toggle("Equalize histogram", key = 'equalize', help = help_str)
+
+                    st.toggle("Display reprocessing image", key = 'reprocess', help = help_str)
                 
-                    st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(grayImage)
-               
-                    currentImage = np.copy(grayImage) 
-         
-                    lowerBound = autoscale.findBorder(grayImage)        
+                    temp = crsImage
+                    lowerBound = autoscale.findBorder(np.array(crsImage.convert('L'), dtype = 'uint8'))
                     if (lowerBound is not None):
-                        currentImage = currentImage[:lowerBound, :]
+                        temp = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
 
-                    st.session_state['sizeImage'] = currentImage.shape
-
-                    params = {
-                        "sz_med" : 4,   # для предварительной обработки
-                        "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
-                        "thr_br": float(st.session_state['param-pre-1']),   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
-                        "min_dist": 4,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
-                        "wsize": 9,     # размер окна аппроксимации
-                        "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
-                        "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
-                        "msk": 3,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
-                        "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
-                        "npar": 2       # число параметров аппроксимации
-                    }
-
-                    # вычисляется только один раз при первом запуске детектирования
-                    helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
-
-                    # вычисляется только один раз для одного и того же изображения
-                    lm, currentImage = ExpApp.CACHE_PrefilteringPoints(currentImage, params)
-
-                    # вычисляется только один раз для одного набора параметров
-                    if st.session_state['parallel']:
-                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
-                            currentImage,
-                            lm,
-                            xy2,
-                            helpMatrs,
-                            params,
-                            nProc = st.session_state['processes']
-                        )
-                    else:
-                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3(
-                            currentImage,
-                            lm,
-                            xy2,
-                            helpMatrs,
-                            params
-                        )
-            
-                    st.session_state['BLOBs'] = BLOBs
-                    st.session_state['BLOBs_params'] = BLOBs_params
-                    st.session_state['detected'] = True
-                
-                    st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
-                    st.session_state['detectedParticles'] = BLOBs.shape[0]
-
-                    st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['parallel']]
-        
-            # Detection results
-            if st.session_state['detected']:
-                time = st.session_state['timeDetection']
-                st.markdown(f"""
-                    <p class = 'text'>
-                        Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({time//60}m : {time%60:02}s)
-                    </p>""", unsafe_allow_html = True
-                )
-
-            # Warning about not correctly detection results 
-            if (st.session_state['detected'] and st.session_state['detectedParticles'] < 1):            
-                st.warning("""
-                    Nanoparticles not found!
-                    Please change the detection settings or upload another SEM image!
-                """, icon = ":material/warning:")
-        
-            # Action with correctly detection results
-            if (st.session_state['detected'] and st.session_state['detectedParticles'] > 0):
-                # Filtration settings
-                st.subheader("Filtration settings",
-                    help = "Choosing among the detected nanoparticles those that meet the relevant criteria"
-                )
-            
-                with st.container(border = True):
-                    st.slider("Nanoparticle center brightness",
-                        key = 'param1',
-                        value = 10,
+                    if (st.session_state['invers']):
+                        temp = ImageOps.invert(temp)
+                    
+                    if (st.session_state['equalize']):
+                        temp = ImageOps.equalize(temp)                    
+                    
+                    if (lowerBound is not None):
+                        newImg = Image.new('RGB', crsImage.size)
+                        newImg.paste(temp, (0,0))
+                        newImg.paste(crsImage.crop((0, lowerBound, crsImage.size[0], crsImage.size[1])), (0,lowerBound))
+                        crsImage = newImg
+    
+                # Detection settings       
+                with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
+                    st.slider("Nanoparticle brightness",
+                        key = 'param-pre-1',
                         disabled = st.session_state['settingDefault'],
-                        help = "Brightness in the central pixel of the nanoparticle"
+                        help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
 
-                    st.slider("Range of nanoparticle diameter, nm",
-                        key = 'param2',
-                        value = (1.0, 10.0),
-                        min_value = 1.0,
-                        step = 0.1,
-                        max_value = 12.0,
-                        disabled = st.session_state['settingDefault']
+                    l, r = st.columns([3,1])
+                    l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
+
+                    r.number_input(label = "not_visibility",
+                        min_value = 1,
+                        max_value = 8,
+                        step = 1,
+                        format = "%i",
+                        placeholder = "Processes",
+                        key = 'processes',
+                        disabled = st.session_state['settingDefault'],
+                        label_visibility = 'collapsed'
                     )
 
-                    st.slider("Nanoparticle reliability",
-                        key = 'param3',
-                        value = 0.65,
-                        min_value = 0.0,
-                        step = 0.01,
-                        max_value = 1.0,
-                        disabled = st.session_state['settingDefault'],
-                        help = "The higher the reliability, the clearer the nanoparticle is against the background of the image"
+                    warningPlaceholder = st.empty()
+                    if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
+                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['parallel']]):
+                            warningPlaceholder.warning("""
+                                The detection settings have been changed.
+                                To accept the new settings, click the button "Nanoparticles detection"! 
+                            """, icon = ":material/warning:")
+        
+                    pushDetectButton = st.button("Nanoparticles detection",
+                        use_container_width = True,
+                        disabled = not st.session_state['imgUpload'],
+                        help = help_str,
+                        on_click = update_detected
                     )
                 
-                divider = 1
-                if st.session_state['scale'] is not None:
-                    divider = st.session_state['scale']
+                # Detecting
+                if pushDetectButton:
+                    st.session_state['detected'] = False
+                    warningPlaceholder.empty()
 
-                params_filter = {
-                    "thr_c0": st.session_state['param1'],
-                    "min_thr_d": st.session_state['param2'][0] / divider,   
-                    "max_thr_d": st.session_state['param2'][1] / divider, 
-                    "thr_error": 1 - st.session_state['param3'], 
-                }
+                    with st.spinner("Nanoparticles detection", show_time = True):
+                        timeStart = time.time()
+                    
+                        currentImage = np.array(crsImage.convert('L'), dtype = 'uint8')   
+                
+                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(currentImage)
+                    
+                        lowerBound = autoscale.findBorder(currentImage)        
+                        if (lowerBound is not None):
+                            currentImage = currentImage[:lowerBound, :]
+
+                        st.session_state['sizeImage'] = currentImage.shape
+
+                        params = {
+                            "sz_med" : 4,   # для предварительной обработки
+                            "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
+                            "thr_br": float(st.session_state['param-pre-1']),   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
+                            "min_dist": 4,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
+                            "wsize": 9,     # размер окна аппроксимации
+                            "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
+                            "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                            "msk": 3,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                            "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
+                            "npar": 2       # число параметров аппроксимации
+                        }
+
+                        # вычисляется только один раз при первом запуске детектирования
+                        helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+
+                        # вычисляется только один раз для одного и того же изображения
+                        lm, currentImage = ExpApp.CACHE_PrefilteringPoints(currentImage, params)
+
+                        # вычисляется только один раз для одного набора параметров
+                        if st.session_state['parallel']:
+                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
+                                currentImage,
+                                lm,
+                                xy2,
+                                helpMatrs,
+                                params,
+                                nProc = st.session_state['processes']
+                            )
+                        else:
+                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3(
+                                currentImage,
+                                lm,
+                                xy2,
+                                helpMatrs,
+                                params
+                            )
             
-                # Filtering
-                st.session_state['BLOBs_filter'], _ = ExpApp.my_FilterBlobs_change(
-                    st.session_state['BLOBs'],
-                    st.session_state['BLOBs_params'],
-                    params_filter
-                )
-                st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
+                        st.session_state['BLOBs'] = BLOBs
+                        st.session_state['BLOBs_params'] = BLOBs_params
+                        st.session_state['detected'] = True
+                
+                        st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
+                        st.session_state['detectedParticles'] = BLOBs.shape[0]
 
-
-                if (st.session_state['filteredParticles'] < 1):
-                    st.warning("""
-                        There are no nanoparticles satisfying the filtration settings!
-                        Please change the filtering settings!
-                    """, icon = ":material/warning:")
-                else:                    
-                    # Info about filtered nanoparticles
+                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['parallel']]
+        
+                # Detection results
+                if st.session_state['detected']:
+                    time = st.session_state['timeDetection']
                     st.markdown(f"""
                         <p class = 'text'>
-                            Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
+                            Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({time//60}m : {time%60:02}s)
                         </p>""", unsafe_allow_html = True
                     )
 
-                    #
-                    st.subheader("Visualization and saving results")
-
-                    # Displaying the scale
-                    st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
-                    if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
+                    # Warning about not correctly detection results 
+                    if (st.session_state['detectedParticles'] < 1):            
                         st.warning("""
-                            The image scale could not be determined automatically!
-                            Using default scale: 1.0 nm/px
+                            Nanoparticles not found!
+                            Please change the detection settings or upload another SEM image!
                         """, icon = ":material/warning:")
+        
+                # Action with correctly detection results
+                if (st.session_state['detected'] and st.session_state['detectedParticles'] > 0):
+                    # Filtration settings
+                    with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
+                        st.slider("Nanoparticle center brightness",
+                            key = 'param1',
+                            value = 10,
+                            disabled = st.session_state['settingDefault'],
+                            help = "Brightness in the central pixel of the nanoparticle"
+                        )
 
-                    # Slider for comparing the results before and after detection
-                    st.toggle("Comparison mode", key = 'comparison', help = help_str)
+                        st.slider("Range of nanoparticle diameter, nm",
+                            key = 'param2',
+                            value = (1.0, 10.0),
+                            min_value = 1.0,
+                            step = 0.1,
+                            max_value = 12.0,
+                            disabled = st.session_state['settingDefault']
+                        )
 
-                    # Saving
-                    selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
+                        st.slider("Nanoparticle reliability",
+                            key = 'param3',
+                            value = 0.65,
+                            min_value = 0.0,
+                            step = 0.01,
+                            max_value = 1.0,
+                            disabled = st.session_state['settingDefault'],
+                            help = "The higher the reliability, the clearer the nanoparticle is against the background of the image"
+                        )
+                
+                    divider = 1
+                    if st.session_state['scale'] is not None:
+                        divider = st.session_state['scale']
 
-                    option_saving = {
-                        0: "Particles on clear background (*.tif)",
-                        1: "Particles on EM-image (*.tif)",
-                        2: "Info about particles (*.csv)",
+                    params_filter = {
+                        "thr_c0": st.session_state['param1'],
+                        "min_thr_d": st.session_state['param2'][0] / divider,   
+                        "max_thr_d": st.session_state['param2'][1] / divider, 
+                        "thr_error": 1 - st.session_state['param3'], 
                     }
-
-                    selection = selectboxCol.selectbox(
-                        "What results should be saved?",
-                        index = 1,
-                        placeholder = "Select options...",
-                        options = option_saving.keys(),
-                        format_func = lambda option: option_saving[option]
+            
+                    # Filtering
+                    st.session_state['BLOBs_filter'], _ = ExpApp.my_FilterBlobs_change(
+                        st.session_state['BLOBs'],
+                        st.session_state['BLOBs_params'],
+                        params_filter
                     )
+                    st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
 
-                    fileResult = io.BytesIO()
-                    fileResultName = 'None'
-                    button_download_disabled = False
+                    if (st.session_state['filteredParticles'] < 1):
+                        st.warning("""
+                            There are no nanoparticles satisfying the filtration settings!
+                            Please change the filtering settings!
+                        """, icon = ":material/warning:")
+                    else:                    
+                        # Info about filtered nanoparticles
+                        st.markdown(f"""
+                            <p class = 'text'>
+                                Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
+                            </p>""", unsafe_allow_html = True
+                        )
+                                        
+                        with st.expander("Visualization and saving results", expanded = True, icon = ":material/display_settings:"):
+                            # Displaying the scale
+                            st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
+                            if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
+                                st.warning("""
+                                    The image scale could not be determined automatically!
+                                    Using default scale: 1.0 nm/px
+                                """, icon = ":material/warning:")                    
 
-                    match selection:
-                        case 0:
-                            temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
-                            draw = ImageDraw.Draw(temp)
-                            for BLOB in st.session_state['BLOBs_filter']:                
-                                y, x, d = BLOB; r = d/2          
-                                draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                            # Slider for comparing the results before and after detection
+                            st.toggle("Comparison mode", key = 'comparison', help = help_str)
 
-                            temp.save(fileResult, format = 'png')
-                            fileResultName = "particls-" + Path(uploadedImg.name).stem + ".tif"
+                            # Saving
+                            selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
 
-                        case 1:
-                            imgBLOB = crsImage.convert("RGB")
-                            draw = ImageDraw.Draw(imgBLOB)                            
-                            for BLOB in st.session_state['BLOBs_filter']:                
-                                y, x, d = BLOB; r = d/2
-                                draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                            option_saving = {
+                                0: "Particles on clear background (*.tif)",
+                                1: "Particles on EM-image (*.tif)",
+                                2: "Particles characteristics (*.csv)",
+                            }
 
-                            imgBLOB.save(fileResult, format = 'png')
-                            fileResultName = "particls+image-" + Path(uploadedImg.name).stem + ".tif"
+                            selection = selectboxCol.selectbox(
+                                "What results should be saved?",
+                                index = 1,
+                                placeholder = "Select options...",
+                                options = option_saving.keys(),
+                                format_func = lambda option: option_saving[option]
+                            )
 
-                        case 2:
-                            fileResult = io.StringIO()
+                            fileResult = io.BytesIO()
+                            fileResultName = 'None'
+                            button_download_disabled = False
 
-                            temp_writer = csv.writer(fileResult, delimiter = ';')
-                            if st.session_state['scale'] is not None: 
-                                temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
-                            else:
-                               temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
+                            match selection:
+                                case 0:
+                                    temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
+                                    draw = ImageDraw.Draw(temp)
+                                    for BLOB in st.session_state['BLOBs_filter']:                
+                                        y, x, d = BLOB; r = d/2          
+                                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+
+                                    temp.save(fileResult, format = 'png')
+                                    fileResultName = "particls-" + Path(uploadedImg.name).stem + ".tif"
+
+                                case 1:
+                                    imgBLOB = st.session_state['uploadedImg'].convert("RGB")
+                                    draw = ImageDraw.Draw(imgBLOB)                            
+                                    for BLOB in st.session_state['BLOBs_filter']:                
+                                        y, x, d = BLOB; r = d/2
+                                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+
+                                    imgBLOB.save(fileResult, format = 'png')
+                                    fileResultName = "particls+image-" + Path(uploadedImg.name).stem + ".tif"
+
+                                case 2:
+                                    fileResult = io.StringIO()
+
+                                    temp_writer = csv.writer(fileResult, delimiter = ';')
+                                    if st.session_state['scale'] is not None: 
+                                        temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
+                                    else:
+                                       temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
                     
-                            temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
-                            temp_writer.writerows(st.session_state['BLOBs_filter'])
+                                    temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
+                                    temp_writer.writerows(st.session_state['BLOBs_filter'])
 
-                            fileResultName = "particls_info-" + Path(uploadedImg.name).stem + ".csv"
+                                    fileResultName = "particls_info-" + Path(uploadedImg.name).stem + ".csv"
 
-                        case _:
-                            button_download_disabled = True
+                                case _:
+                                    button_download_disabled = True
 
 
-                    buttonCol.download_button(
-                        label = "",
-                        icon = ":material/download:",
-                        data = fileResult.getvalue(),
-                        file_name = fileResultName,
-                        disabled = button_download_disabled
-                    )
-        # END right side
+                            buttonCol.download_button(
+                                label = "",
+                                icon = ":material/download:",
+                                data = fileResult.getvalue(),
+                                file_name = fileResultName,
+                                disabled = button_download_disabled
+                            )
+            # END right side
 
         # Display source image by st.image
         if (st.session_state['imgUpload']):
-            viewImage = crsImage.convert("RGB")
+            if (st.session_state['reprocess']):
+                viewImage = crsImage
+            else:
+                viewImage = st.session_state['uploadedImg'].copy()
+
             draw = ImageDraw.Draw(viewImage)
 
             if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
@@ -496,7 +510,11 @@ try:
 
             if (st.session_state['comparison']):
                 with st.session_state['imgPlaceholder'].container():                    
-                    CustComp.img_box(crsImage, st.session_state['imgBLOB'])
+                    CustComp.img_box(
+                        st.session_state['uploadedImg'],
+                        st.session_state['imgBLOB'],
+                        st.session_state['sizeImage']
+                    )
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
