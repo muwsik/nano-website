@@ -7,6 +7,7 @@ import streamlit as st
 
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def findBorder(c_fullImage, thr = 0.5):    
@@ -87,6 +88,42 @@ if __name__ == "__main__":
     # Высота только изображения (без нижней сноски)
     lowerBound = findBorder(grayImage)
     print(f"Граница: {lowerBound} px")
+
+
+    fig = make_subplots(
+        rows=1, 
+        cols=2, 
+        column_widths=[0.7, 0.3],  # ширина колонок (70% и 30%)
+        horizontal_spacing=0.05,     # расстояние между графиками
+        specs=[[{"type": "heatmap"}, {"type": "scatter"}]]  # типы графиков
+    )
+
+    # Добавляем изображение (как heatmap) в первую колонку
+    fig.add_trace(
+        go.Heatmap(z=grayImage, colorscale="Viridis", showscale=False),
+        row=1, col=1
+    )
+    
+    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64)
+    # Добавляем Scatter во вторую колонку
+    fig.add_trace(
+        go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
+        row=1, col=2
+    )
+
+    # Настраиваем оси и внешний вид
+    fig.update_layout(
+        title="Изображение + график справа",
+        xaxis_title="X (изображение)",
+        yaxis_title="Y (изображение)",
+        xaxis2_title="X (график)",
+        yaxis2_title="Y (график)",
+        width=800,  # общая ширина фигуры
+        height=400, # высота
+    )
+
+    fig.show()
+
 
     if not (lowerBound is None):
         # Сноска

@@ -62,7 +62,7 @@ def load_default_session_state(_dispToast = False):
     
     st.session_state['scale'] = None
     st.session_state['scaleData'] = None
-    st.session_state['displayScale'] = False
+    st.session_state['displayScale'] = True
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
@@ -156,7 +156,7 @@ try:
         if uploadedImg is None:
             load_default_session_state()
         else:
-            crsImage = Image.open(uploadedImg).convert("RGB")
+            crsImage = Image.open(uploadedImg).convert("L")
 
             if (st.session_state['uploadedImg'] != crsImage):
                 load_default_session_state()
@@ -191,17 +191,17 @@ try:
                 # параметры в пикселях
                 params = {
                     # размер окна медианного фильтра
-                    "sz_med" : 10,
+                    "sz_med" : 4,
                     # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
-                    "sz_th":  4,
+                    "sz_th":  6,
                     # порог яркости для отбрасывания лок. максимумов
                     "thr_br": float(st.session_state['param-pre-1']),   
                     # минимальное расстояние между локальными максимумами при их поиске 
                     "min_dist": 4,
                     # размер окна аппроксимации
-                    "wsize": 9,        
+                    "wsize": 11,        
                     # возможные радиусы наночастиц в пикселях
-                    "rs": np.arange(1.0, 7.0, 0.1), 
+                    "rs": np.arange(0.5, 6.1, 0.1), 
                     # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
                     "best_mode": 3, 
                     # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
@@ -213,21 +213,20 @@ try:
                 }
                         
                 # параметры адаптированные к масштабу изображения
-                if (st.session_state['scale'] is not None):
-                    # params['sz_med'] = int(params['sz_med'] / st.session_state['scale'])
+                # if (st.session_state['scale'] is not None):
+                #     params['sz_med'] = int(params['sz_med'] / st.session_state['scale'])
 
-                    params['sz_th'] = int(params['sz_th'] / st.session_state['scale'])
-                    params['min_dist'] = int(params['min_dist'] / st.session_state['scale'])
+                #     params['sz_th'] = int(params['sz_th'] / st.session_state['scale'])
+                #     params['min_dist'] = int(params['min_dist'] / st.session_state['scale'])
 
-                    params['wsize'] = int(params['wsize'] / st.session_state['scale'])
-                    if (params['wsize'] % 2 == 0):
-                        params['wsize'] = params['wsize'] - 1
+                #     params['wsize'] = int(params['wsize'] / st.session_state['scale'])
+                #     if (params['wsize'] % 2 == 0):
+                #         params['wsize'] = params['wsize'] - 1
                             
-                    minR = (0.5 / st.session_state['scale'])
-                    maxR = (6.0 / st.session_state['scale'])
-                    stepR = (0.1 / st.session_state['scale'])
-                    params['rs'] = np.arange(minR, maxR, stepR) 
-                    st.write(params)
+                #     minR = (0.5 / st.session_state['scale'])
+                #     maxR = (6.0 / st.session_state['scale'])
+                #     stepR = (0.1 / st.session_state['scale'])
+                #     params['rs'] = np.arange(minR, maxR, stepR) 
 
                 # Preprocessing settings
                 with st.expander("Preprocessing settings", expanded = not st.session_state['detected'], icon = ":material/more_vert:"): 
@@ -239,33 +238,80 @@ try:
 
                     st.toggle(f"Top-Hat transform ({params['sz_th']} px)", key = 'top-hat', help = help_str)
 
-                    st.toggle("Display reprocessing image", key = 'reprocess', help = help_str)
-
-                    temp = crsImage
-                    lowerBound = autoscale.findBorder(np.array(crsImage.convert('L'), dtype = 'uint8'))
-                    if (lowerBound is not None):
-                        temp = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
-
-                    if (st.session_state['invers']):
-                        temp = ImageOps.invert(temp)
+                    st.toggle("Display preprocessing image", key = 'reprocess', help = help_str)
                     
-                    if (st.session_state['equalize']):
-                        temp = ImageOps.equalize(temp)                    
+                    with st.spinner("Preprocessing image...", show_time = True):
+                        temp = crsImage
+
+                        lowerBound = autoscale.findBorder(np.array(crsImage.convert('L'), dtype = 'uint8'))
+                        if (lowerBound is not None):
+                            temp = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
+
+                        data = np.array(temp.convert('L'), dtype = 'uint8').flatten()
+                        counts, _ = np.histogram(data, bins = np.arange(0, 255, 1))
+                        counts = counts / np.sum(counts)
+
+                        cumSum = 0
+                        typeImage = None
+                        for i, j in enumerate(counts):
+                            cumSum = cumSum + j
+                            if (cumSum >= 0.5):
+                                if (i <= 127):
+                                    typeImage = 'SEM'
+                                else: typeImage = 'TEM'
+                                break
+                            
+                        if typeImage == 'TEM':
+                            temp = ImageOps.invert(temp)
+                            st.info("Image was automatically inverted", icon = ":material/priority_high:")
+
+                        if (st.session_state['invers']):
+                            temp = ImageOps.invert(temp)
                     
-                    temp_array = np.array(temp.convert('L'), dtype = 'uint8')
-                    if (st.session_state['median']):
-                        temp_array = ExpApp.PreprocessingMedian(temp_array, params['sz_med'])
+                        if (st.session_state['equalize']):
+                            temp = ImageOps.equalize(temp)                    
+                    
+                        temp_array = np.array(temp.convert('L'), dtype = 'uint8')
+                        if (st.session_state['median']):
+                            temp_array = ExpApp.PreprocessingMedian(temp_array, params['sz_med'])
                         
-                    if (st.session_state['top-hat']):
-                        temp_array = ExpApp.PreprocessingTopHat(temp_array, params['sz_th'])
+                        if (st.session_state['top-hat']):
+                            temp_array = ExpApp.PreprocessingTopHat(temp_array, params['sz_th'])
 
-                    temp = Image.fromarray(temp_array)
+                        temp = Image.fromarray(temp_array)
 
-                    if (lowerBound is not None):
-                        newImg = Image.new('RGB', crsImage.size)
-                        newImg.paste(temp, (0,0))
-                        newImg.paste(crsImage.crop((0, lowerBound, crsImage.size[0], crsImage.size[1])), (0,lowerBound))
-                        crsImage = newImg
+                        if (lowerBound is not None):
+                            newImg = Image.new('RGB', crsImage.size)
+                            newImg.paste(temp, (0,0))
+                            newImg.paste(crsImage.crop((0, lowerBound, crsImage.size[0], crsImage.size[1])), (0,lowerBound))
+                            crsImage = newImg
+
+                    # with st.container(border = True):                
+                    #     data = np.array(temp.convert('L'), dtype = 'uint8').flatten()
+
+                    #     fig = ff.create_distplot(
+                    #         [data],
+                    #         [''], bin_size = 1, histnorm = 'probability',
+                    #         colors = ['blue'], show_curve = False, show_rug = False
+                    #     )
+
+                    #     x = np.sort(data)
+                    #     y = np.arange(1, len(x)+1) / len(x)
+
+                    #     fig.add_trace(go.Scatter(
+                    #         x=x,
+                    #         y=y,
+                    #         mode='lines',
+                    #         line=dict(color='red', width=2)
+                    #     ))
+
+                    #     fig.update_traces(
+                    #         marker_color = colorRGBA_str,
+                    #         marker_line_color = 'blue',
+                    #         marker_line_width = 1,  
+                    #     )
+
+                    #     st.plotly_chart(fig, use_container_width = True)
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
@@ -324,9 +370,6 @@ try:
 
                         st.session_state['sizeImage'] = currentImage.shape
                         
-                        
-
-
                         # вычисляется только один раз при первом запуске детектирования
                         helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
@@ -561,12 +604,12 @@ try:
 
             st.session_state['imgBLOB'] = viewImage
 
-            if (st.session_state['comparison']):
+            if (st.session_state['comparison'] | st.session_state['reprocess']):
                 with st.session_state['imgPlaceholder'].container():                    
                     CustComp.img_box(
                         st.session_state['uploadedImg'],
                         st.session_state['imgBLOB'],
-                        st.session_state['sizeImage']
+                        (1280, 980)# st.session_state['sizeImage']
                     )
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
@@ -769,7 +812,6 @@ try:
                             maxDiameterInColumn = minDiameterInColumn + step
 
                             boolIndexSelectedBLOBs = (diameter_nm >= minDiameterInColumn) & (diameter_nm <= maxDiameterInColumn)
-
                 # END db11
 
                 # Nanoparticle parameters
@@ -846,7 +888,6 @@ try:
                         <div class = 'text'>
                             Mass: <b>{massParticls/imageArea:0.2e} ng/nm<sup>2</sup></b> 
                         </div>""", unsafe_allow_html = True)                        
-                                    
                 # END db12
 
                 # Heatmap of particle count
@@ -1014,6 +1055,7 @@ try:
 
                     st.plotly_chart(fig, use_container_width = True)
                 # END db23
+                
 
     st.markdown("""
         <div class = 'cite'> <b>How to cite</b>:

@@ -730,12 +730,13 @@ def CACHE_HelpMatricesNew(ñ_wsize, ñ_rs):
 
 @st.cache_data(show_spinner = False)
 def CACHE_PrefilteringPoints(ñ_img, c_params):
-    img_med = PreprocessingMedian(ñ_img, c_params['sz_med'])
-    img_med_th = PreprocessingTopHat(img_med, c_params['sz_th']) 
+    # img_med = PreprocessingMedian(ñ_img, c_params['sz_med'])
+    # img_med_th = PreprocessingTopHat(img_med, c_params['sz_th']) 
     
-    lm, _ = PrefilteringPoints(img_med_th, c_params['min_dist'], c_params['thr_br'])
+    lm, _ = PrefilteringPoints(ñ_img, c_params['min_dist'], c_params['thr_br'])
+    print(f"points: {_}")
 
-    return lm, img_med_th
+    return lm, ñ_img
 
 @st.cache_data(show_spinner = False)
 def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_params, c_prn = False):
