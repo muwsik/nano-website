@@ -42,7 +42,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['settingDefault'] = True
     st.session_state['param-pre-1'] = 10
     st.session_state['param1'] = 10
-    st.session_state['param2'] = (1.0, 10.0)
+    st.session_state['param2'] = (0.5, 10.0)
     st.session_state['param3'] = 0.65
     st.session_state['parallel'] = True
     st.session_state['processes'] = 6
@@ -72,6 +72,8 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['equalize'] = False
     st.session_state['invers'] = False    
+    st.session_state['median'] = False    
+    st.session_state['top-hat'] = False    
     st.session_state['reprocess'] = True
 
 def get_session_state():
@@ -181,14 +183,64 @@ try:
                     key = 'settingDefault'
                 )
 
+                # ВРЕМЕННО!!!!!
+                st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
+                    np.array(crsImage.convert('L'), dtype = 'uint8')
+                )
+
+                # параметры в пикселях
+                params = {
+                    # размер окна медианного фильтра
+                    "sz_med" : 10,
+                    # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
+                    "sz_th":  4,
+                    # порог яркости для отбрасывания лок. максимумов
+                    "thr_br": float(st.session_state['param-pre-1']),   
+                    # минимальное расстояние между локальными максимумами при их поиске 
+                    "min_dist": 4,
+                    # размер окна аппроксимации
+                    "wsize": 9,        
+                    # возможные радиусы наночастиц в пикселях
+                    "rs": np.arange(1.0, 7.0, 0.1), 
+                    # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                    "best_mode": 3, 
+                    # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                    "msk": 3,      
+                    # аппроксимирующая функция "exp" или "pol" 
+                    "met": 'exp',   
+                    # число параметров аппроксимации
+                    "npar": 2       
+                }
+                        
+                # параметры адаптированные к масштабу изображения
+                if (st.session_state['scale'] is not None):
+                    # params['sz_med'] = int(params['sz_med'] / st.session_state['scale'])
+
+                    params['sz_th'] = int(params['sz_th'] / st.session_state['scale'])
+                    params['min_dist'] = int(params['min_dist'] / st.session_state['scale'])
+
+                    params['wsize'] = int(params['wsize'] / st.session_state['scale'])
+                    if (params['wsize'] % 2 == 0):
+                        params['wsize'] = params['wsize'] - 1
+                            
+                    minR = (0.5 / st.session_state['scale'])
+                    maxR = (6.0 / st.session_state['scale'])
+                    stepR = (0.1 / st.session_state['scale'])
+                    params['rs'] = np.arange(minR, maxR, stepR) 
+                    st.write(params)
+
                 # Preprocessing settings
                 with st.expander("Preprocessing settings", expanded = not st.session_state['detected'], icon = ":material/more_vert:"): 
                     st.toggle("Invers image", key = 'invers', help = help_str)
                 
                     st.toggle("Equalize histogram", key = 'equalize', help = help_str)
 
+                    st.toggle(f"Median filter ({params['sz_med']} px)", key = 'median', help = help_str)
+
+                    st.toggle(f"Top-Hat transform ({params['sz_th']} px)", key = 'top-hat', help = help_str)
+
                     st.toggle("Display reprocessing image", key = 'reprocess', help = help_str)
-                
+
                     temp = crsImage
                     lowerBound = autoscale.findBorder(np.array(crsImage.convert('L'), dtype = 'uint8'))
                     if (lowerBound is not None):
@@ -200,12 +252,21 @@ try:
                     if (st.session_state['equalize']):
                         temp = ImageOps.equalize(temp)                    
                     
+                    temp_array = np.array(temp.convert('L'), dtype = 'uint8')
+                    if (st.session_state['median']):
+                        temp_array = ExpApp.PreprocessingMedian(temp_array, params['sz_med'])
+                        
+                    if (st.session_state['top-hat']):
+                        temp_array = ExpApp.PreprocessingTopHat(temp_array, params['sz_th'])
+
+                    temp = Image.fromarray(temp_array)
+
                     if (lowerBound is not None):
                         newImg = Image.new('RGB', crsImage.size)
                         newImg.paste(temp, (0,0))
                         newImg.paste(crsImage.crop((0, lowerBound, crsImage.size[0], crsImage.size[1])), (0,lowerBound))
                         crsImage = newImg
-    
+                            
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
                     st.slider("Nanoparticle brightness",
@@ -253,26 +314,18 @@ try:
                     
                         currentImage = np.array(crsImage.convert('L'), dtype = 'uint8')   
                 
-                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(currentImage)
-                    
+                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
+                            currentImage
+                        )
+                        
                         lowerBound = autoscale.findBorder(currentImage)        
                         if (lowerBound is not None):
                             currentImage = currentImage[:lowerBound, :]
 
                         st.session_state['sizeImage'] = currentImage.shape
+                        
+                        
 
-                        params = {
-                            "sz_med" : 4,   # для предварительной обработки
-                            "sz_th":  4,    # для предварительной обработки (не надо равное 5 - кружки получаются большие) 
-                            "thr_br": float(st.session_state['param-pre-1']),   # порог яркости для отбрасывания лок. максимумов (Prefiltering)
-                            "min_dist": 4,  # минимальное расстояние между локальными максимумами при поиске локальных максимумов (Prefiltering)
-                            "wsize": 9,     # размер окна аппроксимации
-                            "rs": np.arange(1.0, 7.0, 0.1), # возможные радиусы наночастиц в пикселях
-                            "best_mode": 3, # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
-                            "msk": 3,       # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
-                            "met": 'exp',   # аппроксимирующая функция "exp" или "pol" 
-                            "npar": 2       # число параметров аппроксимации
-                        }
 
                         # вычисляется только один раз при первом запуске детектирования
                         helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
@@ -337,8 +390,8 @@ try:
 
                         st.slider("Range of nanoparticle diameter, nm",
                             key = 'param2',
-                            value = (1.0, 10.0),
-                            min_value = 1.0,
+                            value = (0.5, 10.0),
+                            min_value = 0.5,
                             step = 0.1,
                             max_value = 12.0,
                             disabled = st.session_state['settingDefault']
