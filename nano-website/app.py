@@ -36,13 +36,15 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['imgUpload'] = False
     st.session_state['uploadedImg'] = None
+    st.session_state['typeImg'] = None
+    st.session_state['fileImageName'] = None
 
     st.session_state['imgPlaceholder'] = None
 
     st.session_state['settingDefault'] = True
     st.session_state['param-pre-1'] = 10
     st.session_state['param1'] = 10
-    st.session_state['param2'] = (0.5, 10.0)
+    st.session_state['param2'] = (0.1, 10.0)
     st.session_state['param3'] = 0.65
     st.session_state['parallel'] = True
     st.session_state['processes'] = 6
@@ -62,7 +64,7 @@ def load_default_session_state(_dispToast = False):
     
     st.session_state['scale'] = None
     st.session_state['scaleData'] = None
-    st.session_state['displayScale'] = True
+    st.session_state['displayScale'] = False
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
@@ -70,11 +72,11 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['calcStatictic'] = False
 
-    st.session_state['equalize'] = False
-    st.session_state['invers'] = False    
-    st.session_state['median'] = False    
-    st.session_state['top-hat'] = False    
-    st.session_state['reprocess'] = True
+    #st.session_state['equalize'] = False
+    #st.session_state['invers'] = True    
+    st.session_state['median'] = None    
+    st.session_state['top-hat'] = None    
+    st.session_state['reprocess'] = False
 
 def get_session_state():
     return str(st.session_state)
@@ -151,18 +153,23 @@ try:
         imgPlaceholder = None
         
         st.subheader("Upload SEM image")            
-        uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff","png", "jpg", "jpeg" ])
+        uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff", "png", "jpg", "jpeg" ])
 
         if uploadedImg is None:
             load_default_session_state()
         else:
-            crsImage = Image.open(uploadedImg).convert("L")
+            if (st.session_state['fileImageName'] != uploadedImg.name):
+                crsImage = Image.open(uploadedImg).convert("L")
 
-            if (st.session_state['uploadedImg'] != crsImage):
+                crsImage = crsImage.resize((1280, 960))
+                        
                 load_default_session_state()
                 st.session_state['uploadedImg'] = crsImage
+                st.session_state['fileImageName'] = uploadedImg.name
+            else:
+                crsImage = st.session_state['uploadedImg']
 
-            st.session_state['imgUpload'] = True    
+            st.session_state['imgUpload'] = True   
         
         if (st.session_state['imgUpload']):
             colImage, colSetting = st.columns([6, 2])
@@ -183,135 +190,56 @@ try:
                     key = 'settingDefault'
                 )
 
-                # ВРЕМЕННО!!!!!
-                st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
-                    np.array(crsImage.convert('L'), dtype = 'uint8')
-                )
+                # Preprocessing image
+                with st.spinner("Preprocessing image...", show_time = True):
+                    tempArrImg = np.array(crsImage, dtype = 'uint8')
 
-                # параметры в пикселях
-                params = {
-                    # размер окна медианного фильтра
-                    "sz_med" : 4,
-                    # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
-                    "sz_th":  6,
-                    # порог яркости для отбрасывания лок. максимумов
-                    "thr_br": float(st.session_state['param-pre-1']),   
-                    # минимальное расстояние между локальными максимумами при их поиске 
-                    "min_dist": 4,
-                    # размер окна аппроксимации
-                    "wsize": 11,        
-                    # возможные радиусы наночастиц в пикселях
-                    "rs": np.arange(0.5, 6.1, 0.1), 
-                    # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
-                    "best_mode": 3, 
-                    # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
-                    "msk": 3,      
-                    # аппроксимирующая функция "exp" или "pol" 
-                    "met": 'exp',   
-                    # число параметров аппроксимации
-                    "npar": 2       
-                }
-                        
-                # параметры адаптированные к масштабу изображения
-                # if (st.session_state['scale'] is not None):
-                #     params['sz_med'] = int(params['sz_med'] / st.session_state['scale'])
-
-                #     params['sz_th'] = int(params['sz_th'] / st.session_state['scale'])
-                #     params['min_dist'] = int(params['min_dist'] / st.session_state['scale'])
-
-                #     params['wsize'] = int(params['wsize'] / st.session_state['scale'])
-                #     if (params['wsize'] % 2 == 0):
-                #         params['wsize'] = params['wsize'] - 1
-                            
-                #     minR = (0.5 / st.session_state['scale'])
-                #     maxR = (6.0 / st.session_state['scale'])
-                #     stepR = (0.1 / st.session_state['scale'])
-                #     params['rs'] = np.arange(minR, maxR, stepR) 
-
-                # Preprocessing settings
-                with st.expander("Preprocessing settings", expanded = not st.session_state['detected'], icon = ":material/more_vert:"): 
-                    st.toggle("Invers image", key = 'invers', help = help_str)
-                
-                    st.toggle("Equalize histogram", key = 'equalize', help = help_str)
-
-                    st.toggle(f"Median filter ({params['sz_med']} px)", key = 'median', help = help_str)
-
-                    st.toggle(f"Top-Hat transform ({params['sz_th']} px)", key = 'top-hat', help = help_str)
-
-                    st.toggle("Display preprocessing image", key = 'reprocess', help = help_str)
+                    st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
+                        tempArrImg
+                    )
                     
-                    with st.spinner("Preprocessing image...", show_time = True):
-                        temp = crsImage
+                    lowerBound = autoscale.findBorder(tempArrImg)
+                    
+                    if (lowerBound is not None):
+                        crsImage = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
+                        
+                    st.session_state['sizeImage'] = crsImage.size
 
-                        lowerBound = autoscale.findBorder(np.array(crsImage.convert('L'), dtype = 'uint8'))
-                        if (lowerBound is not None):
-                            temp = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
-
-                        data = np.array(temp.convert('L'), dtype = 'uint8').flatten()
+                    if (st.session_state['typeImg'] is None):
+                        data = np.array(crsImage, dtype = 'uint8').flatten()
                         counts, _ = np.histogram(data, bins = np.arange(0, 255, 1))
                         counts = counts / np.sum(counts)
 
                         cumSum = 0
-                        typeImage = None
                         for i, j in enumerate(counts):
                             cumSum = cumSum + j
                             if (cumSum >= 0.5):
                                 if (i <= 127):
-                                    typeImage = 'SEM'
-                                else: typeImage = 'TEM'
+                                    st.session_state['typeImg'] = 'SEM'
+                                else: st.session_state['typeImg'] = 'TEM'
                                 break
                             
-                        if typeImage == 'TEM':
-                            temp = ImageOps.invert(temp)
-                            st.info("Image was automatically inverted", icon = ":material/priority_high:")
+                    if (st.session_state['typeImg'] == 'TEM'):
+                        crsImage = ImageOps.invert(crsImage)
+                        params = {
+                            # размер окна медианного фильтра
+                            "sz_med" : 4,
+                            # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
+                            "sz_th":  6,
+                        }
+                    elif (st.session_state['typeImg'] == 'SEM'):
+                        params = {
+                            # размер окна медианного фильтра
+                            "sz_med" : 4,
+                            # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
+                            "sz_th":  4,
+                        }
 
-                        if (st.session_state['invers']):
-                            temp = ImageOps.invert(temp)
-                    
-                        if (st.session_state['equalize']):
-                            temp = ImageOps.equalize(temp)                    
-                    
-                        temp_array = np.array(temp.convert('L'), dtype = 'uint8')
-                        if (st.session_state['median']):
-                            temp_array = ExpApp.PreprocessingMedian(temp_array, params['sz_med'])
-                        
-                        if (st.session_state['top-hat']):
-                            temp_array = ExpApp.PreprocessingTopHat(temp_array, params['sz_th'])
+                    tempArrImg = np.array(crsImage, dtype = 'uint8')
+                    tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
+                    tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
 
-                        temp = Image.fromarray(temp_array)
-
-                        if (lowerBound is not None):
-                            newImg = Image.new('RGB', crsImage.size)
-                            newImg.paste(temp, (0,0))
-                            newImg.paste(crsImage.crop((0, lowerBound, crsImage.size[0], crsImage.size[1])), (0,lowerBound))
-                            crsImage = newImg
-
-                    # with st.container(border = True):                
-                    #     data = np.array(temp.convert('L'), dtype = 'uint8').flatten()
-
-                    #     fig = ff.create_distplot(
-                    #         [data],
-                    #         [''], bin_size = 1, histnorm = 'probability',
-                    #         colors = ['blue'], show_curve = False, show_rug = False
-                    #     )
-
-                    #     x = np.sort(data)
-                    #     y = np.arange(1, len(x)+1) / len(x)
-
-                    #     fig.add_trace(go.Scatter(
-                    #         x=x,
-                    #         y=y,
-                    #         mode='lines',
-                    #         line=dict(color='red', width=2)
-                    #     ))
-
-                    #     fig.update_traces(
-                    #         marker_color = colorRGBA_str,
-                    #         marker_line_color = 'blue',
-                    #         marker_line_width = 1,  
-                    #     )
-
-                    #     st.plotly_chart(fig, use_container_width = True)
+                    crsImage = Image.fromarray(tempArrImg, mode = 'L')
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
@@ -354,27 +282,45 @@ try:
                 if pushDetectButton:
                     st.session_state['detected'] = False
                     warningPlaceholder.empty()
-
-                    with st.spinner("Nanoparticles detection", show_time = True):
-                        timeStart = time.time()
                     
-                        currentImage = np.array(crsImage.convert('L'), dtype = 'uint8')   
-                
-                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
-                            currentImage
-                        )
+                    timeStart = time.time()
+                    with st.spinner("Nanoparticles detection", show_time = True):                    
+                        currentImage = np.array(crsImage, dtype = 'uint8') 
                         
                         lowerBound = autoscale.findBorder(currentImage)        
                         if (lowerBound is not None):
                             currentImage = currentImage[:lowerBound, :]
-
-                        st.session_state['sizeImage'] = currentImage.shape
                         
+                        # параметры в пикселях
+                        params = {
+                            # порог яркости для отбрасывания лок. максимумов
+                            "thr_br": float(st.session_state['param-pre-1']),   
+                            # минимальное расстояние между локальными максимумами при их поиске 
+                            "min_dist": 5,
+                            # размер окна аппроксимации
+                            "wsize": 9,        
+                            # возможные радиусы наночастиц в пикселях
+                            "rs": np.arange(0.5, 6.1, 0.1), 
+                            # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                            "best_mode": 3, 
+                            # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                            "msk": 3,      
+                            # аппроксимирующая функция "exp" или "pol" 
+                            "met": 'exp',   
+                            # число параметров аппроксимации
+                            "npar": 2       
+                        }
+
                         # вычисляется только один раз при первом запуске детектирования
                         helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
-                        # вычисляется только один раз для одного и того же изображения
-                        lm, currentImage = ExpApp.CACHE_PrefilteringPoints(currentImage, params)
+                        # вычисляется только один раз для одного порога яркости
+                        lm, _ = ExpApp.CACHE_PrefilteringPoints(
+                            currentImage,
+                            params,
+                            False,
+                            False
+                        )
 
                         # вычисляется только один раз для одного набора параметров
                         if st.session_state['parallel']:
@@ -394,16 +340,17 @@ try:
                                 helpMatrs,
                                 params
                             )
-            
+                        
+                        st.write(BLOBs, BLOBs_params)
+
+                        st.session_state['detected'] = True                
                         st.session_state['BLOBs'] = BLOBs
                         st.session_state['BLOBs_params'] = BLOBs_params
-                        st.session_state['detected'] = True
-                
-                        st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
                         st.session_state['detectedParticles'] = BLOBs.shape[0]
-
                         st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['parallel']]
         
+                    st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
+
                 # Detection results
                 if st.session_state['detected']:
                     time = st.session_state['timeDetection']
@@ -433,8 +380,8 @@ try:
 
                         st.slider("Range of nanoparticle diameter, nm",
                             key = 'param2',
-                            value = (0.5, 10.0),
-                            min_value = 0.5,
+                            value = (0.1, 10.0),
+                            min_value = 0.1,
                             step = 0.1,
                             max_value = 12.0,
                             disabled = st.session_state['settingDefault']
@@ -485,6 +432,7 @@ try:
                         with st.expander("Visualization and saving results", expanded = True, icon = ":material/display_settings:"):
                             # Displaying the scale
                             st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
+
                             if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
                                 st.warning("""
                                     The image scale could not be determined automatically!
@@ -493,6 +441,9 @@ try:
 
                             # Slider for comparing the results before and after detection
                             st.toggle("Comparison mode", key = 'comparison', help = help_str)
+
+                            # 
+                            st.toggle("Display preprocessing image", key = 'reprocess', help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -565,10 +516,10 @@ try:
 
         # Display source image by st.image
         if (st.session_state['imgUpload']):
+            viewImage = st.session_state['uploadedImg'].copy().convert('RGB')
+
             if (st.session_state['reprocess']):
-                viewImage = crsImage
-            else:
-                viewImage = st.session_state['uploadedImg'].copy()
+                viewImage.paste(crsImage, (0,0))
 
             draw = ImageDraw.Draw(viewImage)
 
@@ -604,13 +555,23 @@ try:
 
             st.session_state['imgBLOB'] = viewImage
 
-            if (st.session_state['comparison'] | st.session_state['reprocess']):
-                with st.session_state['imgPlaceholder'].container():                    
-                    CustComp.img_box(
-                        st.session_state['uploadedImg'],
-                        st.session_state['imgBLOB'],
-                        (1280, 980)# st.session_state['sizeImage']
-                    )
+            if (st.session_state['comparison']):
+                with st.session_state['imgPlaceholder'].container():
+                    if (st.session_state['reprocess']):
+                        temp = st.session_state['uploadedImg'].copy().convert('RGB')
+                        temp.paste(crsImage, (0,0))
+
+                        CustComp.img_box(
+                            temp,
+                            st.session_state['imgBLOB'],
+                            st.session_state['uploadedImg'].size                        
+                        )
+                    else:
+                        CustComp.img_box(
+                            st.session_state['uploadedImg'],
+                            st.session_state['imgBLOB'],
+                            st.session_state['uploadedImg'].size                        
+                        )
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 

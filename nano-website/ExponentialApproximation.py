@@ -729,14 +729,20 @@ def CACHE_HelpMatricesNew(ñ_wsize, ñ_rs):
     return MakeHelpMatricesNew(ñ_wsize, ñ_rs)
 
 @st.cache_data(show_spinner = False)
-def CACHE_PrefilteringPoints(ñ_img, c_params):
-    # img_med = PreprocessingMedian(ñ_img, c_params['sz_med'])
-    # img_med_th = PreprocessingTopHat(img_med, c_params['sz_th']) 
-    
-    lm, _ = PrefilteringPoints(ñ_img, c_params['min_dist'], c_params['thr_br'])
-    print(f"points: {_}")
+def CACHE_PrefilteringPoints(c_img, c_params, f_median = True, f_top_hat = True):
+    temp = c_img
 
-    return lm, ñ_img
+    if (f_median):
+        temp = PreprocessingMedian(c_img, c_params['sz_med'])
+
+    if (f_top_hat):
+        temp = PreprocessingTopHat(temp, c_params['sz_th']) 
+    
+    lm, _ = PrefilteringPoints(temp, c_params['min_dist'], c_params['thr_br'])
+
+    print(_)
+
+    return lm, temp
 
 @st.cache_data(show_spinner = False)
 def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_params, c_prn = False):
@@ -777,7 +783,7 @@ def my_FilterBlobs_change(blobs_ext, blobs_params, params):
         c0 = val[0]
         norm_error = val[3]
 
-        if ((c0 > thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
+        if ((c0 >= thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
             filtered_blobs.append(blob)
         else:
             blobs_rest.append(blob)
