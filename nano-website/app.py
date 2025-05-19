@@ -25,8 +25,8 @@ import traceback
     
 help_str = "hint be added soon"
 
-colorRGBA_str = 'rgb(150, 225, 150)'
-colorRGB = (150, 225, 150)
+colorRGBA_str = 'rgb(150, 150, 255)'
+colorRGB = (150, 150, 255)
 
 def load_default_session_state(_dispToast = False):
     if _dispToast:
@@ -44,7 +44,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['settingDefault'] = True
     st.session_state['param-pre-1'] = 10
     st.session_state['param1'] = 10
-    st.session_state['param2'] = (0.1, 10.0)
+    st.session_state['param2'] = (0.5, 10.0)
     st.session_state['param3'] = 0.65
     st.session_state['parallel'] = True
     st.session_state['processes'] = 6
@@ -159,11 +159,11 @@ try:
             load_default_session_state()
         else:
             if (st.session_state['fileImageName'] != uploadedImg.name):
-                crsImage = Image.open(uploadedImg).convert("L")
-
-                crsImage = crsImage.resize((1280, 960))
-                        
                 load_default_session_state()
+                
+                crsImage = Image.open(uploadedImg).convert("L")
+                crsImage = crsImage.resize((1280, 960))    
+                
                 st.session_state['uploadedImg'] = crsImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
@@ -284,7 +284,7 @@ try:
                     warningPlaceholder.empty()
                     
                     timeStart = time.time()
-                    with st.spinner("Nanoparticles detection", show_time = True):                    
+                    with st.spinner("Nanoparticles detection...", show_time = True):                    
                         currentImage = np.array(crsImage, dtype = 'uint8') 
                         
                         lowerBound = autoscale.findBorder(currentImage)        
@@ -296,11 +296,11 @@ try:
                             # порог яркости для отбрасывания лок. максимумов
                             "thr_br": float(st.session_state['param-pre-1']),   
                             # минимальное расстояние между локальными максимумами при их поиске 
-                            "min_dist": 5,
+                            "min_dist": 4,
                             # размер окна аппроксимации
                             "wsize": 9,        
                             # возможные радиусы наночастиц в пикселях
-                            "rs": np.arange(0.5, 6.1, 0.1), 
+                            "rs": np.arange(0.5, 6.5, 0.1), 
                             # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
                             "best_mode": 3, 
                             # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
@@ -340,8 +340,6 @@ try:
                                 helpMatrs,
                                 params
                             )
-                        
-                        st.write(BLOBs, BLOBs_params)
 
                         st.session_state['detected'] = True                
                         st.session_state['BLOBs'] = BLOBs
@@ -380,10 +378,10 @@ try:
 
                         st.slider("Range of nanoparticle diameter, nm",
                             key = 'param2',
-                            value = (0.1, 10.0),
-                            min_value = 0.1,
+                            value = (0.5, 10.0),
+                            min_value = 0.5,
                             step = 0.1,
-                            max_value = 12.0,
+                            max_value = 13.0,
                             disabled = st.session_state['settingDefault']
                         )
 
@@ -431,7 +429,7 @@ try:
                                         
                         with st.expander("Visualization and saving results", expanded = True, icon = ":material/display_settings:"):
                             # Displaying the scale
-                            st.toggle("Estimated scale display", key = 'displayScale', help = help_str)
+                            st.toggle("Estimated scale display", key = 'displayScale', disabled = True, help = help_str)
 
                             if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
                                 st.warning("""
@@ -443,7 +441,7 @@ try:
                             st.toggle("Comparison mode", key = 'comparison', help = help_str)
 
                             # 
-                            st.toggle("Display preprocessing image", key = 'reprocess', help = help_str)
+                            st.toggle("Display preprocessing image", key = 'reprocess',disabled = True, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -468,7 +466,7 @@ try:
 
                             match selection:
                                 case 0:
-                                    temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'][::-1])
+                                    temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'])
                                     draw = ImageDraw.Draw(temp)
                                     for BLOB in st.session_state['BLOBs_filter']:                
                                         y, x, d = BLOB; r = d/2          
@@ -594,7 +592,7 @@ try:
 
             st.warning("""
                 Nanoparticle detection is necessary to calculate their statistics.
-                Please go to "Detection" tab.
+                Please go to "Automatic detection nanoparticles" tab.
             """, icon = ":material/warning:")
         elif (st.session_state['filteredParticles'] < 10):  
             st.session_state['calcStatictic'] = False
@@ -648,8 +646,6 @@ try:
                 with db11.container(border = True, height = heightCol):
                     left, rigth = st.columns([7, 1])
                     left.subheader("Distribution of particle diameters")
-
-                    buttonPlaceholder = None
 
                     with rigth.popover("", icon=":material/settings:"):
                         st.toggle("Display distribution function",
@@ -777,20 +773,55 @@ try:
 
                 # Nanoparticle parameters
                 with db12.container(border = True, height = heightCol):                        
-                    # for Pd (palladium)
-                    materialDensity = 12.02 * 10**-15 # nanogram / nanometer   
+                    
+                    left, rigth = st.columns([7, 1])
+                    left.subheader("Nanoparticle parameters")
 
+                    with rigth.popover("", icon=":material/settings:"):
+                        option_materialDensity = {
+                            0: "Palladium (Pd)",    # 12.02 * 10**-12 ng / nm^3
+                            1: "Cuprum (Cu)",       #  8.96 * 10**-12 ng / nm^3
+                            2: "Alloy 30% Au + 70% Pd (AuPd)",  # 14.10 * 10**-12 ng / nm^3
+                            3: "Alloy 70% Cu + 30% Zn (CuZn)"   #  8.42 * 10**-12 ng / nm^3
+                        }
+
+                        selection = st.selectbox(
+                            "Particles material",
+                            index = 0,
+                            placeholder = "Select options...",
+                            options = option_materialDensity.keys(),
+                            format_func = lambda option: option_materialDensity[option]
+                        )
+
+                        match selection:
+                            case 0: materialDensity = 12.02 * 10**-12
+                            case 1: materialDensity = 8.96 * 10**-12
+                            case 2: materialDensity = 14.10 * 10**-12
+                            case 3: materialDensity = 8.42 * 10**-12
+                            case _: materialDensity = 1
+
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Particles material density: <b>{materialDensity} ng/nm<sup>3</sup></b> 
+                            </div>""", unsafe_allow_html = True)
+                      
                     if st.session_state['scale'] is None:
-                        st.warning("""
-                            The image scale could not be determined automatically!
-                            Using default scale: 1.0 nm/px
-                        """, icon = ":material/warning:")
+                        pass
+                        # st.warning("""
+                        #     The image scale could not be determined automatically!
+                        #     Using default scale: 1.0 nm/px
+                        # """, icon = ":material/warning:")
                     else:                    
                         st.markdown(f"""
                             <div class = 'text'>
                                 Estimated scale: <b>{st.session_state['scale']:.3f} nm/px</b> 
                             </div>""", unsafe_allow_html = True)
                     
+                    st.markdown(f"""
+                        <div class = 'text'>
+                            Material: <b>{option_materialDensity[selection]}</b> 
+                        </div>""", unsafe_allow_html = True)
+
                     temp_add_str = ""
                     currentDiameter = diameter_nm
                     if boolIndexSelectedBLOBs is not None:
@@ -799,7 +830,7 @@ try:
    
                     st.markdown(f"""
                         <div class = 'text'>
-                            Particles number: <b>{st.session_state['filteredParticles']}</b>
+                            Quantity: <b>{st.session_state['filteredParticles']}</b>
                             {temp_add_str}
                         </div>""", unsafe_allow_html = True)
 
@@ -1093,10 +1124,12 @@ try:
                 <ul>
                     <li>
                         <p class = 'text'>
-                            Найденные частицы можно скачать в виде изображения 
-                            (кнопка "Download nanoparticles image") или в формате с указанием 
-                            координат центра и радиуса каждой частицы 
-                            (кнопка "Download nanoparticles *.csv")
+                            Результаты детектирования можно скачать в трёх вариантах:
+                            (1) Найденные частицы на прозрачном фоне,
+                            (2) Найденные частицы, наложенные на исходное изображение,
+                            (3) В формате с указанием координат центра и радиуса каждой частицы.
+                            Для этого нужно в выпадающем списке выбрать нужный вариант и нажать кнопку,
+                            расположенную правее.
                         </p>
                     </li>
                     <li>
@@ -1108,38 +1141,10 @@ try:
                     </li>
                     <li>
                         <p class = 'text'>
-                            Режим сравнения находится на доработке.
-                        </p>
-                    </li>
-                </ul>
-            </div>""", unsafe_allow_html = True)
-       
-        media_col.markdown(f"""
-            <div class = 'text' style = "text-align: center;">
-                A video guide will be added here soon!
-            </div>""", unsafe_allow_html = True)
-
-
-        st.subheader("Вычисление статистик и построение графиков")
-        text_col, media_col = st.columns([1, 1])
-
-        text_col.markdown(f"""
-            <div>
-                <p class = 'text'>Указанный функционал доступен на владке "Statistics dashboard" после детектирования наночастиц!</p>
-                <ul>
-                    <li>
-                        <p class = 'text'>
-                            be add it soon!
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            be add it soon!
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            be add it soon!
+                            Режим сравнения активируется с помощью переключателя "Comparison mode".
+                            В этом режиме можно: (1) Скрыть\показать разметку на всём изображении нажатием ЛКМ,
+                            (2) Скрыть\показать разметку в приближенной области нажатием ПКМ,
+                            (3) Увеличить\уменьшить размер области приближения - колёсико мыши
                         </p>
                     </li>
                 </ul>
