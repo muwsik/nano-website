@@ -162,7 +162,7 @@ try:
                 load_default_session_state()
                 
                 crsImage = Image.open(uploadedImg).convert("L")
-                crsImage = crsImage.resize((1280, 960))    
+                #crsImage = crsImage.resize((1280, 960))    
                 
                 st.session_state['uploadedImg'] = crsImage
                 st.session_state['fileImageName'] = uploadedImg.name
@@ -376,12 +376,19 @@ try:
                             help = "Brightness in the central pixel of the nanoparticle"
                         )
 
+                        temp_max_r_nm = 10.0
+                        temp_min_r_nm = 1
+                        if (st.session_state['BLOBs'] is not None) and (st.session_state['scale'] is not None):
+                            temp_max_r_nm = np.max(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
+                            temp_min_r_nm = np.min(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
+
                         st.slider("Range of nanoparticle diameter, nm",
                             key = 'param2',
-                            value = (0.5, 10.0),
-                            min_value = 0.5,
+                            #value = (0.5, 10.0),
+                            min_value = np.floor(temp_min_r_nm-1),
                             step = 0.1,
-                            max_value = 13.0,
+                            max_value = np.ceil(temp_max_r_nm+1),
+                            format = "%0.1f",
                             disabled = st.session_state['settingDefault']
                         )
 
@@ -441,7 +448,7 @@ try:
                             st.toggle("Comparison mode", key = 'comparison', help = help_str)
 
                             # 
-                            st.toggle("Display preprocessing image", key = 'reprocess',disabled = True, help = help_str)
+                            st.toggle("Display preprocessing image", key = 'reprocess', disabled = False, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
