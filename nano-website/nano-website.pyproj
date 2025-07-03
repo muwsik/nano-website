@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>autoscale.py</StartupFile>
+    <StartupFile>NanoStatistics.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -37,6 +37,7 @@
     <Compile Include="autoscale.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".streamlit\config.toml" />

@@ -40,7 +40,7 @@ def set_style(color):
                 border-left: 0px dashed gray;
             }}
 
-            .st-key-right_button button{{
+            .st-key-right_button button {{
                 float: right;
             }}
 

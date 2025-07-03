@@ -13,6 +13,7 @@ import style, autoscale
 import NanoStatistics as NanoStat
 import ExponentialApproximation as ExpApp
 import CustomComponents as CustComp
+import WebsiteBot as webBot
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -36,6 +37,7 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['imgUpload'] = False
     st.session_state['uploadedImg'] = None
+    st.session_state['srcImg'] = None
     st.session_state['typeImg'] = None
     st.session_state['fileImageName'] = None
 
@@ -74,12 +76,9 @@ def load_default_session_state(_dispToast = False):
 
     #st.session_state['equalize'] = False
     #st.session_state['invers'] = True    
-    st.session_state['median'] = None    
-    st.session_state['top-hat'] = None    
+    #st.session_state['median'] = None    
+    #st.session_state['top-hat'] = None    
     st.session_state['reprocess'] = False
-
-def get_session_state():
-    return str(st.session_state)
 
 @st.dialog("Something went wrong...")
 def dialog_exception(_exception):
@@ -90,26 +89,26 @@ def dialog_exception(_exception):
         (if you refresh the page through the browser, some data may not be saved).
     """)
 
-    err_msg = "!!! CRASH\t" +\
-        f"{datetime.datetime.now().ctime()} \n\t" + \
-        f"{get_session_state()} \n\t" + \
-        f"{str(_exception)} \n\t" + \
-        f"{traceback.format_exc()} \n" + \
-        "CRASH !!!\n"
-    print(err_msg)
-
-    if st.button("Rerun page", type = "primary"):
+    if st.button("Rerun page", type = "primary"): 
         st.session_state['rerun'] = True
         st.rerun()
-
+    else:
+        result, response = webBot.send_message(st.session_state, traceback)
+    
     with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
-        st.write(traceback.format_exc())
+        st.error(traceback.format_exc())
+        
+        if result:
+            st.success("Report successful sent!")
+        else:
+            st.error("Error sending report: " + str(response[0].json()) + str(response[1].json()))
 
 def update_calcStatictic():                
     st.session_state['calcStatictic'] = True
 
 def update_detected():
     st.session_state['detected'] = True
+
 
 
 ### Main app ###
@@ -142,10 +141,11 @@ try:
 
 
     ## Main content area
-    tabDetect, tabInfo, tabLable  = st.tabs([
+    tabDetect, tabInfo, tabLable, tabGuide  = st.tabs([
         "Automatic detection nanoparticles",
         "Statistics dashboard",
-        "Manual labeling nanoparticles"
+        "Manual labeling nanoparticles",
+        "User's Guide"
     ])
 
     ## TAB 1
@@ -154,6 +154,7 @@ try:
         
         st.subheader("Upload SEM image")            
         uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff", "png", "jpg", "jpeg" ])
+        st.session_state['uploadedImg'] = uploadedImg
 
         if uploadedImg is None:
             load_default_session_state()
@@ -161,13 +162,13 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):
                 load_default_session_state()
                 
-                crsImage = Image.open(uploadedImg).convert("L")
-                #crsImage = crsImage.resize((1280, 960))    
+                srcImage = Image.open(uploadedImg).convert("L")
+                #srcImage = srcImage.resize((1280, 960))    
                 
-                st.session_state['uploadedImg'] = crsImage
+                st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
-                crsImage = st.session_state['uploadedImg']
+                srcImage = st.session_state['srcImg']
 
             st.session_state['imgUpload'] = True   
         
@@ -192,7 +193,7 @@ try:
 
                 # Preprocessing image
                 with st.spinner("Preprocessing image...", show_time = True):
-                    tempArrImg = np.array(crsImage, dtype = 'uint8')
+                    tempArrImg = np.array(srcImage, dtype = 'uint8')
 
                     st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
                         tempArrImg
@@ -201,12 +202,12 @@ try:
                     lowerBound = autoscale.findBorder(tempArrImg)
                     
                     if (lowerBound is not None):
-                        crsImage = crsImage.crop((0, 0, crsImage.size[0], lowerBound))
+                        srcImage = srcImage.crop((0, 0, srcImage.size[0], lowerBound))
                         
-                    st.session_state['sizeImage'] = crsImage.size
+                    st.session_state['sizeImage'] = srcImage.size
 
                     if (st.session_state['typeImg'] is None):
-                        data = np.array(crsImage, dtype = 'uint8').flatten()
+                        data = np.array(srcImage, dtype = 'uint8').flatten()
                         counts, _ = np.histogram(data, bins = np.arange(0, 255, 1))
                         counts = counts / np.sum(counts)
 
@@ -220,7 +221,7 @@ try:
                                 break
                             
                     if (st.session_state['typeImg'] == 'TEM'):
-                        crsImage = ImageOps.invert(crsImage)
+                        srcImage = ImageOps.invert(srcImage)
                         params = {
                             # размер окна медианного фильтра
                             "sz_med" : 4,
@@ -235,11 +236,11 @@ try:
                             "sz_th":  4,
                         }
 
-                    tempArrImg = np.array(crsImage, dtype = 'uint8')
+                    tempArrImg = np.array(srcImage, dtype = 'uint8')
                     tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
                     tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
 
-                    crsImage = Image.fromarray(tempArrImg, mode = 'L')
+                    srcImage = Image.fromarray(tempArrImg, mode = 'L')
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
@@ -285,7 +286,7 @@ try:
                     
                     timeStart = time.time()
                     with st.spinner("Nanoparticles detection...", show_time = True):                    
-                        currentImage = np.array(crsImage, dtype = 'uint8') 
+                        currentImage = np.array(srcImage, dtype = 'uint8') 
                         
                         lowerBound = autoscale.findBorder(currentImage)        
                         if (lowerBound is not None):
@@ -483,7 +484,7 @@ try:
                                     fileResultName = "particls-" + Path(uploadedImg.name).stem + ".tif"
 
                                 case 1:
-                                    imgBLOB = st.session_state['uploadedImg'].convert("RGB")
+                                    imgBLOB = st.session_state['srcImg'].convert("RGB")
                                     draw = ImageDraw.Draw(imgBLOB)                            
                                     for BLOB in st.session_state['BLOBs_filter']:                
                                         y, x, d = BLOB; r = d/2
@@ -521,10 +522,10 @@ try:
 
         # Display source image by st.image
         if (st.session_state['imgUpload']):
-            viewImage = st.session_state['uploadedImg'].copy().convert('RGB')
+            viewImage = st.session_state['srcImg'].copy().convert('RGB')
 
             if (st.session_state['reprocess']):
-                viewImage.paste(crsImage, (0,0))
+                viewImage.paste(srcImage, (0,0))
 
             draw = ImageDraw.Draw(viewImage)
 
@@ -563,19 +564,19 @@ try:
             if (st.session_state['comparison']):
                 with st.session_state['imgPlaceholder'].container():
                     if (st.session_state['reprocess']):
-                        temp = st.session_state['uploadedImg'].copy().convert('RGB')
-                        temp.paste(crsImage, (0,0))
+                        temp = st.session_state['srcImg'].copy().convert('RGB')
+                        temp.paste(srcImage, (0,0))
 
                         CustComp.img_box(
                             temp,
                             st.session_state['imgBLOB'],
-                            st.session_state['uploadedImg'].size                        
+                            st.session_state['srcImg'].size                        
                         )
                     else:
                         CustComp.img_box(
-                            st.session_state['uploadedImg'],
+                            st.session_state['srcImg'],
                             st.session_state['imgBLOB'],
-                            st.session_state['uploadedImg'].size                        
+                            st.session_state['srcImg'].size                        
                         )
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
@@ -1056,29 +1057,9 @@ try:
                 # END db23
                 
 
-    st.markdown("""
-        <div class = 'cite'> <b>How to cite</b>:
-            <ul>
-                <li> <p class = 'cite'>
-                    Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
-                    <br> D. A. Boiko, V. V. Sulimova, M. Yu. Kurbakov [et al.] 
-                    // Nanomaterials. – 2022. – Vol. 12, No. 21. – P. 3914. 
-                    – DOI <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>
-                </p> </li>
-                <li> <p class = 'cite'>
-                    Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
-                    <br> M. Yu. Kurbakov, V. V. Sulimova, A. V. Kopylov [et al.] 
-                    // Nanoscale. – 2024. – Vol. 16, No. 28. – P. 13663-13676. 
-                    – DOI <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
-                </p> </li>
-                <li> <p class = 'cite'>
-                    An article about calculating the mass of nanoparticles will be published soon, don't miss it!
-                </p> </li>
-            </ul>
-        </div>""", unsafe_allow_html = True)
-
-    with st.expander("User's Guide", expanded = False, icon = ":material/not_listed_location:"):
-                
+    ## TAB 4
+    with tabGuide:
+        # Guide 1
         st.subheader("Детектирование и фильтрация наночастиц")
         text_col, media_col = st.columns([1, 1])
 
@@ -1100,17 +1081,17 @@ try:
                     </li>
                     <li>
                         <p class = 'text'>
-                           Шаг 3. После успешного детектирования производится фильтрация найденных наночастиц
-                           (используются параметры по умолчанию). Отфильтрованные частицы отображаются
-                           на изображении в виде окружностей.
+                            Шаг 3. После успешного детектирования производится фильтрация найденных наночастиц
+                            (используются параметры по умолчанию). Отфильтрованные частицы отображаются
+                            на изображении в виде окружностей.
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                           Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
-                           (снять галочку "Use default settings"). ВАЖНО, подтверждение параметров детектирования 
-                           осуществяется нажанием кнопки "Nanoparticles detection". Параметры фильтрации применяются
-                           автоматически.
+                            Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
+                            (снять галочку "Use default settings"). ВАЖНО, подтверждение параметров детектирования 
+                            осуществяется нажанием кнопки "Nanoparticles detection". Параметры фильтрации применяются
+                            автоматически.
                         </p>
                     </li>
                 </ul>
@@ -1120,8 +1101,8 @@ try:
             <div class = 'text' style = "text-align: center;">
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
-
-
+                
+        # Guide 2
         st.subheader("Взаимодейтсвие с результатами детектирования")
         text_col, media_col = st.columns([1, 1])
 
@@ -1162,6 +1143,31 @@ try:
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
 
+        if st.button("Get exseption?"):
+            raise Exception("Test exception!")
+
+    ## How to cite
+    st.markdown("""
+        <div class = 'cite'> <b>How to cite</b>:
+            <ul>
+                <li> <p class = 'cite'>
+                    Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
+                    <br> D. A. Boiko, V. V. Sulimova, M. Yu. Kurbakov [et al.] 
+                    // Nanomaterials. – 2022. – Vol. 12, No. 21. – P. 3914. 
+                    – DOI <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>
+                </p> </li>
+                <li> <p class = 'cite'>
+                    Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
+                    <br> M. Yu. Kurbakov, V. V. Sulimova, A. V. Kopylov [et al.] 
+                    // Nanoscale. – 2024. – Vol. 16, No. 28. – P. 13663-13676. 
+                    – DOI <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
+                </p> </li>
+                <li> <p class = 'cite'>
+                    An article about calculating the mass of nanoparticles will be published soon, don't miss it!
+                </p> </li>
+            </ul>
+        </div>""", unsafe_allow_html = True)
+       
 
     st.markdown("""
         <div class = 'footer'>
