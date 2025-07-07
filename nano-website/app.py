@@ -29,6 +29,7 @@ help_str = "hint be added soon"
 colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (150, 150, 255)
 
+
 def load_default_session_state(_dispToast = False):
     if _dispToast:
         st.toast('Default configuration loaded!')
@@ -80,6 +81,16 @@ def load_default_session_state(_dispToast = False):
     #st.session_state['top-hat'] = None    
     st.session_state['reprocess'] = False
 
+
+def session_state2str(closedKey = ["imgPlaceholder", ]):
+    tempStr = "\n"
+    for key in st.session_state.keys():
+        if key not in closedKey:
+            tempStr = tempStr + f"\t{key}: {str(st.session_state[key])}\n"
+
+    return tempStr
+
+
 @st.dialog("Something went wrong...")
 def dialog_exception(_exception):
     st.write("""
@@ -93,15 +104,28 @@ def dialog_exception(_exception):
         st.session_state['rerun'] = True
         st.rerun()
     else:
-        result, response = webBot.send_message(st.session_state, traceback)
-    
+        data = {
+            "dump": session_state2str(),
+            "traceback": traceback.format_exc(),    
+            "image-data": None,
+            "image-type": None
+        }
+
+        if st.session_state['uploadedImg'] is not None:
+            data.update({                
+                "image-data": st.session_state['uploadedImg'].getvalue(),
+                "image-type": st.session_state['uploadedImg'].type
+            })       
+
+        result, response = webBot.message2email(data)
+
     with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
         st.error(traceback.format_exc())
         
         if result:
             st.success("Report successful sent!")
         else:
-            st.error("Error sending report: " + str(response[0].json()) + str(response[1].json()))
+            st.error("Error sending report: " + str(response))
 
 def update_calcStatictic():                
     st.session_state['calcStatictic'] = True
