@@ -54,7 +54,7 @@ def message2email(data):
         "body": 
             f"UID: {messageUID}\n\n" + \
             f"By: *response address*",
-        "dumpData": f"Dump: {data["dump"]} \n\n" + f"{data["traceback"]}",
+        "dumpData": f"Dump: {data['dump']} \n\n" + f"{data['traceback']}",
         "imageType": "None",
         "imageData": "None"
     }
