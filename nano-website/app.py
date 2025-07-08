@@ -125,7 +125,7 @@ def dialog_exception(_exception):
         if result:
             st.success("Report successful sent!")
         else:
-            st.error("Error sending report: " + str(response))
+            st.error("Error sending report: " + str(response.json()))
 
 def update_calcStatictic():                
     st.session_state['calcStatictic'] = True

@@ -40,14 +40,12 @@
     <Compile Include="WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include=".streamlit\config.toml" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include=".streamlit\" />
     <Folder Include="images\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
