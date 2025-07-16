@@ -183,6 +183,7 @@ try:
         if uploadedImg is None:
             load_default_session_state()
         else:
+            st.session_state['imgUpload'] = True   
             if (st.session_state['fileImageName'] != uploadedImg.name):
                 load_default_session_state()
                 
@@ -193,8 +194,6 @@ try:
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
                 srcImage = st.session_state['srcImg']
-
-            st.session_state['imgUpload'] = True   
         
         if (st.session_state['imgUpload']):
             colImage, colSetting = st.columns([6, 2])
