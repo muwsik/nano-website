@@ -620,22 +620,21 @@ try:
             st.session_state['imgBLOB'] = viewImage
 
             if (st.session_state['comparison']):
-                with st.session_state['imgPlaceholder'].container():
-                    if (st.session_state['preprocess']):
-                        temp = st.session_state['srcImg'].copy().convert('RGB')
-                        temp.paste(srcImage, (0,0))
+                if (st.session_state['preprocess']):
+                    temp = st.session_state['srcImg'].copy().convert('RGB')
+                    temp.paste(srcImage, (0,0))
 
-                        CustComp.img_box(
-                            temp,
-                            st.session_state['imgBLOB'],
-                            st.session_state['srcImg'].size                        
-                        )
-                    else:
-                        CustComp.img_box(
-                            st.session_state['srcImg'],
-                            st.session_state['imgBLOB'],
-                            st.session_state['srcImg'].size                        
-                        )
+                    CustComp.img_box(
+                        temp,
+                        st.session_state['imgBLOB'],
+                        st.session_state['imgPlaceholder']
+                    )
+                else:
+                    CustComp.img_box(
+                        st.session_state['srcImg'],
+                        st.session_state['imgBLOB'],                        
+                        st.session_state['imgPlaceholder']
+                    )
             else:
                 st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 

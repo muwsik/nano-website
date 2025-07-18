@@ -13,7 +13,7 @@ def pil_to_base64(image):
     return img_str 
    
 
-def img_box(img1, img2, imgSize):
+def img_box(img1, img2, placeholder = None):
     html_part = f"""
         <div class="imgBox">
             <img src="data:image/png;base64,{pil_to_base64(img1)}" id="magnifiable-image1" class="default1" draggable="false" alt="">
@@ -25,8 +25,8 @@ def img_box(img1, img2, imgSize):
         <style>
             .imgBox {{
                 margin: 0;
-                width: 1000px;
-                height: 700px;
+                width: 100%;
+                height: 100vh;
                 overflow: hidden;
                 display: flex;
                 justify-content: center;
@@ -35,20 +35,16 @@ def img_box(img1, img2, imgSize):
             }}
 
             .imgBox img {{
-                max-height: 80vh;
-                width: auto;
-                max-width: 100%;
                 object-fit: contain;
                 position: absolute;
             }}
 
-            .default1, .default2 {{                
-                width: 100%;
-                height: 100%;
+            .default1, .default2 {{  
+                max-width: 100%;
+                max-height: 100%; 
                 object-fit: contain;
                 background-size: cover;                
                 user-select: none;
-                pointer-events: none;
             }}
 
             .default1 {{
@@ -288,7 +284,8 @@ def img_box(img1, img2, imgSize):
         </script>
     """
 
-    return components.html(
-        html_part + css_part + JS_part,
-        height = imgSize[1],
-    )
+    if placeholder is None:
+        return components.html(html_part + css_part + JS_part)
+    else:
+        with placeholder:
+            components.html(html_part + css_part + JS_part)

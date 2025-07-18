@@ -2,15 +2,19 @@ import streamlit as st
 
 def set_style(color):
     st.markdown(f"""
-        <style>
-            
+        <style>            
+            iframe {{
+                width: 100%;
+                height: 80vh;
+            }}
+
             .stImage {{
                 display: flex;
                 justify-content: center;
             }}
 
             .stImage img {{
-                max-height: 80vh;
+                height: 80vh;
                 width: auto;
                 object-fit: contain;
             }}
