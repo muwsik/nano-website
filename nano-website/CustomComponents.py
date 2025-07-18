@@ -15,7 +15,7 @@ def pil_to_base64(image):
 
 def img_box(img1, img2, imgSize):
     html_part = f"""
-        <div id="imgBox">
+        <div class="imgBox">
             <img src="data:image/png;base64,{pil_to_base64(img1)}" id="magnifiable-image1" class="default1" draggable="false" alt="">
             <img src="data:image/png;base64,{pil_to_base64(img2)}" id="magnifiable-image2" class="default2" draggable="false" alt="">
         </div>
@@ -23,23 +23,32 @@ def img_box(img1, img2, imgSize):
 
     css_part = f"""
         <style>
-            #imgBox {{
-                position: relative;
-                margin: 5vw auto;
-                margin-bottom: 1vw;
+            .imgBox {{
+                margin: 0;
                 width: 1000px;
                 height: 700px;
                 overflow: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: relative;
             }}
 
-            .default1, .default2 {{
+            .imgBox img {{
+                max-height: 80vh;
+                width: auto;
+                max-width: 100%;
+                object-fit: contain;
                 position: absolute;
-                top: 0;
-                left: 0;
+            }}
+
+            .default1, .default2 {{                
                 width: 100%;
                 height: 100%;
+                object-fit: contain;
                 background-size: cover;                
-                user-select: none; /* Запрещает выделение изображения при смене изображений */
+                user-select: none;
+                pointer-events: none;
             }}
 
             .default1 {{

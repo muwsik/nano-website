@@ -2,12 +2,13 @@
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 import streamlit as st
+import streamlit_carousel
 
 import io, csv
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-import time, datetime
+import time
 
 import style, autoscale
 import NanoStatistics as NanoStat
@@ -27,7 +28,7 @@ import traceback
 help_str = "hint be added soon"
 
 colorRGBA_str = 'rgb(150, 150, 255)'
-colorRGB = (150, 150, 255)
+colorRGB = (75, 255, 75)
 
 
 def load_default_session_state(_dispToast = False):
@@ -79,7 +80,10 @@ def load_default_session_state(_dispToast = False):
     #st.session_state['invers'] = True    
     #st.session_state['median'] = None    
     #st.session_state['top-hat'] = None    
-    st.session_state['reprocess'] = False
+    st.session_state['preprocess'] = False
+    
+    st.session_state['defaultImage'] = None
+
 
 
 def session_state2str(closedKey = ["imgPlaceholder", ]):
@@ -153,7 +157,7 @@ try:
     st.markdown("""
         <div class = 'about'>
             Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
-            <br>It will help you to detect palladium nanoparticles in the image and calculate their statictics.
+            <br>It will help you to detect nanoparticles in the image and calculate their statictics.
         </div>
     """, unsafe_allow_html = True)
 
@@ -169,7 +173,7 @@ try:
         "Automatic detection nanoparticles",
         "Statistics dashboard",
         "Manual labeling nanoparticles",
-        "User's Guide"
+        "Help"
     ])
 
     ## TAB 1
@@ -180,20 +184,21 @@ try:
         uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff", "png", "jpg", "jpeg" ])
         st.session_state['uploadedImg'] = uploadedImg
 
-        if uploadedImg is None:
-            load_default_session_state()
-        else:
-            st.session_state['imgUpload'] = True   
-            if (st.session_state['fileImageName'] != uploadedImg.name):
-                load_default_session_state()
-                
+        if uploadedImg is not None: 
+            if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 #srcImage = srcImage.resize((1280, 960))    
                 
+                load_default_session_state()
                 st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
-                srcImage = st.session_state['srcImg']
+                srcImage = st.session_state['srcImg']   
+                
+            st.session_state['imgUpload'] = True       
+        else:
+            load_default_session_state()
+        
         
         if (st.session_state['imgUpload']):
             colImage, colSetting = st.columns([6, 2])
@@ -472,7 +477,7 @@ try:
                             st.toggle("Comparison mode", key = 'comparison', help = help_str)
 
                             # 
-                            st.toggle("Display preprocessing image", key = 'reprocess', disabled = False, help = help_str)
+                            st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -547,7 +552,7 @@ try:
         if (st.session_state['imgUpload']):
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
 
-            if (st.session_state['reprocess']):
+            if (st.session_state['preprocess']):
                 viewImage.paste(srcImage, (0,0))
 
             draw = ImageDraw.Draw(viewImage)
@@ -586,7 +591,7 @@ try:
 
             if (st.session_state['comparison']):
                 with st.session_state['imgPlaceholder'].container():
-                    if (st.session_state['reprocess']):
+                    if (st.session_state['preprocess']):
                         temp = st.session_state['srcImg'].copy().convert('RGB')
                         temp.paste(srcImage, (0,0))
 
@@ -1169,6 +1174,7 @@ try:
         if st.button("Get exseption?"):
             raise Exception("Test exception!")
 
+    
     ## How to cite
     st.markdown("""
         <div class = 'cite'> <b>How to cite</b>:
