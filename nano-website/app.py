@@ -2,7 +2,6 @@
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 import streamlit as st
-import streamlit_carousel
 
 import io, csv
 from pathlib import Path
@@ -76,14 +75,7 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['calcStatictic'] = False
 
-    #st.session_state['equalize'] = False
-    #st.session_state['invers'] = True    
-    #st.session_state['median'] = None    
-    #st.session_state['top-hat'] = None    
     st.session_state['preprocess'] = False
-    
-    st.session_state['defaultImage'] = None
-
 
 
 def session_state2str(closedKey = ["imgPlaceholder", ]):
@@ -96,7 +88,7 @@ def session_state2str(closedKey = ["imgPlaceholder", ]):
 
 
 @st.dialog("Something went wrong...")
-def dialog_exception(_exception):
+def dialog_exception():
     st.write("""
         An error occurred while the application was running.
         *The latest detection and marking results are saved.*
@@ -108,20 +100,21 @@ def dialog_exception(_exception):
         st.session_state['rerun'] = True
         st.rerun()
     else:
-        data = {
+        dataException = {
             "dump": session_state2str(),
-            "traceback": traceback.format_exc(),    
+            "contact-email": "None",
+            "add-info": traceback.format_exc(),    
             "image-data": None,
             "image-type": None
         }
 
         if st.session_state['uploadedImg'] is not None:
-            data.update({                
+            dataException.update({                
                 "image-data": st.session_state['uploadedImg'].getvalue(),
                 "image-type": st.session_state['uploadedImg'].type
             })       
 
-        result, response = webBot.message2email(data)
+        result, response = webBot.message2email(dataException)
 
     with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
         st.error(traceback.format_exc())
@@ -130,19 +123,55 @@ def dialog_exception(_exception):
             st.success("Report successful sent!")
         else:
             st.error("Error sending report: " + str(response.json()))
+    
+            
+@st.dialog("Send feedback...")
+def dialog_feedback():
+    submitButtonClick = False
 
-def update_calcStatictic():                
-    st.session_state['calcStatictic'] = True
+    with st.form(key = "feedback-form"):
+        contactEmail = st.text_input("Your contact E-mail")
 
-def update_detected():
-    st.session_state['detected'] = True
+        txt = st.text_area("Describe your problem")
+
+        sendImg = False
+        if st.session_state["imgUpload"]:
+            sendImg = st.toggle("The current uploaded image on website will be sent", value = True)
+
+        submitButtonClick = st.form_submit_button('Send feedback', icon = ":material/drafts:")
+
+    if submitButtonClick:
+        dataFeedback = {
+            "dump": session_state2str(),
+            "contact-email": contactEmail,
+            "add-info": txt,    
+            "image-data": None,
+            "image-type": None
+        }
+
+        if sendImg:
+            dataFeedback.update({                
+                "image-data": st.session_state['uploadedImg'].getvalue(),
+                "image-type": st.session_state['uploadedImg'].type
+            })
+
+        result, response = webBot.message2email(dataFeedback)
+        
+        if result:
+            st.success("Feedback successful sent!")
+        else:
+            st.error("Error sending feedback. Please try again...")
+
+
+def update_session_state_element(key, value):
+    st.session_state[key] = value
 
 
 
 ### Main app ###
 try:
     # Loading CSS styles
-    st.set_page_config(page_title = "Nanoparticles", layout = "wide")
+    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide")
     style.set_style(colorRGBA_str)
     
     # Initial loading of session states
@@ -304,7 +333,8 @@ try:
                         use_container_width = True,
                         disabled = not st.session_state['imgUpload'],
                         help = help_str,
-                        on_click = update_detected
+                        on_click = update_session_state_element,
+                        args = ("detected", True)
                     )
                 
                 # Detecting
@@ -657,7 +687,11 @@ try:
                     disabled = True
                 )                
           
-                st.button("Calculate statistics", key = 'right_button', on_click = update_calcStatictic)           
+                st.button("Calculate statistics",
+                    key = 'right_button',
+                    on_click = update_session_state_element,
+                    args = ("calcStatictic", True)
+                )           
 
         if (st.session_state['calcStatictic']):
             boolIndexSelectedBLOBs = None       
@@ -1087,6 +1121,13 @@ try:
 
     ## TAB 4
     with tabGuide:
+        if st.button("If you have any difficulties with our tool, please contact us (click here)",
+            key = 'button_contact',
+            use_container_width = True
+        ):
+            dialog_feedback()
+
+
         # Guide 1
         st.subheader("Детектирование и фильтрация наночастиц")
         text_col, media_col = st.columns([1, 1])
@@ -1171,9 +1212,6 @@ try:
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
 
-        if st.button("Get exseption?"):
-            raise Exception("Test exception!")
-
     
     ## How to cite
     st.markdown("""
@@ -1204,4 +1242,4 @@ try:
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception(exc)
+    dialog_exception()

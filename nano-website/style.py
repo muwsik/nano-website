@@ -55,6 +55,15 @@ def set_style(color):
                 float: right;
             }}
 
+            .st-key-button_contact button p {{
+                font-size: 20px;
+                color: black;
+            }}
+
+            .st-key-button_contact button {{
+                background-color: rgb(230, 230, 255);
+            }}
+
             .text {{
                 font-size: 20px;
                 text-align: justify;

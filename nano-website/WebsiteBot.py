@@ -19,8 +19,8 @@ def message2email(data):
         "subject": f"NanoWebsite {datetime.datetime.now().ctime()}",
         "body": 
             f"UID: {messageUID}\n\n" + \
-            f"By: *response address*",
-        "dumpData": f"Dump: {data['dump']} \n\n" + f"{data['traceback']}",
+            f"By: {data['contact-email']}",
+        "dumpData": f"Dump website: {data['dump']} \n\n" + f"Info: {data['add-info']}",
         "imageType": "None",
         "imageData": "None",
         "secret": PASSWORD

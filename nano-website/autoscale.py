@@ -25,7 +25,7 @@ def scaleLength(c_fullImage, start_y):
     last_white_index = None
 
     for x in range(1, width):
-        if (c_fullImage[start_y, x] >= 230 ) and (c_fullImage[start_y, x-1] <= 25):
+        if (c_fullImage[start_y, x] >= 230 ) and (c_fullImage[start_y, x-1] <= 55):
             if first_white_index is None:
                 first_white_index = x
             last_white_index = x
@@ -79,7 +79,7 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Cloud\ionic-liquid\AuPd-1.jpg"
+    img_path = r"D:\Projects\VICTORIA\15-SE-1k-T1.bmp"
 
     img = Image.open(img_path).convert('L')
     grayImage = np.array(img, dtype='uint8')
@@ -115,46 +115,46 @@ if __name__ == "__main__":
             print(f"nm / pixel: {scaleVal / scaleLengthVal}")
             print(f"pixel / nm: {scaleLengthVal / scaleVal}")
 
-    _, dispScale = estimateScale(grayImage)
+    # _, dispScale = estimateScale(grayImage)
 
-    x = dispScale[1]; y = dispScale[0]; length = dispScale[2]; diff = 5;
-    scaleLineCoords = np.array([
-        [x, y-diff], [x, y+diff], [x, y], [x+length, y], [x+length, y+diff], [x+length, y-diff]
-    ])
+    # x = dispScale[1]; y = dispScale[0]; length = dispScale[2]; diff = 5;
+    # scaleLineCoords = np.array([
+    #     [x, y-diff], [x, y+diff], [x, y], [x+length, y], [x+length, y+diff], [x+length, y-diff]
+    # ])
        
-    # fig = make_subplots(
-    #     rows=1, 
-    #     cols=2, 
-    #     column_widths=[0.7, 0.3],  # ширина колонок (70% и 30%)
-    #     horizontal_spacing=0.05,     # расстояние между графиками
-    #     specs=[[{"type": "heatmap"}, {"type": "scatter"}]]  # типы графиков
-    # )
+    fig = make_subplots(
+        rows=1, 
+        cols=2, 
+        column_widths=[0.7, 0.3],  # ширина колонок (70% и 30%)
+        horizontal_spacing=0.05,     # расстояние между графиками
+        specs=[[{"type": "heatmap"}, {"type": "scatter"}]]  # типы графиков
+    )
 
-    # # Добавляем изображение (как heatmap) в первую колонку
-    # fig.add_trace(
-    #     go.Heatmap(z=grayImage, colorscale="Viridis", showscale=False),
-    #     row=1, col=1
-    # )
+    # Добавляем изображение (как heatmap) в первую колонку
+    fig.add_trace(
+        go.Heatmap(z=grayImage, colorscale="Viridis", showscale=False),
+        row=1, col=1
+    )
     
-    # row_sum = np.sum(grayImage, axis = 1, dtype = np.int64)
-    # # Добавляем Scatter во вторую колонку
-    # fig.add_trace(
-    #     go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
-    #     row=1, col=2
-    # )
+    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64)
+    # Добавляем Scatter во вторую колонку
+    fig.add_trace(
+        go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
+        row=1, col=2
+    )
 
-    # # Настраиваем оси и внешний вид
-    # fig.update_layout(
-    #     title="Изображение + график справа",
-    #     xaxis_title="X (изображение)",
-    #     yaxis_title="Y (изображение)",
-    #     xaxis2_title="X (график)",
-    #     yaxis2_title="Y (график)",
-    #     width=800,  # общая ширина фигуры
-    #     height=400, # высота
-    # )
+    # Настраиваем оси и внешний вид
+    fig.update_layout(
+        title="Изображение + график справа",
+        xaxis_title="X (изображение)",
+        yaxis_title="Y (изображение)",
+        xaxis2_title="X (график)",
+        yaxis2_title="Y (график)",
+        width=800,  # общая ширина фигуры
+        height=400, # высота
+    )
 
-    # fig.show()
+    fig.show()
 
     
 
