@@ -23,7 +23,7 @@ def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
 
     return fake_BLOBS
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def uniformity(BLOBs, sizeImage, sizeBlock):
     heightBlocks = int(np.ceil(sizeImage[1] / sizeBlock))
     widthBlocks = int(np.ceil(sizeImage[0] / sizeBlock))
@@ -37,7 +37,7 @@ def uniformity(BLOBs, sizeImage, sizeBlock):
 
     return counter
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def euclideanDistance(_blobs):
     points = _blobs[:, 0:2]
     fullEuclideanDist = distance.cdist(points, points, 'euclidean')
@@ -47,7 +47,7 @@ def euclideanDistance(_blobs):
 
     return fullEuclideanDist, minEuclideanDist
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def averageDensityInNeighborhood(_thresholds, _fullDist):
     distanceLess = np.zeros(len(_thresholds))
 

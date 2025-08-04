@@ -724,11 +724,11 @@ def Visualization_GT(temp_img, data2show, match_blobs, truedetected_blobs, fake_
 
 # ---------------- CACHE FUN ---------------------
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def CACHE_HelpMatricesNew(с_wsize, с_rs):
     return MakeHelpMatricesNew(с_wsize, с_rs)
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def CACHE_PrefilteringPoints(c_img, c_params, f_median = True, f_top_hat = True):
     temp = c_img
 
@@ -744,7 +744,7 @@ def CACHE_PrefilteringPoints(c_img, c_params, f_median = True, f_top_hat = True)
 
     return lm, temp
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_params, c_prn = False):
     number_blobs = len(c_lm)
 
@@ -769,7 +769,7 @@ def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_par
 
     return blobs_full, values_full
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def my_FilterBlobs_change(blobs_ext, blobs_params, params):
     thr_c0 = params["thr_c0"]
     thr_d_min = params["min_thr_d"]
@@ -790,7 +790,7 @@ def my_FilterBlobs_change(blobs_ext, blobs_params, params):
 
     return np.array(filtered_blobs), blobs_rest
 
-@st.cache_data(show_spinner = False)
+@st.cache_data(show_spinner = False, max_entries = 5)
 def CACHE_ExponentialApproximationMask_v3_parallel(c_img, c_lm, c_xy2, c_helpMatrs, c_params, nProc = 4, c_prn = False):
     # обертка для функции, которая должна выполняться параллельно (у нее по определению должен быть только 1 параметр i)
     def Parall_Approx(i, _par_ext):

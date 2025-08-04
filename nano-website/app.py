@@ -67,7 +67,7 @@ def load_default_session_state(_dispToast = False):
     
     st.session_state['scale'] = None
     st.session_state['scaleData'] = None
-    st.session_state['displayScale'] = False
+    st.session_state['displayScale'] = True
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
@@ -307,27 +307,18 @@ try:
                         help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
 
-                    l, r = st.columns([3,1])
-                    l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
-
-                    r.number_input(label = "not_visibility",
-                        min_value = 1,
-                        max_value = 8,
-                        step = 1,
-                        format = "%i",
-                        placeholder = "Processes",
-                        key = 'processes',
-                        disabled = st.session_state['settingDefault'],
-                        label_visibility = 'collapsed'
-                    )
-
-                    warningPlaceholder = st.empty()
-                    if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
-                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['parallel']]):
-                            warningPlaceholder.warning("""
-                                The detection settings have been changed.
-                                To accept the new settings, click the button "Nanoparticles detection"! 
-                            """, icon = ":material/warning:")
+                    # l, r = st.columns([3,1])
+                    # l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
+                    # r.number_input(label = "not_visibility",
+                    #     min_value = 1,
+                    #     max_value = 8,
+                    #     step = 1,
+                    #     format = "%i",
+                    #     placeholder = "Processes",
+                    #     key = 'processes',
+                    #     disabled = st.session_state['settingDefault'],
+                    #     label_visibility = 'collapsed'
+                    # )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         use_container_width = True,
@@ -336,6 +327,14 @@ try:
                         on_click = update_session_state_element,
                         args = ("detected", True)
                     )
+                    
+                    warningPlaceholder = st.empty()
+                    if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
+                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['parallel']]):
+                            warningPlaceholder.warning("""
+                                The detection settings have been changed.
+                                To accept the new settings, click the button "Nanoparticles detection"! 
+                            """, icon = ":material/warning:")
                 
                 # Detecting
                 if pushDetectButton:
@@ -437,15 +436,23 @@ try:
 
                         temp_max_r_nm = 10.0
                         temp_min_r_nm = 1
+                        temp_r_step = 0.1
                         if (st.session_state['BLOBs'] is not None) and (st.session_state['scale'] is not None):
                             temp_max_r_nm = np.max(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
                             temp_min_r_nm = np.min(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
+                            temp_r_step = (temp_max_r_nm - temp_min_r_nm) / 100
+                            if temp_r_step < 0.2:
+                                temp_r_step = 0.1
+                            elif temp_r_step < 0.5:
+                                temp_r_step = 0.5                                
+                            else:
+                               temp_r_step = 1.0
 
                         st.slider("Range of nanoparticle diameter, nm",
                             key = 'param2',
-                            #value = (0.5, 10.0),
-                            min_value = np.floor(temp_min_r_nm-1),
-                            step = 0.1,
+                            #value = (0.5, 10.0),                            
+                            min_value = max(np.floor(temp_min_r_nm-1), 1.0),
+                            step = temp_r_step,
                             max_value = np.ceil(temp_max_r_nm+1),
                             format = "%0.1f",
                             disabled = st.session_state['settingDefault']
@@ -495,7 +502,7 @@ try:
                                         
                         with st.expander("Visualization and saving results", expanded = True, icon = ":material/display_settings:"):
                             # Displaying the scale
-                            st.toggle("Estimated scale display", key = 'displayScale', disabled = True, help = help_str)
+                            st.toggle("Estimated scale display", key = 'displayScale', disabled = False, help = help_str)
 
                             if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
                                 st.warning("""
@@ -504,7 +511,7 @@ try:
                                 """, icon = ":material/warning:")                    
 
                             # Slider for comparing the results before and after detection
-                            st.toggle("Comparison mode", key = 'comparison', help = help_str)
+                            st.toggle("Comparison mode", key = 'comparison', disabled = False, help = help_str)
 
                             # 
                             st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
@@ -851,15 +858,16 @@ try:
                             0: "Palladium (Pd)",    # 12.02 * 10**-12 ng / nm^3
                             1: "Cuprum (Cu)",       #  8.96 * 10**-12 ng / nm^3
                             2: "Alloy 30% Au + 70% Pd (AuPd)",  # 14.10 * 10**-12 ng / nm^3
-                            3: "Alloy 70% Cu + 30% Zn (CuZn)"   #  8.42 * 10**-12 ng / nm^3
+                            3: "Alloy 70% Cu + 30% Zn (CuZn)",  #  8.42 * 10**-12 ng / nm^3
+                            4: "User density"
                         }
 
                         selection = st.selectbox(
                             "Particles material",
                             index = 0,
-                            placeholder = "Select options...",
+                            placeholder = "Select material...",
                             options = option_materialDensity.keys(),
-                            format_func = lambda option: option_materialDensity[option]
+                            format_func = lambda option: option_materialDensity[option],
                         )
 
                         match selection:
@@ -867,12 +875,23 @@ try:
                             case 1: materialDensity = 8.96 * 10**-12
                             case 2: materialDensity = 14.10 * 10**-12
                             case 3: materialDensity = 8.42 * 10**-12
+                            case 4: pass;
                             case _: materialDensity = 1
-
-                        st.markdown(f"""
-                            <div class = 'text'>
-                                Particles material density: <b>{materialDensity} ng/nm<sup>3</sup></b> 
-                            </div>""", unsafe_allow_html = True)
+                        
+                        if selection == 4:
+                            materialDensity = st.number_input(
+                                "Particles material density on ng/nm³",
+                                min_value = 0.0,
+                                step = 1.0e-11,
+                                value = 1.0e-10,
+                                format = "%0.2e",
+                                key = "user-density"
+                            )
+                        else:
+                            st.markdown(f"""
+                                <div class = 'text' style = "font-size: 16px;">
+                                    Particles material density: <b>{materialDensity:.2e} ng/nm<sup>3</sup></b> 
+                                </div>""", unsafe_allow_html = True)
                       
                     if st.session_state['scale'] is None:
                         pass
@@ -886,10 +905,18 @@ try:
                                 Estimated scale: <b>{st.session_state['scale']:.3f} nm/px</b> 
                             </div>""", unsafe_allow_html = True)
                     
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Material: <b>{option_materialDensity[selection]}</b> 
-                        </div>""", unsafe_allow_html = True)
+                    if selection != 4:
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Material: <b>{option_materialDensity[selection]}</b> 
+                            </div>""", unsafe_allow_html = True)
+                    else:
+                        st.markdown(f"""
+                            <div class = 'text'>
+                                Material: <b>{option_materialDensity[selection]} ({materialDensity:.2e} ng/nm<sup>3</sup>)</b> 
+                            </div>""", unsafe_allow_html = True)
+
+
 
                     temp_add_str = ""
                     currentDiameter = diameter_nm
@@ -935,7 +962,7 @@ try:
                         </div>""", unsafe_allow_html = True)
                     
 
-                    st.subheader("Secondary parameters (norm)")                    
+                    st.subheader("Secondary parameters (norm)", help = "Values relative to the surface area")                    
                     imageArea = np.prod(st.session_state['sizeImage'])
                     if st.session_state['scale'] is not None:
                         imageArea = imageArea * st.session_state['scale']**2
@@ -1229,7 +1256,7 @@ try:
                     – DOI <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
                 </p> </li>
                 <li> <p class = 'cite'>
-                    An article about calculating the mass of nanoparticles will be published soon, don't miss it!
+                    An article about this site will be published soon, don't miss it!
                 </p> </li>
             </ul>
         </div>""", unsafe_allow_html = True)
