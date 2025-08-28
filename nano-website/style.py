@@ -14,7 +14,7 @@ def set_style(color):
             }}
 
             .stImage img {{
-                height: 80vh;
+                height: 80%;
                 width: auto;
                 object-fit: contain;
             }}
