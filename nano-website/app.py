@@ -46,11 +46,12 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['settingDefault'] = True
     st.session_state['param-pre-1'] = 10
+    st.session_state['param-pre-2'] = 0
     st.session_state['param1'] = 10
-    st.session_state['param2'] = (0.5, 10.0)
+    st.session_state['param2'] = (1, 10.0)
     st.session_state['param3'] = 0.65
-    st.session_state['parallel'] = True
-    st.session_state['processes'] = 6
+    #st.session_state['parallel'] = True
+    #st.session_state['processes'] = 6
             
     st.session_state['detected'] = False
     st.session_state['BLOBs'] = None
@@ -256,8 +257,7 @@ try:
                         tempArrImg
                     )
                     
-                    lowerBound = autoscale.findBorder(tempArrImg)
-                    
+                    lowerBound = autoscale.findBorder(tempArrImg)                    
                     if (lowerBound is not None):
                         srcImage = srcImage.crop((0, 0, srcImage.size[0], lowerBound))
                         
@@ -279,25 +279,12 @@ try:
                             
                     if (st.session_state['typeImg'] == 'TEM'):
                         srcImage = ImageOps.invert(srcImage)
-                        params = {
-                            # размер окна медианного фильтра
-                            "sz_med" : 4,
-                            # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
-                            "sz_th":  6,
-                        }
-                    elif (st.session_state['typeImg'] == 'SEM'):
-                        params = {
-                            # размер окна медианного фильтра
-                            "sz_med" : 4,
-                            # размер диска Top-Hat (не надо равное 5 - кружки получаются большие) 
-                            "sz_th":  4,
-                        }
 
-                    tempArrImg = np.array(srcImage, dtype = 'uint8')
-                    tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
-                    tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
+                    #tempArrImg = np.array(srcImage, dtype = 'uint8')
+                    #tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
+                    #tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
 
-                    srcImage = Image.fromarray(tempArrImg, mode = 'L')
+                    #srcImage = Image.fromarray(tempArrImg, mode = 'L')
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
@@ -306,19 +293,20 @@ try:
                         disabled = st.session_state['settingDefault'],
                         help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
+                    
+                    option_nanoparticleSize = {
+                        0: "Small (1-5 pixels)",
+                        1: "Medium (5-10 pixels)"
+                    }
 
-                    # l, r = st.columns([3,1])
-                    # l.checkbox("Parallel computing", key = 'parallel', disabled = st.session_state['settingDefault'])
-                    # r.number_input(label = "not_visibility",
-                    #     min_value = 1,
-                    #     max_value = 8,
-                    #     step = 1,
-                    #     format = "%i",
-                    #     placeholder = "Processes",
-                    #     key = 'processes',
-                    #     disabled = st.session_state['settingDefault'],
-                    #     label_visibility = 'collapsed'
-                    # )
+                    st.selectbox("Nanoparticle size",
+                        key = 'param-pre-2',
+                        index = 0,
+                        options = option_nanoparticleSize.keys(),
+                        format_func = lambda option: option_nanoparticleSize[option],
+                        disabled = st.session_state['settingDefault'],
+                        help = "Hipotetical diameter of nanoparticles in pixels"
+                    )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         use_container_width = True,
@@ -330,7 +318,7 @@ try:
                     
                     warningPlaceholder = st.empty()
                     if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
-                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['parallel']]):
+                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['param-pre-2']]):
                             warningPlaceholder.warning("""
                                 The detection settings have been changed.
                                 To accept the new settings, click the button "Nanoparticles detection"! 
@@ -348,7 +336,8 @@ try:
                         lowerBound = autoscale.findBorder(currentImage)        
                         if (lowerBound is not None):
                             currentImage = currentImage[:lowerBound, :]
-                        
+
+                        if st.session_state['param-pre-2'] == 0:
                         # параметры в пикселях
                         params = {
                             # порог яркости для отбрасывания лок. максимумов
@@ -369,6 +358,10 @@ try:
                             "npar": 2       
                         }
 
+                        
+                        #tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
+                        #tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
+
                         # вычисляется только один раз при первом запуске детектирования
                         helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
@@ -381,29 +374,20 @@ try:
                         )
 
                         # вычисляется только один раз для одного набора параметров
-                        if st.session_state['parallel']:
-                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
-                                currentImage,
-                                lm,
-                                xy2,
-                                helpMatrs,
-                                params,
-                                nProc = st.session_state['processes']
-                            )
-                        else:
-                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3(
-                                currentImage,
-                                lm,
-                                xy2,
-                                helpMatrs,
-                                params
-                            )
+                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
+                            currentImage,
+                            lm,
+                            xy2,
+                            helpMatrs,
+                            params,
+                            nProc = 6
+                        )
 
                         st.session_state['detected'] = True                
                         st.session_state['BLOBs'] = BLOBs
                         st.session_state['BLOBs_params'] = BLOBs_params
                         st.session_state['detectedParticles'] = BLOBs.shape[0]
-                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['parallel']]
+                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['param-pre-2']]
         
                     st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
 
@@ -514,7 +498,7 @@ try:
                             st.toggle("Comparison mode", key = 'comparison', disabled = False, help = help_str)
 
                             # 
-                            st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
+                            #st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
