@@ -75,6 +75,7 @@ def set_style(color):
 
             .cite {{
                 font-size: 1.5vw;
+                text-align: justify;
             }}
 
             .header {{

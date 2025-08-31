@@ -1,17 +1,19 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
+from sys import exception
 import streamlit as st
 
 import io, csv
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-import time
+import time, datetime
 
 import style, autoscale
 import NanoStatistics as NanoStat
 import ExponentialApproximation as ExpApp
+import ExponentialApproximation2 as ExpApp2
 import CustomComponents as CustComp
 import WebsiteBot as webBot
 
@@ -68,7 +70,7 @@ def load_default_session_state(_dispToast = False):
     
     st.session_state['scale'] = None
     st.session_state['scaleData'] = None
-    st.session_state['displayScale'] = True
+    st.session_state['displayScale'] = False
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
@@ -89,7 +91,7 @@ def session_state2str(closedKey = ["imgPlaceholder", ]):
 
 
 @st.dialog("Something went wrong...")
-def dialog_exception():
+def dialog_exception(sendReportFlag = True):
     st.write("""
         An error occurred while the application was running.
         *The latest detection and marking results are saved.*
@@ -115,15 +117,18 @@ def dialog_exception():
                 "image-type": st.session_state['uploadedImg'].type
             })       
 
-        result, response = webBot.message2email(dataException)
+        if sendReportFlag:
+            result, response = webBot.message2email(dataException)
+
 
     with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
         st.error(traceback.format_exc())
         
-        if result:
-            st.success("Report successful sent!")
-        else:
-            st.error("Error sending report: " + str(response.json()))
+        if sendReportFlag:
+            if result:
+                st.success("Report successful sent!")
+            else:
+                st.error("Error sending report: " + str(response.json()))
     
             
 @st.dialog("Send feedback...")
@@ -200,9 +205,9 @@ try:
 
     ## Main content area
     tabDetect, tabInfo, tabLable, tabGuide  = st.tabs([
-        "Automatic detection nanoparticles",
+        "Automatic detection",
         "Statistics dashboard",
-        "Manual labeling nanoparticles",
+        "Manual labeling",
         "Help"
     ])
 
@@ -210,7 +215,7 @@ try:
     with tabDetect:
         imgPlaceholder = None
         
-        st.subheader("Upload SEM image")            
+        st.subheader("Upload SEM image", anchor = False)            
         uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff", "png", "jpg", "jpeg" ])
         st.session_state['uploadedImg'] = uploadedImg
 
@@ -337,51 +342,118 @@ try:
                         if (lowerBound is not None):
                             currentImage = currentImage[:lowerBound, :]
 
+
                         if st.session_state['param-pre-2'] == 0:
-                        # параметры в пикселях
-                        params = {
-                            # порог яркости для отбрасывания лок. максимумов
-                            "thr_br": float(st.session_state['param-pre-1']),   
-                            # минимальное расстояние между локальными максимумами при их поиске 
-                            "min_dist": 4,
-                            # размер окна аппроксимации
-                            "wsize": 9,        
-                            # возможные радиусы наночастиц в пикселях
-                            "rs": np.arange(0.5, 6.5, 0.1), 
-                            # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
-                            "best_mode": 3, 
-                            # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
-                            "msk": 3,      
-                            # аппроксимирующая функция "exp" или "pol" 
-                            "met": 'exp',   
-                            # число параметров аппроксимации
-                            "npar": 2       
-                        }
+                            # параметры в пикселях
+                            params = {
+                                # размер окна медианного фильтра
+                                "sz_med" : 3,
+                                # размер диска Top-Hat 
+                                "sz_th":  4,
+                                # порог яркости для отбрасывания лок. максимумов
+                                "thr_br": float(st.session_state['param-pre-1']),   
+                                # минимальное расстояние между локальными максимумами при их поиске 
+                                "min_dist": 3,
+                                # размер окна аппроксимации
+                                "wsize": 7,        
+                                # возможные радиусы наночастиц в пикселях
+                                "rs": np.arange(1.0, 6.5, 0.1), 
+                                # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                                "best_mode": 3, 
+                                # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                                "msk": 3,      
+                                # аппроксимирующая функция "exp" или "pol" 
+                                "met": 'exp',   
+                                # число параметров аппроксимации
+                                "npar": 2       
+                            }
+                                                    
+                            currentImage = ExpApp.PreprocessingMedian(currentImage, params['sz_med'])
+                            currentImage = ExpApp.PreprocessingTopHat(currentImage, params['sz_th'])
 
-                        
-                        #tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
-                        #tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
+                            # вычисляется только один раз при первом запуске детектирования
+                            helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
 
-                        # вычисляется только один раз при первом запуске детектирования
-                        helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
+                            # вычисляется только один раз для одного порога яркости
+                            lm, _ = ExpApp.CACHE_PrefilteringPoints(
+                                currentImage,
+                                params,
+                                False,
+                                False
+                            )
 
-                        # вычисляется только один раз для одного порога яркости
-                        lm, _ = ExpApp.CACHE_PrefilteringPoints(
-                            currentImage,
-                            params,
-                            False,
-                            False
-                        )
+                            # вычисляется только один раз для одного набора параметров
+                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
+                                currentImage,
+                                lm,
+                                xy2,
+                                helpMatrs,
+                                params,
+                                nProc = 6
+                            )
+                        elif st.session_state['param-pre-2'] == 1:
+                            # параметры в пикселях
+                            params = {
+                                # размер окна медианного фильтра
+                                "sz_med" : 3,
+                                # размер диска Top-Hat
+                                "sz_th":  7,
+                                # порог яркости для отбрасывания лок. максимумов
+                                "thr_br": float(st.session_state['param-pre-1']),   
+                                # минимальное расстояние между локальными максимумами при их поиске 
+                                "min_dist": 5,
+                                # размер окна аппроксимации
+                                "wsize": 9,     
+                                # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                                "best_mode": 3, 
+                                # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                                "msk": 3,      
+                                # аппроксимирующая функция "exp" или "pol" 
+                                "met": 'exp',   
+                                # число параметров аппроксимации
+                                "npar": 2,
 
-                        # вычисляется только один раз для одного набора параметров
-                        BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
-                            currentImage,
-                            lm,
-                            xy2,
-                            helpMatrs,
-                            params,
-                            nProc = 6
-                        )
+                                "deleteBorderLines": True, 
+
+                                "threshLines": 100,
+
+                                "max_area":200,
+
+                                "nlocmax": 1000,
+                            }
+
+                            currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
+                            currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
+                            
+                            from skimage.feature import peak_local_max
+
+                            nlocmax = params["nlocmax"]
+                            numpeaks = max(1000, nlocmax)
+                            lms = peak_local_max(currentImage,
+                                min_distance = params["min_dist"],
+                                threshold_abs = 0,
+                                threshold_rel = None,
+                                footprint = None,
+                                labels = None,
+                                num_peaks = numpeaks
+                            )
+                            lm = lms[:nlocmax]
+
+                            if params["deleteBorderLines"]:
+                                img_cont, img_contours, _ = ExpApp2.FindAreasToDelete(currentImage.copy(), params["threshLines"], params["max_area"])
+                                lmblobs = ExpApp2.DeleteBorderPoints(lm, img_contours, 255)
+                            else: 
+                                lmblobs = lm
+                            
+                            blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
+
+                            BLOBs = blobs_appr[:, :3]
+                            BLOBs[:, 2] = BLOBs[:, 2] * 2
+
+                            BLOBs_params = blobs_appr[:, 3:]
+                            BLOBs_params[:, [2, 3]] = BLOBs_params[:, [3, 2]]
+                        else:
+                            raise ValueError("!")
 
                         st.session_state['detected'] = True                
                         st.session_state['BLOBs'] = BLOBs
@@ -455,6 +527,8 @@ try:
                     divider = 1
                     if st.session_state['scale'] is not None:
                         divider = st.session_state['scale']
+
+                        
 
                     params_filter = {
                         "thr_c0": st.session_state['param1'],
@@ -705,7 +779,7 @@ try:
                 # Particle size distribution
                 with db11.container(border = True, height = heightCol):
                     left, rigth = st.columns([7, 1])
-                    left.subheader("Distribution of particle diameters")
+                    left.subheader("Distribution of particle diameters", anchor = False)
 
                     with rigth.popover("", icon=":material/settings:"):
                         st.toggle("Display distribution function",
@@ -835,7 +909,7 @@ try:
                 with db12.container(border = True, height = heightCol):                        
                     
                     left, rigth = st.columns([7, 1])
-                    left.subheader("Nanoparticle parameters")
+                    left.subheader("Nanoparticle parameters", anchor = False)
 
                     with rigth.popover("", icon=":material/settings:"):
                         option_materialDensity = {
@@ -914,7 +988,7 @@ try:
                             {temp_add_str}
                         </div>""", unsafe_allow_html = True)
 
-                    st.subheader("Primary parameters")                    
+                    st.subheader("Primary parameters", anchor = False)                    
                     st.markdown(f"""
                         <div class = 'text'>
                             Average diameter: <b>{np.mean(currentDiameter):.3f} nm</b> 
@@ -925,7 +999,7 @@ try:
                         </div>""", unsafe_allow_html = True)
 
 
-                    st.subheader("Secondary parameters")  
+                    st.subheader("Secondary parameters", anchor = False)  
                     volumeParticls = (np.pi * currentDiameter**3) / 6
                     areaParticls =  np.sum((np.pi * currentDiameter**2) / 4)
                     massParticls = np.sum(volumeParticls * materialDensity)
@@ -946,7 +1020,7 @@ try:
                         </div>""", unsafe_allow_html = True)
                     
 
-                    st.subheader("Secondary parameters (norm)", help = "Values relative to the surface area")                    
+                    st.subheader("Secondary parameters (norm)", help = "Values relative to the surface area", anchor = False)                    
                     imageArea = np.prod(st.session_state['sizeImage'])
                     if st.session_state['scale'] is not None:
                         imageArea = imageArea * st.session_state['scale']**2
@@ -964,7 +1038,7 @@ try:
 
                 # Heatmap of particle count
                 with db13.container(border = True, height = heightCol):
-                    st.subheader("Heatmap of particle count")
+                    st.subheader("Heatmap of particle count", anchor = False)
 
                     currentBLOBs = st.session_state['BLOBs_filter']
                     if boolIndexSelectedBLOBs is not None:         
@@ -1139,8 +1213,8 @@ try:
 
 
         # Guide 1
-        st.subheader("Детектирование и фильтрация наночастиц")
-        text_col, media_col = st.columns([1, 1])
+        st.subheader("Детектирование и фильтрация наночастиц", anchor = False)
+        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
         text_col.markdown(f"""
             <div>
@@ -1182,8 +1256,8 @@ try:
             </div>""", unsafe_allow_html = True)
                 
         # Guide 2
-        st.subheader("Взаимодейтсвие с результатами детектирования")
-        text_col, media_col = st.columns([1, 1])
+        st.subheader("Взаимодейтсвие с результатами детектирования", anchor = False)
+        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
         text_col.markdown(f"""
             <div>
@@ -1224,32 +1298,44 @@ try:
 
     
     ## How to cite
-    st.markdown("""
+    tempCol = st.columns([0.8, 0.2], vertical_alignment = 'center')
+
+    tempCol[0].markdown("""
         <div class = 'cite'> <b>How to cite</b>:
             <ul>
                 <li> <p class = 'cite'>
+                    An article about this site will be published soon, don't miss it!
+                </p> </li>
+                <li> <p class = 'cite'>
                     Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
-                    <br> D. A. Boiko, V. V. Sulimova, M. Yu. Kurbakov [et al.] 
-                    // Nanomaterials. – 2022. – Vol. 12, No. 21. – P. 3914. 
-                    – DOI <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>
+                    Boiko D.A., Sulimova V.V., Kurbakov M.Yu. [et al.] 
+                    // Nanomaterials. 2022. Vol. 12, No. 21. Pp. 3914. 
+                    DOI: <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>.
                 </p> </li>
                 <li> <p class = 'cite'>
                     Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
-                    <br> M. Yu. Kurbakov, V. V. Sulimova, A. V. Kopylov [et al.] 
-                    // Nanoscale. – 2024. – Vol. 16, No. 28. – P. 13663-13676. 
-                    – DOI <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
-                </p> </li>
+                    Kurbakov M.Yu., Sulimova V.V., Kopylov A.V. [et al.]
+                    // Nanoscale. 2024. Vol. 16, No. 28. Pp. 13663-13676. 
+                    DOI: <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
+                </p> </li>                
                 <li> <p class = 'cite'>
-                    An article about this site will be published soon, don't miss it!
+                    Interpretable Graph Methods for Determining Nanoparticles Ordering in Electron Microscopy Images.
+                    Kurbakov M.Yu., Sulimova V.V., Seredin O.S., Kopylov A.V. // Computer Optics. 2025. Vol. 49, No 3. Pp. 470-479.
+                    DOI: <a href=https://computeroptics.ru/eng/KO/Annot/KO49-3/490313e.html>10.18287/2412-6179-CO-1568</a>.
                 </p> </li>
             </ul>
         </div>""", unsafe_allow_html = True)
-       
-
-    st.markdown("""
+    tempCol[1].image(r"./nano-website/qr-code.svg",
+        caption = "Web Nanoparticles QR-code",
+        use_container_width = True
+    )   
+    
+    ## Footer
+    st.markdown(f"""
         <div class = 'footer'>
-            Laboratory of Cognitive Technologies and Simulating Systems, Tula State University © 2025 (E-mail: muwsik@mail.ru)
+            Laboratory of Cognitive Technologies and Simulating Systems,
+            Tula State University © {datetime.datetime.now().year} (E-mail: muwsik@mail.ru)
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception()
+    dialog_exception(False)

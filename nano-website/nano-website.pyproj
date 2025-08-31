@@ -28,6 +28,7 @@
     <Compile Include="CustomComponents.py" />
     <Compile Include="ExponentialApproximation.py" />
     <Compile Include="app.py" />
+    <Compile Include="ExponentialApproximation2.py" />
     <Compile Include="NanoStatistics.py">
       <SubType>Code</SubType>
     </Compile>
