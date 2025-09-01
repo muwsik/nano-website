@@ -41,6 +41,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['imgUpload'] = False
     st.session_state['uploadedImg'] = None
     st.session_state['srcImg'] = None
+    st.session_state['prepImg'] = None
     st.session_state['typeImg'] = None
     st.session_state['fileImageName'] = None
 
@@ -49,9 +50,6 @@ def load_default_session_state(_dispToast = False):
     st.session_state['settingDefault'] = True
     st.session_state['param-pre-1'] = 10
     st.session_state['param-pre-2'] = 0
-    st.session_state['param1'] = 10
-    st.session_state['param2'] = (1, 10.0)
-    st.session_state['param3'] = 0.65
     #st.session_state['parallel'] = True
     #st.session_state['processes'] = 6
             
@@ -222,7 +220,6 @@ try:
         if uploadedImg is not None: 
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
-                #srcImage = srcImage.resize((1280, 960))    
                 
                 load_default_session_state()
                 st.session_state['srcImg'] = srcImage
@@ -243,8 +240,12 @@ try:
                     st.session_state['imgPlaceholder'] = st.empty()
 
                 if (st.session_state['imgBLOB'] is not None):
-                    if (not st.session_state['comparison']):
-                        st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
+                    if (not st.session_state['comparison']):                        
+                        CustComp.img_box(
+                            st.session_state['imgBLOB'],
+                            st.session_state['imgBLOB'],
+                            st.session_state['imgPlaceholder']
+                        )
             # END left side
 
             # Detection settings and results
@@ -298,7 +299,7 @@ try:
                         disabled = st.session_state['settingDefault'],
                         help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
-                    
+
                     option_nanoparticleSize = {
                         0: "Small (1-5 pixels)",
                         1: "Medium (5-10 pixels)"
@@ -370,6 +371,7 @@ try:
                                                     
                             currentImage = ExpApp.PreprocessingMedian(currentImage, params['sz_med'])
                             currentImage = ExpApp.PreprocessingTopHat(currentImage, params['sz_th'])
+                            st.session_state['prepImg'] = Image.fromarray(currentImage)
 
                             # вычисляется только один раз при первом запуске детектирования
                             helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
@@ -417,13 +419,14 @@ try:
 
                                 "threshLines": 100,
 
-                                "max_area":200,
+                                "max_area": 250,
 
-                                "nlocmax": 1000,
+                                "nlocmax": 1250,
                             }
 
                             currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
                             currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
+                            st.session_state['prepImg'] = Image.fromarray(currentImage)
                             
                             from skimage.feature import peak_local_max
 
@@ -465,10 +468,10 @@ try:
 
                 # Detection results
                 if st.session_state['detected']:
-                    time = st.session_state['timeDetection']
+                    temp_time = st.session_state['timeDetection']
                     st.markdown(f"""
                         <p class = 'text'>
-                            Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({time//60}m : {time%60:02}s)
+                            Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({temp_time//60}m : {temp_time%60:02}s)
                         </p>""", unsafe_allow_html = True
                     )
 
@@ -478,19 +481,21 @@ try:
                             Nanoparticles not found!
                             Please change the detection settings or upload another SEM image!
                         """, icon = ":material/warning:")
-        
+                                    
                 # Action with correctly detection results
                 if (st.session_state['detected'] and st.session_state['detectedParticles'] > 0):
                     # Filtration settings
                     with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
+                        if ('param-filt-1' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-filt-1'] = 10
+                                                    
                         st.slider("Nanoparticle center brightness",
-                            key = 'param1',
-                            value = 10,
+                            key = 'param-filt-1',
                             disabled = st.session_state['settingDefault'],
                             help = "Brightness in the central pixel of the nanoparticle"
                         )
 
-                        temp_max_r_nm = 10.0
+                        temp_max_r_nm = 10
                         temp_min_r_nm = 1
                         temp_r_step = 0.1
                         if (st.session_state['BLOBs'] is not None) and (st.session_state['scale'] is not None):
@@ -504,19 +509,26 @@ try:
                             else:
                                temp_r_step = 1.0
 
-                        st.slider("Range of nanoparticle diameter, nm",
-                            key = 'param2',
-                            #value = (0.5, 10.0),                            
-                            min_value = max(np.floor(temp_min_r_nm-1), 1.0),
+                        temp_max = np.ceil(temp_max_r_nm+1)
+                        temp_min = max(np.floor(temp_min_r_nm-1), 1.0)
+
+                        if ('param-filt-2' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-filt-2'] = (temp_min, temp_max)
+
+                        st.slider("Nanoparticle diameter, nm",
+                            key = 'param-filt-2',                         
+                            min_value = temp_min,
                             step = temp_r_step,
-                            max_value = np.ceil(temp_max_r_nm+1),
+                            max_value = temp_max,
                             format = "%0.1f",
                             disabled = st.session_state['settingDefault']
                         )
 
+                        if ('param-filt-3' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-filt-3'] = 0.65
+
                         st.slider("Nanoparticle reliability",
-                            key = 'param3',
-                            value = 0.65,
+                            key = 'param-filt-3',
                             min_value = 0.0,
                             step = 0.01,
                             max_value = 1.0,
@@ -528,13 +540,11 @@ try:
                     if st.session_state['scale'] is not None:
                         divider = st.session_state['scale']
 
-                        
-
                     params_filter = {
-                        "thr_c0": st.session_state['param1'],
-                        "min_thr_d": st.session_state['param2'][0] / divider,   
-                        "max_thr_d": st.session_state['param2'][1] / divider, 
-                        "thr_error": 1 - st.session_state['param3'], 
+                        "thr_c0": st.session_state['param-filt-1'],
+                        "min_thr_d": st.session_state['param-filt-2'][0] / divider,   
+                        "max_thr_d": st.session_state['param-filt-2'][1] / divider, 
+                        "thr_error": 1 - st.session_state['param-filt-3'], 
                     }
             
                     # Filtering
@@ -572,7 +582,7 @@ try:
                             st.toggle("Comparison mode", key = 'comparison', disabled = False, help = help_str)
 
                             # 
-                            #st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
+                            st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -648,7 +658,7 @@ try:
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
 
             if (st.session_state['preprocess']):
-                viewImage.paste(srcImage, (0,0))
+                viewImage.paste(Image.fromarray(currentImage), (0,0))
 
             draw = ImageDraw.Draw(viewImage)
 
@@ -683,7 +693,7 @@ try:
                     draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
             st.session_state['imgBLOB'] = viewImage
-
+            
             if (st.session_state['comparison']):
                 if (st.session_state['preprocess']):
                     temp = st.session_state['srcImg'].copy().convert('RGB')
@@ -701,7 +711,12 @@ try:
                         st.session_state['imgPlaceholder']
                     )
             else:
-                st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
+                CustComp.img_box(
+                    st.session_state['imgBLOB'],
+                    st.session_state['imgBLOB'],                        
+                    st.session_state['imgPlaceholder']
+                )
+                #st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
 
     ## TAB 2

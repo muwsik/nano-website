@@ -74,7 +74,7 @@ def set_style(color):
             }}
 
             .cite {{
-                font-size: 1.5vw;
+                font-size: 1.25vw;
                 text-align: justify;
             }}
 
