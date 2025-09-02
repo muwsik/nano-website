@@ -1,7 +1,6 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
-from sys import exception
 import streamlit as st
 
 import io, csv
@@ -236,16 +235,9 @@ try:
             colImage, colSetting = st.columns([6, 2])
 
             with colImage:
-                if (st.session_state['imgPlaceholder'] is None):
-                    st.session_state['imgPlaceholder'] = st.empty()
-
-                if (st.session_state['imgBLOB'] is not None):
-                    if (not st.session_state['comparison']):                        
-                        CustComp.img_box(
-                            st.session_state['imgBLOB'],
-                            st.session_state['imgBLOB'],
-                            st.session_state['imgPlaceholder']
-                        )
+                with st.container(key = 'image-container'):
+                    if (st.session_state['imgPlaceholder'] is None):
+                        st.session_state['imgPlaceholder'] = st.empty()
             # END left side
 
             # Detection settings and results
@@ -814,9 +806,9 @@ try:
                         
                         buttonPlaceholder = st.empty()
                                         
-                    start = st.session_state['param2'][0]
+                    start = st.session_state['param-filt-2'][0]
                     step = 0.2
-                    end = st.session_state['param2'][1] + step
+                    end = st.session_state['param-filt-2'][1] + step
 
                     counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
                                         
@@ -1035,10 +1027,14 @@ try:
                         </div>""", unsafe_allow_html = True)
                     
 
-                    st.subheader("Secondary parameters (norm)", help = "Values relative to the surface area", anchor = False)                    
                     imageArea = np.prod(st.session_state['sizeImage'])
                     if st.session_state['scale'] is not None:
                         imageArea = imageArea * st.session_state['scale']**2
+
+                    st.subheader("Secondary parameters (norm)",
+                        help = f"Values relative to the surface area is {imageArea:.2e} nm²",
+                        anchor = False
+                    )                    
                        
                     st.markdown(f"""
                         <div class = 'text'>

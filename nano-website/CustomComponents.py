@@ -23,15 +23,23 @@ def img_box(img1, img2, placeholder = None):
 
     css_part = f"""
         <style>
+             html, body {{
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100% !important;
+                overflow: hidden;
+            }}
+
             .imgBox {{
                 margin: 0;
                 width: 100%;
-                height: 100vh;
+                height: 100% !important;
+                position: relative;
                 overflow: hidden;
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                position: relative;
             }}
 
             .imgBox img {{
@@ -41,7 +49,7 @@ def img_box(img1, img2, placeholder = None):
 
             .default1, .default2 {{  
                 max-width: 100%;
-                max-height: 100%; 
+                max-height: 90%;
                 object-fit: contain;
                 background-size: cover;                
                 user-select: none;

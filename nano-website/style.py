@@ -5,18 +5,12 @@ def set_style(color):
         <style>            
             iframe {{
                 width: 100%;
-                height: 80vh;
+                height: 90vh !important;
+                max-height: 1000px;
             }}
 
-            .stImage {{
-                display: flex;
-                justify-content: center;
-            }}
-
-            .stImage img {{
-                height: 80%;
-                width: auto;
-                object-fit: contain;
+            div.stVerticalBlock.st-key-image-container > div {{
+                height: 100% !important;
             }}
 
             h3 {{
