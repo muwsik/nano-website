@@ -5,8 +5,9 @@ def set_style(color):
         <style>            
             iframe {{
                 width: 100%;
-                height: 90vh !important;
-                max-height: 1000px;
+                height: 90vh !important;                
+                min-height: 350px;
+                max-height: 750px;
             }}
 
             div.stVerticalBlock.st-key-image-container > div {{
