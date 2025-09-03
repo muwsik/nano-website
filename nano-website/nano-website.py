@@ -1,6 +1,7 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
+import scipy.ndimage
 import streamlit as st
 
 import io, csv
@@ -8,6 +9,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import time, datetime
+
+import skimage
+import scipy
 
 import style, autoscale
 import NanoStatistics as NanoStat
@@ -31,7 +35,7 @@ colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
 
 
-def load_default_session_state(_dispToast = False):
+def load_default_sessionState(_dispToast = False):
     if _dispToast:
         st.toast('Default configuration loaded!')
 
@@ -39,16 +43,14 @@ def load_default_session_state(_dispToast = False):
 
     st.session_state['imgUpload'] = False
     st.session_state['uploadedImg'] = None
-    st.session_state['srcImg'] = None
-    st.session_state['prepImg'] = None
-    st.session_state['typeImg'] = None
     st.session_state['fileImageName'] = None
+    st.session_state['srcImg'] = None
+    #st.session_state['prepImg'] = None
+    st.session_state['typeImg'] = None
 
     st.session_state['imgPlaceholder'] = None
 
-    st.session_state['settingDefault'] = True
-    st.session_state['param-pre-1'] = 10
-    st.session_state['param-pre-2'] = 0
+    st.session_state['settingDefault'] = False
     #st.session_state['parallel'] = True
     #st.session_state['processes'] = 6
             
@@ -63,7 +65,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['timeDetection'] = None
     st.session_state['detectionSettings'] = None
 
-    st.session_state['comparison'] = False
+    st.session_state['comparison'] = True
     
     st.session_state['scale'] = None
     st.session_state['scaleData'] = None
@@ -78,7 +80,7 @@ def load_default_session_state(_dispToast = False):
     st.session_state['preprocess'] = False
 
 
-def session_state2str(closedKey = ["imgPlaceholder", ]):
+def sessionState2str(closedKey = ["imgPlaceholder", ]):
     tempStr = "\n"
     for key in st.session_state.keys():
         if key not in closedKey:
@@ -101,7 +103,7 @@ def dialog_exception(sendReportFlag = True):
         st.rerun()
     else:
         dataException = {
-            "dump": session_state2str(),
+            "dump": sessionState2str(),
             "contact-email": "None",
             "add-info": traceback.format_exc(),    
             "image-data": None,
@@ -145,7 +147,7 @@ def dialog_feedback():
 
     if submitButtonClick:
         dataFeedback = {
-            "dump": session_state2str(),
+            "dump": sessionState2str(),
             "contact-email": contactEmail,
             "add-info": txt,    
             "image-data": None,
@@ -166,7 +168,7 @@ def dialog_feedback():
             st.error("Error sending feedback. Please try again...")
 
 
-def update_session_state_element(key, value):
+def update_element_sessionState(key, value):
     st.session_state[key] = value
 
 
@@ -179,9 +181,9 @@ try:
     
     # Initial loading of session states
     if 'rerun' not in st.session_state:
-        load_default_session_state()
+        load_default_sessionState()
     elif st.session_state['rerun']:
-        load_default_session_state(True)
+        load_default_sessionState(True)
     
     ## Header
     st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
@@ -220,7 +222,7 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 
-                load_default_session_state()
+                load_default_sessionState()
                 st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
@@ -228,7 +230,7 @@ try:
                 
             st.session_state['imgUpload'] = True       
         else:
-            load_default_session_state()
+            load_default_sessionState()
         
         
         if (st.session_state['imgUpload']):
@@ -238,17 +240,17 @@ try:
                 with st.container(key = 'image-container'):
                     if (st.session_state['imgPlaceholder'] is None):
                         st.session_state['imgPlaceholder'] = st.empty()
-            # END left side
 
             # Detection settings and results
-            with colSetting:        
-                st.checkbox("Use default settings?",
+            with colSetting:
+                st.toggle("Use default settings",
                     disabled = not st.session_state['imgUpload'],
                     key = 'settingDefault'
                 )
 
                 # Preprocessing image
-                with st.spinner("Preprocessing image...", show_time = True):
+                with st.spinner("Preprocessing image...", show_time = True):                           
+                    
                     tempArrImg = np.array(srcImage, dtype = 'uint8')
 
                     st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
@@ -278,26 +280,29 @@ try:
                     if (st.session_state['typeImg'] == 'TEM'):
                         srcImage = ImageOps.invert(srcImage)
 
-                    #tempArrImg = np.array(srcImage, dtype = 'uint8')
-                    #tempArrImg = ExpApp.PreprocessingMedian(tempArrImg, params['sz_med'])
-                    #tempArrImg = ExpApp.PreprocessingTopHat(tempArrImg, params['sz_th'])
-
-                    #srcImage = Image.fromarray(tempArrImg, mode = 'L')
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
+                    if ('param-pre-1' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-pre-1'] = 10
+                    
                     st.slider("Nanoparticle brightness",
                         key = 'param-pre-1',
                         disabled = st.session_state['settingDefault'],
                         help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
 
+
                     option_nanoparticleSize = {
-                        0: "Small (1-5 pixels)",
-                        1: "Medium (5-10 pixels)"
+                        0: "Small (1-10 pixels)",
+                        1: "Medium (10-20 pixels)",
+                        2: "Large (20-35 pixels)"
                     }
 
-                    st.selectbox("Nanoparticle size",
+                    if ('param-pre-2' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-pre-2'] = 1
+
+                    st.selectbox("Hypothetical nanoparticles diameter",
                         key = 'param-pre-2',
                         index = 0,
                         options = option_nanoparticleSize.keys(),
@@ -310,7 +315,7 @@ try:
                         use_container_width = True,
                         disabled = not st.session_state['imgUpload'],
                         help = help_str,
-                        on_click = update_session_state_element,
+                        on_click = update_element_sessionState,
                         args = ("detected", True)
                     )
                     
@@ -363,7 +368,7 @@ try:
                                                     
                             currentImage = ExpApp.PreprocessingMedian(currentImage, params['sz_med'])
                             currentImage = ExpApp.PreprocessingTopHat(currentImage, params['sz_th'])
-                            st.session_state['prepImg'] = Image.fromarray(currentImage)
+                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
 
                             # вычисляется только один раз при первом запуске детектирования
                             helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
@@ -390,12 +395,15 @@ try:
                             params = {
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
+
+                                "sigma_gauss": 0.5,
+
                                 # размер диска Top-Hat
                                 "sz_th":  7,
                                 # порог яркости для отбрасывания лок. максимумов
                                 "thr_br": float(st.session_state['param-pre-1']),   
                                 # минимальное расстояние между локальными максимумами при их поиске 
-                                "min_dist": 5,
+                                "min_dist": 6,
                                 # размер окна аппроксимации
                                 "wsize": 9,     
                                 # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
@@ -411,22 +419,25 @@ try:
 
                                 "threshLines": 100,
 
-                                "max_area": 250,
+                                "max_area": 500,
 
-                                "nlocmax": 1250,
+                                "nlocmax": 1000,
                             }
 
                             currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
                             currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
-                            st.session_state['prepImg'] = Image.fromarray(currentImage)
+                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
                             
-                            from skimage.feature import peak_local_max
+                            currentImage = scipy.ndimage.gaussian_filter(
+                                currentImage,
+                                sigma = params["sigma_gauss"]
+                            )
 
                             nlocmax = params["nlocmax"]
                             numpeaks = max(1000, nlocmax)
-                            lms = peak_local_max(currentImage,
+                            lms = skimage.feature.peak_local_max(currentImage,
                                 min_distance = params["min_dist"],
-                                threshold_abs = 0,
+                                threshold_abs = params["thr_br"],
                                 threshold_rel = None,
                                 footprint = None,
                                 labels = None,
@@ -443,6 +454,75 @@ try:
                             blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
 
                             BLOBs = blobs_appr[:, :3]
+                            BLOBs[:, 2] = BLOBs[:, 2] * 2
+
+                            BLOBs_params = blobs_appr[:, 3:]
+                            BLOBs_params[:, [2, 3]] = BLOBs_params[:, [3, 2]]
+                        elif st.session_state['param-pre-2'] == 2:
+                            # параметры в пикселях
+                            params = {
+                                # размер окна медианного фильтра
+                                "sz_med" : 3,
+
+                                "sigma_gauss": 1.5,
+
+                                # размер диска Top-Hat
+                                "sz_th":  8,
+                                # порог яркости для отбрасывания лок. максимумов
+                                "thr_br": float(st.session_state['param-pre-1']),   
+                                # минимальное расстояние между локальными максимумами при их поиске 
+                                "min_dist": 5,
+                                # размер окна аппроксимации
+                                "wsize": 7,     
+                                # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
+                                "best_mode": 3, 
+                                # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
+                                "msk": 3,      
+                                # аппроксимирующая функция "exp" или "pol" 
+                                "met": 'exp',   
+                                # число параметров аппроксимации
+                                "npar": 2,
+
+                                "deleteBorderLines": True, 
+
+                                "threshLines": 100,
+
+                                "max_area": 450,
+
+                                "nlocmax": 500,
+                            }
+
+                            currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
+                            currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
+                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
+                            
+                            # downscaling and smoothing
+                            currentImage = scipy.ndimage.gaussian_filter(
+                                currentImage[::2, ::2],
+                                sigma = params["sigma_gauss"]
+                            )
+
+                            nlocmax = params["nlocmax"]
+                            numpeaks = max(1000, nlocmax)
+                            lms = skimage.feature.peak_local_max(currentImage,
+                                min_distance = params["min_dist"],
+                                threshold_abs = params["thr_br"],
+                                threshold_rel = None,
+                                footprint = None,
+                                labels = None,
+                                num_peaks = numpeaks
+                            )
+                            lm = lms[:nlocmax]
+
+                            if params["deleteBorderLines"]:
+                                img_cont, img_contours, _ = ExpApp2.FindAreasToDelete(currentImage.copy(), params["threshLines"], params["max_area"])
+                                lmblobs = ExpApp2.DeleteBorderPoints(lm, img_contours, 255)
+                            else: 
+                                lmblobs = lm
+                            
+                            blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
+
+                            BLOBs = blobs_appr[:, :3] * 2
                             BLOBs[:, 2] = BLOBs[:, 2] * 2
 
                             BLOBs_params = blobs_appr[:, 3:]
@@ -571,10 +651,10 @@ try:
                                 """, icon = ":material/warning:")                    
 
                             # Slider for comparing the results before and after detection
-                            st.toggle("Comparison mode", key = 'comparison', disabled = False, help = help_str)
+                            st.toggle("Comparison mode", value = True, key = 'comparison', disabled = False, help = help_str)
 
                             # 
-                            st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
+                            #st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
 
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -643,7 +723,15 @@ try:
                                 file_name = fileResultName,
                                 disabled = button_download_disabled
                             )
-            # END right side
+     
+        st.write(f"""
+            {st.session_state['param-pre-1']},
+            {option_nanoparticleSize[st.session_state['param-pre-2']]} |
+            {st.session_state['param-filt-1']},
+            ({st.session_state['param-filt-2'][0]}, 
+            {st.session_state['param-filt-2'][1]}), 
+            {st.session_state['param-filt-3']}
+        """)
 
         # Display source image by st.image
         if (st.session_state['imgUpload']):
@@ -712,13 +800,6 @@ try:
 
 
     ## TAB 2
-    with tabLable:
-        st.warning("""
-                The section is temporarily unavailable, but it will appear soon!
-            """, icon = ":material/warning:")
-
-
-    ## TAB 3
     with tabInfo:    
         heightCol = 550
         marginChart = dict(l=10, r=10, t=40, b=5)
@@ -760,7 +841,7 @@ try:
           
                 st.button("Calculate statistics",
                     key = 'right_button',
-                    on_click = update_session_state_element,
+                    on_click = update_element_sessionState,
                     args = ("calcStatictic", True)
                 )           
 
@@ -1087,8 +1168,8 @@ try:
             with st.expander("Some information charts (demo)", icon = ":material/data_thresholding:"):
                 st.markdown(f"""
                     <p class = 'text'>
-                        Visual representation of nanoparticle-based statistics in an image.
-                        A detailed description is provided in the work on the first link below.
+                        Visual representation of nanoparticle-based statistics in image.
+                        A detailed description is provided in the work on the second link below.
                     </p>""", unsafe_allow_html = True)
 
                 currentBLOBs = st.session_state['BLOBs_filter']
@@ -1104,7 +1185,7 @@ try:
                     </div>""", unsafe_allow_html = True)
 
                 # ?
-                with db21.container(border = True, height = heightCol):              
+                with db21.container(border = True, height = heightCol - 75):              
                     x = np.arange(5, 100, 5)
 
                     emptySubareas = np.zeros_like(x, dtype = 'float')
@@ -1148,7 +1229,7 @@ try:
                 # END db21
 
                 # ?
-                with db22.container(border = True, height = heightCol):                
+                with db22.container(border = True, height = heightCol - 75):                
 
                     fig = ff.create_distplot(
                         [minDist], [''], bin_size = 1, histnorm = 'probability',
@@ -1179,7 +1260,7 @@ try:
                 # END db22
 
                 # ?
-                with db23.container(border = True, height = heightCol):                
+                with db23.container(border = True, height = heightCol - 75):                
                     x = np.arange(5, 100, 1)
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
 
@@ -1212,7 +1293,14 @@ try:
 
                     st.plotly_chart(fig, use_container_width = True)
                 # END db23
-                
+            
+
+    ## TAB 3
+    with tabLable:
+        st.warning("""
+                The section is temporarily unavailable, but it will appear soon!
+            """, icon = ":material/warning:")
+        
 
     ## TAB 4
     with tabGuide:
@@ -1315,22 +1403,22 @@ try:
         <div class = 'cite'> <b>How to cite</b>:
             <ul>
                 <li> <p class = 'cite'>
-                    An article about this site will be published soon, don't miss it!
+                    [1] An article about this site will be published soon, don't miss it!
                 </p> </li>
                 <li> <p class = 'cite'>
-                    Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
+                    [2] Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
                     Boiko D.A., Sulimova V.V., Kurbakov M.Yu. [et al.] 
                     // Nanomaterials. 2022. Vol. 12, No. 21. Pp. 3914. 
                     DOI: <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>.
                 </p> </li>
                 <li> <p class = 'cite'>
-                    Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
+                    [3] Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
                     Kurbakov M.Yu., Sulimova V.V., Kopylov A.V. [et al.]
                     // Nanoscale. 2024. Vol. 16, No. 28. Pp. 13663-13676. 
                     DOI: <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
                 </p> </li>                
                 <li> <p class = 'cite'>
-                    Interpretable Graph Methods for Determining Nanoparticles Ordering in Electron Microscopy Images.
+                    [4] Interpretable Graph Methods for Determining Nanoparticles Ordering in Electron Microscopy Images.
                     Kurbakov M.Yu., Sulimova V.V., Seredin O.S., Kopylov A.V. // Computer Optics. 2025. Vol. 49, No 3. Pp. 470-479.
                     DOI: <a href=https://computeroptics.ru/eng/KO/Annot/KO49-3/490313e.html>10.18287/2412-6179-CO-1568</a>.
                 </p> </li>
