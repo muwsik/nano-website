@@ -1,7 +1,6 @@
 # Run application
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
-import scipy.ndimage
 import streamlit as st
 
 import io, csv
@@ -19,6 +18,7 @@ import ExponentialApproximation as ExpApp
 import ExponentialApproximation2 as ExpApp2
 import CustomComponents as CustComp
 import WebsiteBot as webBot
+import API2CVAT
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -35,10 +35,10 @@ colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
 
 
-def load_default_sessionState(_dispToast = False):
+def loadDefault_sessionState(_dispToast = False):
     if _dispToast:
         st.toast('Default configuration loaded!')
-
+    
     st.session_state['rerun'] = False
 
     st.session_state['imgUpload'] = False
@@ -76,6 +76,7 @@ def load_default_sessionState(_dispToast = False):
     st.session_state['selection'] = False
 
     st.session_state['calcStatictic'] = False
+    st.session_state['uploadedJobCVAT'] = None
 
     st.session_state['preprocess'] = False
 
@@ -168,7 +169,7 @@ def dialog_feedback():
             st.error("Error sending feedback. Please try again...")
 
 
-def update_element_sessionState(key, value):
+def update_sessionState(key, value):
     st.session_state[key] = value
 
 
@@ -181,9 +182,9 @@ try:
     
     # Initial loading of session states
     if 'rerun' not in st.session_state:
-        load_default_sessionState()
+        loadDefault_sessionState()
     elif st.session_state['rerun']:
-        load_default_sessionState(True)
+        loadDefault_sessionState(True)
     
     ## Header
     st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
@@ -203,15 +204,15 @@ try:
 
 
     ## Main content area
-    tabDetect, tabInfo, tabLable, tabGuide  = st.tabs([
+    tabDetect, tabStat, tabHelp = st.tabs([
         "Automatic detection",
         "Statistics dashboard",
-        "Manual labeling",
         "Help"
     ])
 
+
     ## TAB 1
-    with tabDetect:
+    with tabDetect:   
         imgPlaceholder = None
         
         st.subheader("Upload SEM image", anchor = False)            
@@ -222,7 +223,7 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 
-                load_default_sessionState()
+                loadDefault_sessionState()
                 st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
@@ -230,7 +231,7 @@ try:
                 
             st.session_state['imgUpload'] = True       
         else:
-            load_default_sessionState()
+            loadDefault_sessionState()
         
         
         if (st.session_state['imgUpload']):
@@ -315,7 +316,7 @@ try:
                         use_container_width = True,
                         disabled = not st.session_state['imgUpload'],
                         help = help_str,
-                        on_click = update_element_sessionState,
+                        on_click = update_sessionState,
                         args = ("detected", True)
                     )
                     
@@ -663,6 +664,7 @@ try:
                                 0: "Particles on clear background (*.tif)",
                                 1: "Particles on EM-image (*.tif)",
                                 2: "Particles characteristics (*.csv)",
+                                3: "CVAT task (*.zip)"
                             }
 
                             selection = selectboxCol.selectbox(
@@ -711,7 +713,20 @@ try:
                                     temp_writer.writerows(st.session_state['BLOBs_filter'])
 
                                     fileResultName = "particls_info-" + Path(uploadedImg.name).stem + ".csv"
+                                case 3:
 
+                                    st.write()
+
+                                    imageData= {
+                                        'name': Path(uploadedImg.name).stem,
+                                        'width': st.session_state['srcImg'].size[0],
+                                        'height': st.session_state['srcImg'].size[1],
+                                        'buffer': uploadedImg.getvalue()
+                                    }
+
+                                    fileResult = API2CVAT.ExportToCVAT(imageData, st.session_state['BLOBs_filter'])
+
+                                    fileResultName = f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
                                 case _:
                                     button_download_disabled = True
 
@@ -723,16 +738,7 @@ try:
                                 file_name = fileResultName,
                                 disabled = button_download_disabled
                             )
-     
-        st.write(f"""
-            {st.session_state['param-pre-1']},
-            {option_nanoparticleSize[st.session_state['param-pre-2']]} |
-            {st.session_state['param-filt-1']},
-            ({st.session_state['param-filt-2'][0]}, 
-            {st.session_state['param-filt-2'][1]}), 
-            {st.session_state['param-filt-3']}
-        """)
-
+ 
         # Display source image by st.image
         if (st.session_state['imgUpload']):
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
@@ -799,53 +805,70 @@ try:
                 #st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
 
-    ## TAB 2
-    with tabInfo:    
+    ## TAB 2 
+    with tabStat:    
         heightCol = 550
         marginChart = dict(l=10, r=10, t=40, b=5)
         marginChartLess = dict(l=5, r=5, t=0, b=5)
+              
+        with st.expander("Global dashboard settings", expanded = not st.session_state['calcStatictic'], icon = ":material/rule_settings:"):
+            option_map = {
+                0: "Automatically detected",
+                1: "Import from CVAT"
+            }
 
-        if (not st.session_state['detected']):
-            st.session_state['calcStatictic'] = False
+            selection = st.selectbox(
+                "Which nanoparticles to use?",
+                index = 0 if st.session_state['detected'] else 1,
+                options = option_map.keys(),
+                format_func = lambda option: option_map[option]
+            ) 
+                
+            StatsBLOBs = None
+            uploadedImgName = None
+            match selection:
+                case 0:
+                    if (not st.session_state['detected']):
+                        st.session_state['calcStatictic'] = False
 
-            st.warning("""
-                Nanoparticle detection is necessary to calculate their statistics.
-                Please go to "Automatic detection nanoparticles" tab.
-            """, icon = ":material/warning:")
-        elif (st.session_state['filteredParticles'] < 10):  
-            st.session_state['calcStatictic'] = False
+                        st.warning("""
+                            Nanoparticle detection is necessary to calculate their statistics.
+                            Please go to "Automatic detection" tab.
+                        """, icon = ":material/warning:")
+                    elif (st.session_state['filteredParticles'] < 10):  
+                        st.session_state['calcStatictic'] = False
             
-            st.warning("""
-                Nanoparticles after detection and filtration are less than 10! 
-                Please go to the "Detection" tab and change the detection,
-                    filtering settings or upload another SEM image!
-            """, icon = ":material/warning:")
-        else:
-            with st.expander("Global dashboard settings", expanded = not st.session_state['calcStatictic'], icon = ":material/rule_settings:"):
+                        st.warning("""
+                            Nanoparticles after detection and filtration are less than 10! 
+                            Please go to the "Detection" tab and change the detection,
+                                filtering settings or upload another SEM image!
+                        """, icon = ":material/warning:")
+                    else:                        
+                        st.session_state['calcStatictic'] = True
+                        StatsBLOBs = st.session_state['BLOBs_filter']
+                        uploadedImgName = Path(uploadedImg.name).stem
+                case 1:
+                    uploadedJobCVAT = st.file_uploader(
+                        label = "Import CVAT data to calculate statistics (format 'CVAT for images 1.1')",
+                        type = ["zip"]
+                    )
+                    if uploadedJobCVAT is None:
+                        st.session_state['calcStatictic'] = False
+                    else:
+                        st.session_state['calcStatictic'] = True
+                        StatsBLOBs, uploadedImgName, st.session_state['sizeImage'] = API2CVAT.ImportFromCVAT(uploadedJobCVAT)
+                case _:
+                    st.session_state['calcStatictic'] = False
 
-                option_map = {
-                    0: "Automatically detected (AD)",
-                    1: "Manual labeled (ML)",
-                    2: "Union of AD and ML",
-                    3: "Intersection of AD and ML",
-                }
+            buttonCalculateClick = st.button("Calculate statistics",
+                key = 'center_button',
+                on_click = update_sessionState,
+                args = ("calcStatictic", True),
+                disabled = not st.session_state['calcStatictic'],
+                help = "Detect nanoparticles on this cite or upload them from CVAT"
+            )           
 
-                selection = st.radio(
-                    "Which nanoparticles to use?",
-                    index = 0,
-                    options = option_map.keys(),
-                    format_func = lambda option: option_map[option],
-                    horizontal = True,
-                    disabled = True
-                )                
-          
-                st.button("Calculate statistics",
-                    key = 'right_button',
-                    on_click = update_element_sessionState,
-                    args = ("calcStatictic", True)
-                )           
-
-        if (st.session_state['calcStatictic']):
+        if (buttonCalculateClick):
             boolIndexSelectedBLOBs = None       
             
             with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
@@ -858,7 +881,7 @@ try:
                     </p>""", unsafe_allow_html = True
                 )
                 
-                diameter_nm = st.session_state['BLOBs_filter'][:, 2]  
+                diameter_nm = StatsBLOBs[:, 2]  
                 if st.session_state['scale'] is not None:
                     diameter_nm = diameter_nm * st.session_state['scale']
 
@@ -886,10 +909,11 @@ try:
                         )
                         
                         buttonPlaceholder = st.empty()
-                                        
-                    start = st.session_state['param-filt-2'][0]
+                          
+                    
                     step = 0.2
-                    end = st.session_state['param-filt-2'][1] + step
+                    start = np.floor(StatsBLOBs[:,2].min()) - step
+                    end = np.ceil(StatsBLOBs[:,2].max()) + step
 
                     counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
                                         
@@ -913,10 +937,11 @@ try:
                     csv.writer(file, delimiter = ';').writerow([name_x, name_y])
                     csv.writer(file, delimiter = ';').writerows(dataChart)
 
+                    
                     buttonPlaceholder.download_button(
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
-                        file_name = Path(uploadedImg.name).stem + "-dist-diameters.csv",
+                        file_name = uploadedImgName + "-dist-diameters.csv",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -1072,7 +1097,7 @@ try:
    
                     st.markdown(f"""
                         <div class = 'text'>
-                            Quantity: <b>{st.session_state['filteredParticles']}</b>
+                            Quantity: <b>{len(StatsBLOBs)}</b>
                             {temp_add_str}
                         </div>""", unsafe_allow_html = True)
 
@@ -1132,7 +1157,7 @@ try:
                 with db13.container(border = True, height = heightCol):
                     st.subheader("Heatmap of particle count", anchor = False)
 
-                    currentBLOBs = st.session_state['BLOBs_filter']
+                    currentBLOBs = StatsBLOBs
                     if boolIndexSelectedBLOBs is not None:         
                         currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
 
@@ -1172,7 +1197,7 @@ try:
                         A detailed description is provided in the work on the second link below.
                     </p>""", unsafe_allow_html = True)
 
-                currentBLOBs = st.session_state['BLOBs_filter']
+                currentBLOBs = np.copy(StatsBLOBs)
                 if st.session_state['scale'] is not None:         
                     currentBLOBs = currentBLOBs * st.session_state['scale']
 
@@ -1192,7 +1217,7 @@ try:
 
                     for i, size in enumerate(x):
                         temp = NanoStat.uniformity(
-                            st.session_state['BLOBs_filter'],
+                            StatsBLOBs,
                             st.session_state['sizeImage'],
                             size
                         )
@@ -1296,14 +1321,7 @@ try:
             
 
     ## TAB 3
-    with tabLable:
-        st.warning("""
-                The section is temporarily unavailable, but it will appear soon!
-            """, icon = ":material/warning:")
-        
-
-    ## TAB 4
-    with tabGuide:
+    with tabHelp:
         if st.button("If you have any difficulties with our tool, please contact us (click here)",
             key = 'button_contact',
             use_container_width = True
@@ -1394,7 +1412,7 @@ try:
             <div class = 'text' style = "text-align: center;">
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
-
+    
     
     ## How to cite
     tempCol = st.columns([0.8, 0.2], vertical_alignment = 'center')

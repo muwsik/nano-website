@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>autoscale.py</StartupFile>
+    <StartupFile>API2CVAT.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,6 +25,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="API2CVAT.py" />
     <Compile Include="CustomComponents.py" />
     <Compile Include="ExponentialApproximation.py" />
     <Compile Include="nano-website.py" />
@@ -41,13 +42,11 @@
     <Compile Include="WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="qr-code.svg" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="images\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

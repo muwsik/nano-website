@@ -50,8 +50,9 @@ def set_style(color):
                 border-left: 0px dashed gray;
             }}
 
-            .st-key-right_button button {{
-                float: right;
+            .st-key-center_button {{
+                margin: 0 auto;
+                display: block;
             }}
 
             .st-key-button_contact button p {{

@@ -1,0 +1,156 @@
+# -*- coding: cp1251 -*-
+import xml.etree.ElementTree as ET
+import streamlit as st
+import numpy as np
+
+import zipfile
+import time
+import math
+import io
+
+
+@st.cache_data(show_spinner = False, max_entries = 5)
+def ExportToCVAT(imageData, BLOBs): 
+    manifest_jsonl_file = f'''{{"version":"1.1"}}\n{{"type":"images"}}\n{{"name":"{imageData['name']}","extension":".tif","width":{imageData['width']},"height":{imageData['height']},"meta":{{"related_images":[]}}}}'''
+    
+    # not changed
+    task_json_file = """
+        {
+            "name":"Nano labeling",
+            "bug_tracker":"",
+            "status":"annotation",
+            "subset":"",
+            "labels":[{
+                "name":"Nanoparticle",
+                "color":"#ff355e",
+                "attributes":[],
+                "type":"polyline",
+                "sublabels":[]
+            }],
+            "version":"1.0",
+            "data":{
+                "chunk_size":56,
+                "image_quality":100,
+                "start_frame":0,
+                "stop_frame":0,
+                "storage_method":"cache",
+                "storage":"local",
+                "sorting_method":"lexicographical",
+                "chunk_type":"imageset",
+                "deleted_frames":[]
+            },
+            "jobs":[{
+                "status":"annotation",
+                "type":"annotation",
+                "start_frame":0,
+                "stop_frame":0
+            }]
+        }
+    """ 
+
+    shapes = ""
+    for i, blob in enumerate(BLOBs):
+        y, x, d = blob
+
+        shape_element = f"""{{
+            "type":"polyline",
+            "occluded":false,
+            "outside":false,
+            "z_order":0,
+            "rotation":0.0,
+            "points":[{x},{y - d/2},{x},{y + d/2}],
+            "frame":0,
+            "group":0,
+            "source":"manual",
+            "attributes":[],
+            "elements":[],
+            "label":"Nanoparticle"
+        }}""" 
+
+        shapes += shape_element
+        if i < (len(BLOBs) - 1):
+            shapes += ",\n"
+
+    annotations_json_file = f"""[{{
+        "version":0,
+        "tags":[],
+        "shapes":[{shapes}],
+        "tracks":[]
+    }}]"""
+
+
+    files = {
+        f"data/{imageData['name']}.tif": imageData['buffer'],
+        'data/manifest.jsonl': manifest_jsonl_file,
+        'annotations.json': annotations_json_file,
+        'task.json': task_json_file
+    }
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w') as zipf:
+        for file_path, content in files.items():
+            if isinstance(content, str):
+                content = content.encode('utf-8')
+            zipf.writestr(file_path, content)
+    
+    zip_buffer.seek(0)
+    return zip_buffer
+
+
+@st.cache_data(show_spinner = False, max_entries = 5)
+def ImportFromCVAT(jobCVAT):
+    with zipfile.ZipFile(jobCVAT, 'r') as tempFile:
+        annotations = tempFile.read('annotations.xml')
+        annotations = annotations.decode('utf-8')
+
+    BLOBs = []
+
+    root = ET.fromstring(annotations)
+    for image in root.findall('image'):
+        imgName = image.get('name')        
+        imgWidth = int(image.get('width'))
+        imgHeight = int(image.get('height'))
+        for polyline in image.findall('polyline'):
+            points = polyline.get('points')
+        
+            pairs = points.split(";")
+            coordinates = [tuple(map(float, pair.split(","))) for pair in pairs]
+
+            r = math.dist(coordinates[0], coordinates[1]) / 2
+
+            x = (coordinates[0][0] + coordinates[1][0]) / 2
+            y = (coordinates[0][1] + coordinates[1][1]) / 2
+
+            BLOBs.append([y,x,r])
+
+    return np.array(BLOBs), imgName, [imgWidth, imgHeight]
+
+if __name__ == "__main__": 
+    jobFile = r"D:\Загрузки\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
+    
+    BLOBs, imgName, size = ImportFromCVAT(jobFile)
+    print(size, imgName, BLOBs)
+
+    from PIL import Image
+        
+    img = Image.open(r"C:\Users\Muwa\Desktop\data\142-S3-A17-100k-disordered.tif").convert('L')    
+    img_buffer = io.BytesIO()
+    img.save(img_buffer, format = 'TIFF')
+
+    imageData= {
+        'name': "142-S3-A17-100k-disordered",
+        'width': 1280,
+        'height': 1024,
+        'buffer': img_buffer.getvalue()
+    }
+
+    BLOBs = [
+        [10, 20, 5],
+        [20, 40, 7],
+        [25, 25, 10]
+        ]
+
+    zip_buffer = ExportToCVAT(imageData, BLOBs)    
+
+    with open(f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip", 'wb') as f:
+        f.write(zip_buffer.getvalue())
