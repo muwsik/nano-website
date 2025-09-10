@@ -4,6 +4,7 @@ import streamlit as st
 import numpy as np
 
 import zipfile
+import json
 import time
 import math
 import io
@@ -86,21 +87,21 @@ def ExportToCVAT(imageData, BLOBs):
         'task.json': task_json_file
     }
     
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w') as zipf:
+    zipBuffer = io.BytesIO()
+    with zipfile.ZipFile(zipBuffer, 'w') as tempZipFile:
         for file_path, content in files.items():
             if isinstance(content, str):
                 content = content.encode('utf-8')
-            zipf.writestr(file_path, content)
+            tempZipFile.writestr(file_path, content)
     
-    zip_buffer.seek(0)
-    return zip_buffer
+    zipBuffer.seek(0)
+    return zipBuffer
 
 
 @st.cache_data(show_spinner = False, max_entries = 5)
-def ImportFromCVAT(jobCVAT):
-    with zipfile.ZipFile(jobCVAT, 'r') as tempFile:
-        annotations = tempFile.read('annotations.xml')
+def ImportJobFromCVAT(jobCVAT):
+    with zipfile.ZipFile(jobCVAT, 'r') as tempZipFile:
+        annotations = tempZipFile.read('annotations.xml')
         annotations = annotations.decode('utf-8')
 
     BLOBs = []
@@ -116,41 +117,74 @@ def ImportFromCVAT(jobCVAT):
             pairs = points.split(";")
             coordinates = [tuple(map(float, pair.split(","))) for pair in pairs]
 
-            r = math.dist(coordinates[0], coordinates[1]) / 2
-
+            d = math.dist(coordinates[0], coordinates[1])
             x = (coordinates[0][0] + coordinates[1][0]) / 2
             y = (coordinates[0][1] + coordinates[1][1]) / 2
 
-            BLOBs.append([y,x,r])
+            BLOBs.append([y, x, d])
 
     return np.array(BLOBs), imgName, [imgWidth, imgHeight]
 
-if __name__ == "__main__": 
-    jobFile = r"D:\Загрузки\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
+
+@st.cache_data(show_spinner = False, max_entries = 5)
+def ImportTaskFromCVAT(taskCVAT):
+    with zipfile.ZipFile(taskCVAT, 'r') as tempZipFile:
+        annotations = tempZipFile.read('annotations.json')
+        annotations = annotations.decode('utf-8')
+
+        manifest = tempZipFile.read('data/manifest.jsonl')
+        manifest = manifest.decode('utf-8')
+        temp = json.loads(manifest.split('\n')[-1])
+        imgFileName = temp['name'] + temp['extension']        
+        imageBytes = tempZipFile.read(f'data/{imgFileName}')
     
-    BLOBs, imgName, size = ImportFromCVAT(jobFile)
-    print(size, imgName, BLOBs)
+    BLOBs = []
 
-    from PIL import Image
+    annotations = json.loads(annotations)
+    for shape in annotations[0]['shapes']:
+        points = shape['points']
+
+        coordinates = [[points[0], points[1]], [points[2], points[3]]]
+
+        d = math.dist(coordinates[0], coordinates[1])
+        x = (coordinates[0][0] + coordinates[1][0]) / 2
+        y = (coordinates[0][1] + coordinates[1][1]) / 2
         
-    img = Image.open(r"C:\Users\Muwa\Desktop\data\142-S3-A17-100k-disordered.tif").convert('L')    
-    img_buffer = io.BytesIO()
-    img.save(img_buffer, format = 'TIFF')
+        BLOBs.append([y, x, d])
 
-    imageData= {
-        'name': "142-S3-A17-100k-disordered",
-        'width': 1280,
-        'height': 1024,
-        'buffer': img_buffer.getvalue()
-    }
+    return np.array(BLOBs), imgFileName, io.BytesIO(imageBytes)
 
-    BLOBs = [
-        [10, 20, 5],
-        [20, 40, 7],
-        [25, 25, 10]
-        ]
 
-    zip_buffer = ExportToCVAT(imageData, BLOBs)    
+if __name__ == "__main__": 
+    
+    from PIL import Image
+    taskFile = r"C:\Users\Muwa\Desktop\task_nano labeling_backup_2025_09_09_13_06_06.zip"
+    
 
-    with open(f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip", 'wb') as f:
-        f.write(zip_buffer.getvalue())
+    # jobFile = r"D:\Загрузки\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
+    
+    # BLOBs, imgName, size = ImportJobFromCVAT(jobFile)
+    # print(size, imgName, BLOBs)
+
+        
+    # img = Image.open(r"C:\Users\Muwa\Desktop\data\142-S3-A17-100k-disordered.tif").convert('L')    
+    # img_buffer = io.BytesIO()
+    # img.save(img_buffer, format = 'TIFF')
+
+    # imageData= {
+    #     'name': "142-S3-A17-100k-disordered",
+    #     'width': 1280,
+    #     'height': 1024,
+    #     'buffer': img_buffer.getvalue()
+    # }
+
+    # BLOBs = [
+    #     [10, 20, 5],
+    #     [20, 40, 7],
+    #     [25, 25, 10]
+    #     ]
+
+    # zip_buffer = ExportToCVAT(imageData, BLOBs)    
+
+    # with open(f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip", 'wb') as f:
+    #     f.write(zip_buffer.getvalue())

@@ -35,7 +35,6 @@ def scaleLength(c_fullImage, start_y):
 
     return None, None
 
-
 def findText(c_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
     result = reader.readtext(c_footnoteImage, detail = 0, blocklist = 'SOo')
@@ -65,6 +64,14 @@ def scale(c_text):
 
 @st.cache_data(show_spinner = False)
 def estimateScale(c_image):
+
+    if isinstance(c_image, np.ndarray):
+        pass
+    elif isinstance(c_image, Image.Image):
+        c_image = np.array(c_image, dtype = 'uint8')
+    else:
+        raise ValueError("!")
+
     lowerBound = findBorder(c_image)
     if (lowerBound is not None):      
         text = findText(c_image[lowerBound:, :])

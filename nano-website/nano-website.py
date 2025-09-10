@@ -35,12 +35,7 @@ colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
 
 
-def loadDefault_sessionState(_dispToast = False):
-    if _dispToast:
-        st.toast('Default configuration loaded!')
-    
-    st.session_state['rerun'] = False
-
+def defaultDetectTab():
     st.session_state['imgUpload'] = False
     st.session_state['uploadedImg'] = None
     st.session_state['fileImageName'] = None
@@ -58,7 +53,6 @@ def loadDefault_sessionState(_dispToast = False):
     st.session_state['BLOBs'] = None
     st.session_state['BLOBs_params'] = None
     st.session_state['BLOBs_filter'] = None
-    st.session_state['sizeImage'] = None
     st.session_state['detectedParticles'] = 0    
     st.session_state['filteredParticles'] = 0 
     st.session_state['imgBLOB'] = None
@@ -66,19 +60,30 @@ def loadDefault_sessionState(_dispToast = False):
     st.session_state['detectionSettings'] = None
 
     st.session_state['comparison'] = True
-    
-    st.session_state['scale'] = None
-    st.session_state['scaleData'] = None
     st.session_state['displayScale'] = False
+    st.session_state['preprocess'] = False
+
+
+def defaultStatTab():
+    st.session_state['calcStatictic'] = False
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
     st.session_state['selection'] = False
 
-    st.session_state['calcStatictic'] = False
-    st.session_state['uploadedJobCVAT'] = None
 
-    st.session_state['preprocess'] = False
+def loadDefault_sessionState(_dispToast = False):
+    if _dispToast:
+        st.toast('Default configuration loaded!')
+    
+    st.session_state['rerun'] = False
+    
+    st.session_state['sizeImage'] = None
+    st.session_state['scale'] = None
+    st.session_state['scaleData'] = None
+
+    defaultDetectTab()
+    defaultStatTab()
 
 
 def sessionState2str(closedKey = ["imgPlaceholder", ]):
@@ -223,7 +228,7 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 
-                loadDefault_sessionState()
+                defaultDetectTab()
                 st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
             else:
@@ -231,7 +236,7 @@ try:
                 
             st.session_state['imgUpload'] = True       
         else:
-            loadDefault_sessionState()
+            defaultDetectTab()
         
         
         if (st.session_state['imgUpload']):
@@ -830,45 +835,51 @@ try:
                 case 0:
                     if (not st.session_state['detected']):
                         st.session_state['calcStatictic'] = False
-
                         st.warning("""
                             Nanoparticle detection is necessary to calculate their statistics.
                             Please go to "Automatic detection" tab.
                         """, icon = ":material/warning:")
-                    elif (st.session_state['filteredParticles'] < 10):  
+                    elif (st.session_state['filteredParticles'] < 10):
                         st.session_state['calcStatictic'] = False
-            
                         st.warning("""
                             Nanoparticles after detection and filtration are less than 10! 
                             Please go to the "Detection" tab and change the detection,
                                 filtering settings or upload another SEM image!
                         """, icon = ":material/warning:")
                     else:                        
-                        st.session_state['calcStatictic'] = True
                         StatsBLOBs = st.session_state['BLOBs_filter']
                         uploadedImgName = Path(uploadedImg.name).stem
                 case 1:
-                    uploadedJobCVAT = st.file_uploader(
+                    uploadedFileCVAT = st.file_uploader(
                         label = "Import CVAT data to calculate statistics (format 'CVAT for images 1.1')",
                         type = ["zip"]
                     )
-                    if uploadedJobCVAT is None:
+                    if uploadedFileCVAT is None:
                         st.session_state['calcStatictic'] = False
                     else:
-                        st.session_state['calcStatictic'] = True
-                        StatsBLOBs, uploadedImgName, st.session_state['sizeImage'] = API2CVAT.ImportFromCVAT(uploadedJobCVAT)
+                        StatsBLOBs, uploadedImgName, imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
+                        
+                        tempImgCVAT = Image.open(imageCVAT).convert("L")
+                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(tempImgCVAT)
+                        
+                        if st.session_state['scale'] is not None:
+                            st.session_state['sizeImage'] = (tempImgCVAT.size[0], st.session_state['scaleData'][0])
+                        else:
+                            st.session_state['sizeImage'] = tempImgCVAT.size
                 case _:
-                    st.session_state['calcStatictic'] = False
-
-            buttonCalculateClick = st.button("Calculate statistics",
+                    pass
+                
+            st.button("Calculate statistics",
                 key = 'center_button',
                 on_click = update_sessionState,
                 args = ("calcStatictic", True),
-                disabled = not st.session_state['calcStatictic'],
+                disabled = False if (StatsBLOBs is not None) else True,
                 help = "Detect nanoparticles on this cite or upload them from CVAT"
             )           
 
-        if (buttonCalculateClick):
+        if (not st.session_state['calcStatictic']):
+            defaultStatTab()
+        else:
             boolIndexSelectedBLOBs = None       
             
             with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
