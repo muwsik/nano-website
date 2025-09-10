@@ -70,6 +70,7 @@ def defaultStatTab():
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
     st.session_state['selection'] = False
+    st.session_state['step'] = 0.5
 
 
 def loadDefault_sessionState(_dispToast = False):
@@ -672,7 +673,7 @@ try:
                                 3: "CVAT task (*.zip)"
                             }
 
-                            selection = selectboxCol.selectbox(
+                            selectionSave = selectboxCol.selectbox(
                                 "What results should be saved?",
                                 index = 1,
                                 placeholder = "Select options...",
@@ -684,7 +685,7 @@ try:
                             fileResultName = 'None'
                             button_download_disabled = False
 
-                            match selection:
+                            match selectionSave:
                                 case 0:
                                     temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'])
                                     draw = ImageDraw.Draw(temp)
@@ -807,7 +808,6 @@ try:
                     st.session_state['imgBLOB'],                        
                     st.session_state['imgPlaceholder']
                 )
-                #st.session_state['imgPlaceholder'].image(st.session_state['imgBLOB'], use_container_width = True)
 
 
     ## TAB 2 
@@ -822,7 +822,7 @@ try:
                 1: "Import from CVAT"
             }
 
-            selection = st.selectbox(
+            selection_use = st.selectbox(
                 "Which nanoparticles to use?",
                 index = 0 if st.session_state['detected'] else 1,
                 options = option_map.keys(),
@@ -831,7 +831,8 @@ try:
                 
             StatsBLOBs = None
             uploadedImgName = None
-            match selection:
+            imgForVisual = None
+            match selection_use:
                 case 0:
                     if (not st.session_state['detected']):
                         st.session_state['calcStatictic'] = False
@@ -849,6 +850,7 @@ try:
                     else:                        
                         StatsBLOBs = st.session_state['BLOBs_filter']
                         uploadedImgName = Path(uploadedImg.name).stem
+                        imgForVisual = st.session_state['srcImg'].convert('RGB')
                 case 1:
                     uploadedFileCVAT = st.file_uploader(
                         label = "Import CVAT data to calculate statistics (format 'CVAT for images 1.1')",
@@ -859,13 +861,13 @@ try:
                     else:
                         StatsBLOBs, uploadedImgName, imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
                         
-                        tempImgCVAT = Image.open(imageCVAT).convert("L")
-                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(tempImgCVAT)
+                        imgForVisual = Image.open(imageCVAT).convert('RGB')
+                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(imgForVisual.convert("L"))
                         
                         if st.session_state['scale'] is not None:
-                            st.session_state['sizeImage'] = (tempImgCVAT.size[0], st.session_state['scaleData'][0])
+                            st.session_state['sizeImage'] = (imgForVisual.size[0], st.session_state['scaleData'][0])
                         else:
-                            st.session_state['sizeImage'] = tempImgCVAT.size
+                            st.session_state['sizeImage'] = imgForVisual.size
                 case _:
                     pass
                 
@@ -918,13 +920,22 @@ try:
                             key = 'selection',
                             help = help_str
                         )
+
+                        st.number_input("Histogram step",
+                            key = 'step',
+                            min_value = 0.1,
+                            max_value = 1.0,
+                            step = 0.1,
+                            format = '%0.2f',
+                            value = 0.5
+                        )
                         
                         buttonPlaceholder = st.empty()
                           
                     
-                    step = 0.2
-                    start = np.floor(StatsBLOBs[:,2].min()) - step
-                    end = np.ceil(StatsBLOBs[:,2].max()) + step
+                    step = st.session_state['step']
+                    start = np.floor(diameter_nm.min()) - step
+                    end = np.ceil(diameter_nm.max()) + step
 
                     counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
                                         
@@ -1044,7 +1055,7 @@ try:
                             4: "User density"
                         }
 
-                        selection = st.selectbox(
+                        selectionDensity = st.selectbox(
                             "Particles material",
                             index = 0,
                             placeholder = "Select material...",
@@ -1052,7 +1063,7 @@ try:
                             format_func = lambda option: option_materialDensity[option],
                         )
 
-                        match selection:
+                        match selectionDensity:
                             case 0: materialDensity = 12.02 * 10**-12
                             case 1: materialDensity = 8.96 * 10**-12
                             case 2: materialDensity = 14.10 * 10**-12
@@ -1060,7 +1071,7 @@ try:
                             case 4: pass;
                             case _: materialDensity = 1
                         
-                        if selection == 4:
+                        if selectionDensity == 4:
                             materialDensity = st.number_input(
                                 "Particles material density on ng/nm³",
                                 min_value = 0.0,
@@ -1087,15 +1098,15 @@ try:
                                 Estimated scale: <b>{st.session_state['scale']:.3f} nm/px</b> 
                             </div>""", unsafe_allow_html = True)
                     
-                    if selection != 4:
+                    if selectionDensity != 4:
                         st.markdown(f"""
                             <div class = 'text'>
-                                Material: <b>{option_materialDensity[selection]}</b> 
+                                Material: <b>{option_materialDensity[selectionDensity]}</b> 
                             </div>""", unsafe_allow_html = True)
                     else:
                         st.markdown(f"""
                             <div class = 'text'>
-                                Material: <b>{option_materialDensity[selection]} ({materialDensity:.2e} ng/nm<sup>3</sup>)</b> 
+                                Material: <b>{option_materialDensity[selectionDensity]} ({materialDensity:.2e} ng/nm<sup>3</sup>)</b> 
                             </div>""", unsafe_allow_html = True)
 
 
@@ -1165,40 +1176,70 @@ try:
                 # END db12
 
                 # Heatmap of particle count
+                # or
+                # Visualization particles
                 with db13.container(border = True, height = heightCol):
-                    st.subheader("Heatmap of particle count", anchor = False)
+                    option_typeChart = {
+                        0: "Heatmap of particle count",
+                        1: "Visualization particles",
+                    }
 
-                    currentBLOBs = StatsBLOBs
-                    if boolIndexSelectedBLOBs is not None:         
-                        currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
-
-                    stepSize = 10
-                    uniformityMap = NanoStat.uniformity(
-                        currentBLOBs,
-                        st.session_state['sizeImage'],
-                        stepSize
+                    selectionUse = st.selectbox(
+                        "Particles material",
+                        index = 1,
+                        options = option_typeChart.keys(),
+                        format_func = lambda option: option_typeChart[option],
+                        label_visibility = 'collapsed'
                     )
 
-                    fig = px.imshow(uniformityMap, aspect = "equal")
+                    match selectionUse:
+                        case 0: 
+                            currentBLOBs = StatsBLOBs
+                            if boolIndexSelectedBLOBs is not None:         
+                                currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
 
-                    fig.update_traces(
-                        hoverinfo = "z",
-                        hovertemplate = "Particle in subarea %{z:.2}<extra></extra>"
-                    )
+                            stepSize = 10
+                            uniformityMap = NanoStat.uniformity(
+                                currentBLOBs,
+                                st.session_state['sizeImage'],
+                                stepSize
+                            )
 
-                    fig.update_layout(
-                        margin = marginChartLess,
-                        xaxis_title_text = f'Width image, {stepSize}*px',
-                        yaxis_title_text = f'Height image, {stepSize}*px',
-                        coloraxis_colorbar = dict(
-                            title = "Particle count",
-                            orientation = "h",
-                            y = -0.2,
-                        ),
-                        showlegend = False
-                    )
+                            fig = px.imshow(uniformityMap, aspect = "equal")
 
-                    st.plotly_chart(fig, use_container_width = True)
+                            fig.update_traces(
+                                hoverinfo = "z",
+                                hovertemplate = "Particle in subarea %{z:.2}<extra></extra>"
+                            )
+
+                            fig.update_layout(
+                                margin = marginChartLess,
+                                xaxis_title_text = f'Width image, {stepSize}*px',
+                                yaxis_title_text = f'Height image, {stepSize}*px',
+                                coloraxis_colorbar = dict(
+                                    title = "Particle count",
+                                    orientation = "h",
+                                    y = -0.2,
+                                ),
+                                showlegend = False
+                            )
+
+                            st.plotly_chart(fig, use_container_width = True)
+                        case 1: 
+                            currentBLOBs = StatsBLOBs
+                            if boolIndexSelectedBLOBs is not None:         
+                                currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
+
+                            draw = ImageDraw.Draw(imgForVisual)                            
+                            for BLOB in currentBLOBs:                
+                                y, x, d = BLOB; r = d/2
+                                draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                            
+                            st.image(imgForVisual, use_container_width = True)
+                        case _:
+                            pass
+
+                    
                 # END db13
 
             with st.expander("Some information charts (demo)", icon = ":material/data_thresholding:"):
