@@ -852,9 +852,14 @@ try:
                         uploadedImgName = Path(uploadedImg.name).stem
                         imgForVisual = st.session_state['srcImg'].convert('RGB')
                 case 1:
+                    st.markdown(f"""
+                        Import <a href='https://app.cvat.ai/'>CVAT</a> data to calculate statistics (format 'CVAT for images 1.1')
+                    """, unsafe_allow_html = True
+                    )
                     uploadedFileCVAT = st.file_uploader(
-                        label = "Import CVAT data to calculate statistics (format 'CVAT for images 1.1')",
-                        type = ["zip"]
+                        label = "Uploder CVAT file",
+                        type = ["zip"],
+                        label_visibility = 'collapsed'
                     )
                     if uploadedFileCVAT is None:
                         st.session_state['calcStatictic'] = False
@@ -1185,7 +1190,7 @@ try:
                     }
 
                     selectionUse = st.selectbox(
-                        "Particles material",
+                        "Type chart",
                         index = 1,
                         options = option_typeChart.keys(),
                         format_func = lambda option: option_typeChart[option],
