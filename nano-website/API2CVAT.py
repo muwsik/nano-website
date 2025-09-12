@@ -158,8 +158,10 @@ def ImportTaskFromCVAT(taskCVAT):
 if __name__ == "__main__": 
     
     from PIL import Image
-    taskFile = r"C:\Users\Muwa\Desktop\task_nano labeling_backup_2025_09_09_13_06_06.zip"
-    
+    taskFile = r"D:\Загрузки\task_nano labeling_backup_2025_09_11_10_57_41.zip"
+
+    temp = ImportTaskFromCVAT(taskFile)
+    print(1)
 
     # jobFile = r"D:\Загрузки\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
     

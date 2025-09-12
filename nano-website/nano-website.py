@@ -2,6 +2,7 @@
 # streamlit run .\nano-website\app.py --server.enableXsrfProtection false
 
 import streamlit as st
+import base64
 
 import io, csv
 from pathlib import Path
@@ -1392,7 +1393,7 @@ try:
 
         text_col.markdown(f"""
             <div>
-                <p class = 'text'>Все дальнейшие шаги выполняются на владке "Automatic detection nanoparticles"!</p>
+                <p class = 'text'>Все дальнейшие шаги выполняются на владке "Automatic detection"!</p>
                 <ul>
                     <li>
                         <p class = 'text'>
@@ -1435,16 +1436,16 @@ try:
 
         text_col.markdown(f"""
             <div>
-                <p class = 'text'>Указанный функционал доступен на владке "Automatic detection nanoparticles" после детектирования наночастиц!</p>
+                <p class = 'text'>Указанный функционал доступен на владке "Automatic detection" после детектирования наночастиц!</p>
                 <ul>
                     <li>
                         <p class = 'text'>
-                            Результаты детектирования можно скачать в трёх вариантах:
+                            Результаты детектирования можно скачать в нескольких вариантах:
                             (1) Найденные частицы на прозрачном фоне,
                             (2) Найденные частицы, наложенные на исходное изображение,
                             (3) В формате с указанием координат центра и радиуса каждой частицы.
-                            Для этого нужно в выпадающем списке выбрать нужный вариант и нажать кнопку,
-                            расположенную правее.
+                            Для этого нужно в выпадающем списке "What results should be saved?" выбрать нужный вариант 
+                            и нажать кнопку, расположенную правее.
                         </p>
                     </li>
                     <li>
@@ -1460,6 +1461,46 @@ try:
                             В этом режиме можно: (1) Скрыть\показать разметку на всём изображении нажатием ЛКМ,
                             (2) Скрыть\показать разметку в приближенной области нажатием ПКМ,
                             (3) Увеличить\уменьшить размер области приближения - колёсико мыши
+                        </p>
+                    </li>
+                </ul>
+            </div>""", unsafe_allow_html = True)
+       
+        media_col.markdown(f"""
+            <div class = 'text' style = "text-align: center;">
+                A video guide will be added here soon!
+            </div>""", unsafe_allow_html = True)
+
+         # Guide 3
+        st.subheader("Интеграция с CVAT", anchor = False)
+        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
+
+        text_col.markdown(f"""
+            <div>
+                <ul>
+                    <li>
+                        <p class = 'text'>
+                            Результаты детектирования можно скачать в формате, поддерживаемом <a href=https://app.cvat.ai/>CVAT</a>.
+                            Для этого на вкладке "Automatic detection" после детектирования наночастиц
+                            нужно в выпадающем списке "What results should be saved?" выбрать 
+                            пункт "CVAT task" и нажать кнопку, расположенную правее.
+                            Скаченный backup-архив можно использовать для создания новой задачи CVAT.
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Разметку полученную в CVAT можно экспортировать на сайт.
+                            Первоначально необходимо выгрузить из CVAT backup-архив задачи с нужной разметкой.
+                            Далее на вкладке «Statistics dashboard» в выпадающем списке «Which nanoparticles to use»
+                            нужно выбрать пункт «Import from CVAT» и загрузить backup-архив в соответствующее поле.
+                            В результате кнопка «Calculate statistics» должна стать активной.
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Более подробная информация об интеграции с CVAT представлена в расширенном мануале
+                            <a href = "data:file/csv; base64, {base64.b64encode(open(r"./nano-website/userGuideCVAT-12-09.pdf", "rb").read()).decode()}"
+                                download = "user-guide-CVAT.pdf">здесь</a>.
                         </p>
                     </li>
                 </ul>
@@ -1512,4 +1553,4 @@ try:
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception(False)
+    dialog_exception()
