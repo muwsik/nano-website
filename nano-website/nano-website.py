@@ -180,7 +180,7 @@ def update_sessionState(key, value):
     st.session_state[key] = value
 
 
-@st.cache_data(show_spinner = False, max_entries = 5)
+@st.cache_data(show_spinner = False)
 def loadFile(fileName) -> base64: 
     return base64.b64encode(open(fileName, "rb").read()).decode()
 
@@ -1504,8 +1504,8 @@ try:
                     <li>
                         <p class = 'text'>
                             Более подробная информация об интеграции с CVAT представлена в расширенном мануале
-                            <a href = "data:file/csv; base64, {loadFile(r"./nano-website/userGuideCVAT-12-09.pdf")}"
-                                download = "user-guide-CVAT.pdf">здесь</a>.
+                            <a href = "https://github.com/muwsik/nano-website/blob/0adf75a0b091e8c6137c6a5604937cc0bfb5b6e1/nano-website/userGuideCVAT-12-09.pdf"
+                                >здесь</a>.
                         </p>
                     </li>
                 </ul>
