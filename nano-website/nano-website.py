@@ -180,6 +180,11 @@ def update_sessionState(key, value):
     st.session_state[key] = value
 
 
+@st.cache_data(show_spinner = False, max_entries = 5)
+def loadFile(fileName) -> base64: 
+    return base64.b64encode(open(fileName, "rb").read()).decode()
+
+
 
 ### Main app ###
 try:
@@ -825,7 +830,7 @@ try:
 
             selection_use = st.selectbox(
                 "Which nanoparticles to use?",
-                index = 0 if st.session_state['detected'] else 1,
+                index = 1,
                 options = option_map.keys(),
                 format_func = lambda option: option_map[option]
             ) 
@@ -1499,7 +1504,7 @@ try:
                     <li>
                         <p class = 'text'>
                             Более подробная информация об интеграции с CVAT представлена в расширенном мануале
-                            <a href = "data:file/csv; base64, {base64.b64encode(open(r"./nano-website/userGuideCVAT-12-09.pdf", "rb").read()).decode()}"
+                            <a href = "data:file/csv; base64, {loadFile(r"./nano-website/userGuideCVAT-12-09.pdf")}"
                                 download = "user-guide-CVAT.pdf">здесь</a>.
                         </p>
                     </li>
