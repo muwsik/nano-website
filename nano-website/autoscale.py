@@ -86,7 +86,7 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Projects\VICTORIA\15-SE-1k-T1.bmp"
+    img_path = r"D:\Cloud\Mycroscopy\SEM-image\test\EP-483_i061.tif"
 
     img = Image.open(img_path).convert('L')
     grayImage = np.array(img, dtype='uint8')
@@ -133,17 +133,18 @@ if __name__ == "__main__":
         rows=1, 
         cols=2, 
         column_widths=[0.7, 0.3],  # ширина колонок (70% и 30%)
-        horizontal_spacing=0.05,     # расстояние между графиками
+        horizontal_spacing=0.07,     # расстояние между графиками
         specs=[[{"type": "heatmap"}, {"type": "scatter"}]]  # типы графиков
     )
 
     # Добавляем изображение (как heatmap) в первую колонку
     fig.add_trace(
-        go.Heatmap(z=grayImage, colorscale="Viridis", showscale=False),
+        go.Heatmap(z=grayImage, colorscale="gray", showscale=False),
         row=1, col=1
     )
-    
-    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64)
+
+    print(len(grayImage[0]), len(grayImage))
+    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64) / (len(grayImage[0]) * 255 )
     # Добавляем Scatter во вторую колонку
     fig.add_trace(
         go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
@@ -152,13 +153,42 @@ if __name__ == "__main__":
 
     # Настраиваем оси и внешний вид
     fig.update_layout(
-        title="Изображение + график справа",
-        xaxis_title="X (изображение)",
-        yaxis_title="Y (изображение)",
-        xaxis2_title="X (график)",
-        yaxis2_title="Y (график)",
+        #title="Изображение + график справа",
+        #xaxis_title="X (изображение)",
+        yaxis_title="Номер строки",
+        xaxis2_title = "Сумма интенсивностей",
+        #yaxis2_title = "Номер строки",
         width=800,  # общая ширина фигуры
-        height=400, # высота
+        height=500, # высота
+    )
+
+    fig.update_xaxes(
+        title_text=None,           # убираем подпись
+        showticklabels=False,      # убираем подписи делений
+        ticks="",                  # убираем сами деления
+        row=1, col=1
+    )  # для heatmap
+
+    fig.update_yaxes(
+        range=[0, 1000], 
+        autorange="reversed", 
+        row=1, col=1,
+        constrain="domain"  # ограничивает масштабирование
+    )  # для heatmap
+
+    fig.update_yaxes(
+        range=[0, 1000], 
+        autorange="reversed", 
+        row=1, col=2,
+        constrain="domain",  # ограничивает масштабирование
+        scaleanchor="y",     # привязывает масштаб к первой оси
+        scaleratio=1         # сохраняет соотношение 1:1
+    )  # для scatter
+
+    # ДОПОЛНИТЕЛЬНО: отключаем автоматические отступы
+    fig.update_layout(
+        yaxis=dict(automargin=False),
+        yaxis2=dict(automargin=False)
     )
 
     fig.show()
