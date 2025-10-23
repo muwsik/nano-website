@@ -20,6 +20,7 @@ import ExponentialApproximation2 as ExpApp2
 import CustomComponents as CustComp
 import WebsiteBot as webBot
 import API2CVAT
+import accuracy as acc
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -750,6 +751,29 @@ try:
                                 file_name = fileResultName,
                                 disabled = button_download_disabled
                             )
+
+
+                        with st.expander("Quality evaluation", expanded = False):
+                            
+                            uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"])
+                            
+                            print(uploadedGT)
+
+                            if uploadedGT is not None:
+                                if uploadedGT.type == 'text/csv':
+                                    string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
+                                    reader = csv.reader(string_data, delimiter = ',')
+                                    gt_blobs = np.array(list(reader), dtype=float) 
+                                elif uploadedGT.type == 'application/zip':                                    
+                                    gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
+                                else:                                    
+                                    raise ValueError("!")
+
+                                roi = acc.blobs2roi(gt_blobs, 980, 1240)
+                                st.write(roi)
+                                match, no_match, fake, _, _, _, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
+                                st.write(f"Accuracy: {match / (match + no_match + fake)}")
+        
  
         # Display source image by st.image
         if (st.session_state['imgUpload']):
@@ -1558,4 +1582,4 @@ try:
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception()
+    dialog_exception(False)

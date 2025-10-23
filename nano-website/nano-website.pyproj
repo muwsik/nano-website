@@ -25,6 +25,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="accuracy.py" />
     <Compile Include="API2CVAT.py" />
     <Compile Include="CustomComponents.py" />
     <Compile Include="ExponentialApproximation.py" />
