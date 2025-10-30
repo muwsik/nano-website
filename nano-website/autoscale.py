@@ -51,11 +51,14 @@ def increase(c_text):
 
 def scale(c_text):
     try:
-        matchesScale = re.findall(r"[0-9]*\.?[0-9]+[nup]m", c_text)[0]
+        matchesScale = re.findall(r"[0-9]*\.?[0-9]+(?:nm|um|pm|pum)", c_text)[0]
         if matchesScale[-2] == 'n':
             _scale = float(matchesScale[:-2])
         elif matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
-            _scale = float(matchesScale[:-2]) * 1000
+            if matchesScale[-3] == '0':
+                _scale = float(matchesScale[:-2]) * 1000
+            else:
+                _scale = float(matchesScale[:-3]) * 1000
     except Exception:
         _scale = None
         matchesScale = None
@@ -86,7 +89,7 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Cloud\Mycroscopy\SEM-image\test\EP-483_i061.tif"
+    img_path = r"D:\Cloud\Mycroscopy\Mass\статья\TableM1\1\ED 779-A1_0050.tif"
 
     img = Image.open(img_path).convert('L')
     grayImage = np.array(img, dtype='uint8')

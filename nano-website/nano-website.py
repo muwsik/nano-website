@@ -270,7 +270,8 @@ try:
                     st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
                         tempArrImg
                     )
-                    
+
+
                     lowerBound = autoscale.findBorder(tempArrImg)                    
                     if (lowerBound is not None):
                         srcImage = srcImage.crop((0, 0, srcImage.size[0], lowerBound))
@@ -310,7 +311,7 @@ try:
                     option_nanoparticleSize = {
                         0: "Small (1-10 pixels)",
                         1: "Medium (10-20 pixels)",
-                        2: "Large (20-35 pixels)"
+                        2: "Large (20-35 pixels)"      
                     }
 
                     if ('param-pre-2' not in st.session_state) or st.session_state['settingDefault']:
@@ -429,7 +430,7 @@ try:
                                 # число параметров аппроксимации
                                 "npar": 2,
 
-                                "deleteBorderLines": True, 
+                                "deleteBorderLines": False, 
 
                                 "threshLines": 100,
 
@@ -501,7 +502,7 @@ try:
 
                                 "threshLines": 100,
 
-                                "max_area": 450,
+                                "max_area": 2050,
 
                                 "nlocmax": 500,
                             }
@@ -511,6 +512,7 @@ try:
                             #st.session_state['prepImg'] = Image.fromarray(currentImage)
                             
                             # downscaling and smoothing
+
                             currentImage = scipy.ndimage.gaussian_filter(
                                 currentImage[::2, ::2],
                                 sigma = params["sigma_gauss"]
@@ -581,8 +583,8 @@ try:
                             help = "Brightness in the central pixel of the nanoparticle"
                         )
 
-                        temp_max_r_nm = 10
-                        temp_min_r_nm = 1
+                        temp_max_r_nm = 10.0
+                        temp_min_r_nm = 1.0
                         temp_r_step = 0.1
                         if (st.session_state['BLOBs'] is not None) and (st.session_state['scale'] is not None):
                             temp_max_r_nm = np.max(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
@@ -654,7 +656,7 @@ try:
                             </p>""", unsafe_allow_html = True
                         )
                                         
-                        with st.expander("Visualization and saving results", expanded = True, icon = ":material/display_settings:"):
+                        with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
                             # Displaying the scale
                             st.toggle("Estimated scale display", key = 'displayScale', disabled = False, help = help_str)
 
@@ -755,26 +757,83 @@ try:
 
                         with st.expander("Quality evaluation", expanded = False):
                             
-                            uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"])
+                            uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"],
+                                help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
+                                If file is *.ZIP, it must match the form CVAT for image 1.1."""
+                            )
                             
-                            print(uploadedGT)
-
                             if uploadedGT is not None:
+                                gt_blobs = None
+
                                 if uploadedGT.type == 'text/csv':
                                     string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
                                     reader = csv.reader(string_data, delimiter = ',')
                                     gt_blobs = np.array(list(reader), dtype=float) 
+
+                                    gt_blobs[:, 2] = gt_blobs[:, 2] * 2
+
                                 elif uploadedGT.type == 'application/zip':                                    
                                     gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
-                                else:                                    
+                                else:
                                     raise ValueError("!")
 
-                                roi = acc.blobs2roi(gt_blobs, 980, 1240)
-                                st.write(roi)
-                                match, no_match, fake, _, _, _, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
-                                st.write(f"Accuracy: {match / (match + no_match + fake)}")
-        
- 
+
+                                if gt_blobs is not None:
+                                    roi = acc.blobs2roi(gt_blobs, 980, 1240)
+
+                                    match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
+                                    st.write(f"""
+                                        Accuracy: {match / (match + no_match + fake) * 100:.2f}%
+                                        (TP {match}; FN {no_match}; FP {fake})""")
+
+
+                                    # visual
+                                    if st.toggle("Display nanoparticles"):
+
+                                        fig = px.imshow(st.session_state['srcImg'],
+                                            color_continuous_scale = 'gray'
+                                        )
+
+                                        BLOBs_detect = acc.blobs_in_roi(st.session_state['BLOBs_filter'], roi)[0]
+
+                                        BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
+                                        BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
+                                        for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
+                                            for temp_BLOB in temp_BLOBs:
+                                                y, x, d = temp_BLOB
+                                                fig.add_shape(type = "circle",
+                                                    xref = "x", yref = "y",
+                                                    x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
+                                                    line = dict(
+                                                        color = temp_color,
+                                                        width = 0.75,
+                                                    ),
+                                                )
+
+                                        fig.add_shape(type="rect",
+                                            xref = "x", yref = "y",
+                                            x0 = roi[1], y0 = roi[0],
+                                            x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                                            line = dict(
+                                                color = "red",
+                                                width = 4,
+                                                dash = "dot",
+                                            )
+                                        )
+
+                                        fig.update_coloraxes(showscale=False)
+                                        fig.update_layout(hovermode = False)  
+                                        fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
+                                        fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
+      
+                                        st.markdown("""
+                                            By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
+                                            :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
+                                            """)
+
+                                        st.plotly_chart(fig, use_container_width = True)
+
+    
         # Display source image by st.image
         if (st.session_state['imgUpload']):
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
