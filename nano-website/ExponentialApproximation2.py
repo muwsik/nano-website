@@ -41,9 +41,9 @@ def FindAreasToDelete(img, threshLines, max_area):
     #print('otsu2:', ret_otsu2)
     
     #ret, thresh_img = cv2.threshold(img, threshLines, 255, cv2.THRESH_BINARY)
-    ret, thresh_img = cv2.threshold(img_th_gamma, threshLines, 255, cv2.THRESH_BINARY)
+    _, thresh_img = cv2.threshold(img_th_gamma, threshLines, 255, cv2.THRESH_BINARY)
     
-    contours, hierarchy = cv2.findContours(thresh_img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(thresh_img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     i = 0
     big_contours = []
     for contour in contours:
@@ -52,18 +52,20 @@ def FindAreasToDelete(img, threshLines, max_area):
         if area > max_area:
             big_contours.append(contour)
         
-        img_contours = np.uint8(np.zeros((img.shape[0], img.shape[1])))
-        cv2.drawContours(img_contours, big_contours, thickness=-1, color=(255, 255, 255), contourIdx=-1)
-        #cv2.drawContours(img_contours, big_contours, thickness=-1, color=(255, 0, 0), contourIdx=-1)
-        cv2.drawContours(img, big_contours, thickness=-1, color=(255, 0, 0), contourIdx=-1)
+    img_contours = np.uint8(np.zeros((img.shape[0], img.shape[1])))
+    cv2.drawContours(img_contours, big_contours, thickness=-1, color=(255, 255, 255), contourIdx=-1)
+
     return img, img_contours, big_contours
 
-def DeleteBorderPoints(blobs, _img_contours, value):
+
+def DeleteBorderPointsM(blobs, _img_contours, value):
     blobs_corr = []
+
     for i in range(len(blobs)):
-        if _img_contours[int(blobs[i][0])][int(blobs[i][1])] != value:
+        if _img_contours[int(blobs[i, 0])][int(blobs[i, 1])] != value:
             blobs_corr.append(blobs[i])
-    return blobs_corr.copy()
+
+    return np.array(blobs_corr)
 
 @st.cache_data(show_spinner = False, max_entries = 5)
 def ApproximationMain(c_img, c_lmblobs, params, c_min_dist, c_check):

@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import time, datetime
+import cv2
 
 import skimage
 import scipy
@@ -42,18 +43,14 @@ def defaultDetectTab():
     st.session_state['uploadedImg'] = None
     st.session_state['fileImageName'] = None
     st.session_state['srcImg'] = None
-    #st.session_state['prepImg'] = None
     st.session_state['typeImg'] = None
 
     st.session_state['imgPlaceholder'] = None
 
     st.session_state['settingDefault'] = False
-    #st.session_state['parallel'] = True
-    #st.session_state['processes'] = 6
             
     st.session_state['detected'] = False
-    st.session_state['BLOBs'] = None
-    st.session_state['BLOBs_params'] = None
+    st.session_state['BLOBs_data'] = None
     st.session_state['BLOBs_filter'] = None
     st.session_state['detectedParticles'] = 0    
     st.session_state['filteredParticles'] = 0 
@@ -63,7 +60,8 @@ def defaultDetectTab():
 
     st.session_state['comparison'] = True
     st.session_state['displayScale'] = False
-    st.session_state['preprocess'] = False
+    st.session_state['areas'] = False
+    st.session_state['big_contours'] = None
 
 
 def defaultStatTab():
@@ -271,7 +269,6 @@ try:
                         tempArrImg
                     )
 
-
                     lowerBound = autoscale.findBorder(tempArrImg)                    
                     if (lowerBound is not None):
                         srcImage = srcImage.crop((0, 0, srcImage.size[0], lowerBound))
@@ -307,7 +304,6 @@ try:
                         help = "The average brightness of nanoparticles and its surroundings in the image"
                     )
 
-
                     option_nanoparticleSize = {
                         0: "Small (1-10 pixels)",
                         1: "Medium (10-20 pixels)",
@@ -325,6 +321,12 @@ try:
                         disabled = st.session_state['settingDefault'],
                         help = "Hipotetical diameter of nanoparticles in pixels"
                     )
+
+                    if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
+                            st.session_state['param-pre-3'] = True
+
+                    st.toggle("Suppression of background irregularities",
+                              key = 'param-pre-3')
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         use_container_width = True,
@@ -336,7 +338,7 @@ try:
                     
                     warningPlaceholder = st.empty()
                     if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
-                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['param-pre-2']]):
+                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['param-pre-2'], st.session_state['param-pre-3']]):
                             warningPlaceholder.warning("""
                                 The detection settings have been changed.
                                 To accept the new settings, click the button "Nanoparticles detection"! 
@@ -355,22 +357,21 @@ try:
                         if (lowerBound is not None):
                             currentImage = currentImage[:lowerBound, :]
 
-
                         if st.session_state['param-pre-2'] == 0:
                             # параметры в пикселях
                             params = {
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
-                                # размер диска Top-Hat 
+                                # параметр функции Гаусса для сглаживания
+                                # "sigma_gauss": -,
+                                # размер диска Top-Hat
                                 "sz_th":  4,
                                 # порог яркости для отбрасывания лок. максимумов
                                 "thr_br": float(st.session_state['param-pre-1']),   
                                 # минимальное расстояние между локальными максимумами при их поиске 
                                 "min_dist": 3,
                                 # размер окна аппроксимации
-                                "wsize": 7,        
-                                # возможные радиусы наночастиц в пикселях
-                                "rs": np.arange(1.0, 6.5, 0.1), 
+                                "wsize": 7,     
                                 # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
                                 "best_mode": 3, 
                                 # берем окошко такого размера с центром в точке локального максимума для уточнения положения наночастицы   
@@ -378,41 +379,25 @@ try:
                                 # аппроксимирующая функция "exp" или "pol" 
                                 "met": 'exp',   
                                 # число параметров аппроксимации
-                                "npar": 2       
+                                "npar": 2,
+                                # удаление сложных засветов
+                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                # порог бинаризации для обнаружения сложных засветов
+                                "threshLines": 100,
+                                # потенциальное количество наночастиц
+                                "nlocmax": 5000,
                             }
                                                     
                             currentImage = ExpApp.PreprocessingMedian(currentImage, params['sz_med'])
-                            currentImage = ExpApp.PreprocessingTopHat(currentImage, params['sz_th'])
-                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
+                            currentImage = ExpApp.PreprocessingTopHat(currentImage, params['sz_th'])                            
 
-                            # вычисляется только один раз при первом запуске детектирования
-                            helpMatrs, xy2 = ExpApp.CACHE_HelpMatricesNew(params["wsize"], params["rs"])
-
-                            # вычисляется только один раз для одного порога яркости
-                            lm, _ = ExpApp.CACHE_PrefilteringPoints(
-                                currentImage,
-                                params,
-                                False,
-                                False
-                            )
-
-                            # вычисляется только один раз для одного набора параметров
-                            BLOBs, BLOBs_params = ExpApp.CACHE_ExponentialApproximationMask_v3_parallel(
-                                currentImage,
-                                lm,
-                                xy2,
-                                helpMatrs,
-                                params,
-                                nProc = 6
-                            )
                         elif st.session_state['param-pre-2'] == 1:
                             # параметры в пикселях
                             params = {
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
-
+                                # параметр функции Гаусса для сглаживания
                                 "sigma_gauss": 0.5,
-
                                 # размер диска Top-Hat
                                 "sz_th":  7,
                                 # порог яркости для отбрасывания лок. максимумов
@@ -429,58 +414,28 @@ try:
                                 "met": 'exp',   
                                 # число параметров аппроксимации
                                 "npar": 2,
-
-                                "deleteBorderLines": False, 
-
+                                # удаление сложных засветов
+                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                # порог бинаризации для обнаружения сложных засветов
                                 "threshLines": 100,
-
-                                "max_area": 500,
-
-                                "nlocmax": 1000,
+                                # потенциальное количество наночастиц
+                                "nlocmax": 1500,
                             }
 
                             currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
-                            currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
-                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
-                            
+                            currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"])                             
                             currentImage = scipy.ndimage.gaussian_filter(
                                 currentImage,
                                 sigma = params["sigma_gauss"]
                             )
 
-                            nlocmax = params["nlocmax"]
-                            numpeaks = max(1000, nlocmax)
-                            lms = skimage.feature.peak_local_max(currentImage,
-                                min_distance = params["min_dist"],
-                                threshold_abs = params["thr_br"],
-                                threshold_rel = None,
-                                footprint = None,
-                                labels = None,
-                                num_peaks = numpeaks
-                            )
-                            lm = lms[:nlocmax]
-
-                            if params["deleteBorderLines"]:
-                                img_cont, img_contours, _ = ExpApp2.FindAreasToDelete(currentImage.copy(), params["threshLines"], params["max_area"])
-                                lmblobs = ExpApp2.DeleteBorderPoints(lm, img_contours, 255)
-                            else: 
-                                lmblobs = lm
-                            
-                            blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
-
-                            BLOBs = blobs_appr[:, :3]
-                            BLOBs[:, 2] = BLOBs[:, 2] * 2
-
-                            BLOBs_params = blobs_appr[:, 3:]
-                            BLOBs_params[:, [2, 3]] = BLOBs_params[:, [3, 2]]
                         elif st.session_state['param-pre-2'] == 2:
                             # параметры в пикселях
                             params = {
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
-
+                                # параметр функции Гаусса для сглаживания
                                 "sigma_gauss": 1.5,
-
                                 # размер диска Top-Hat
                                 "sz_th":  8,
                                 # порог яркости для отбрасывания лок. максимумов
@@ -497,60 +452,53 @@ try:
                                 "met": 'exp',   
                                 # число параметров аппроксимации
                                 "npar": 2,
-
-                                "deleteBorderLines": True, 
-
+                                # удаление сложных засветов
+                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                # порог бинаризации для обнаружения сложных засветов
                                 "threshLines": 100,
-
-                                "max_area": 2050,
-
-                                "nlocmax": 500,
+                                # потенциальное количество наночастиц
+                                "nlocmax": 700,
                             }
 
                             currentImage = ExpApp2.PreprocessingMedian(currentImage, params["sz_med"])
                             currentImage = ExpApp2.PreprocessingTopHat(currentImage, params["sz_th"]) 
-                            #st.session_state['prepImg'] = Image.fromarray(currentImage)
-                            
-                            # downscaling and smoothing
-
                             currentImage = scipy.ndimage.gaussian_filter(
                                 currentImage[::2, ::2],
                                 sigma = params["sigma_gauss"]
                             )
 
-                            nlocmax = params["nlocmax"]
-                            numpeaks = max(1000, nlocmax)
-                            lms = skimage.feature.peak_local_max(currentImage,
-                                min_distance = params["min_dist"],
-                                threshold_abs = params["thr_br"],
-                                threshold_rel = None,
-                                footprint = None,
-                                labels = None,
-                                num_peaks = numpeaks
-                            )
-                            lm = lms[:nlocmax]
-
-                            if params["deleteBorderLines"]:
-                                img_cont, img_contours, _ = ExpApp2.FindAreasToDelete(currentImage.copy(), params["threshLines"], params["max_area"])
-                                lmblobs = ExpApp2.DeleteBorderPoints(lm, img_contours, 255)
-                            else: 
-                                lmblobs = lm
-                            
-                            blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
-
-                            BLOBs = blobs_appr[:, :3] * 2
-                            BLOBs[:, 2] = BLOBs[:, 2] * 2
-
-                            BLOBs_params = blobs_appr[:, 3:]
-                            BLOBs_params[:, [2, 3]] = BLOBs_params[:, [3, 2]]
                         else:
                             raise ValueError("!")
 
-                        st.session_state['detected'] = True                
-                        st.session_state['BLOBs'] = BLOBs
-                        st.session_state['BLOBs_params'] = BLOBs_params
-                        st.session_state['detectedParticles'] = BLOBs.shape[0]
-                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['param-pre-2']]
+
+                        nlocmax = params["nlocmax"]
+                        numpeaks = max(1000, nlocmax)
+                        lms = skimage.feature.peak_local_max(currentImage,
+                            min_distance = params["min_dist"],
+                            threshold_abs = params["thr_br"],
+                            threshold_rel = None,
+                            footprint = None,
+                            labels = None,
+                            num_peaks = numpeaks
+                        )
+                        lmblobs = lms[:nlocmax]
+                                  
+                        blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
+
+                        if (st.session_state['param-pre-2'] == 0) or (st.session_state['param-pre-2'] == 1):
+                            pass
+                        elif st.session_state['param-pre-2'] == 2:                            
+                            blobs_appr[:, :3] = blobs_appr[:, :3] * 2
+                        else:
+                            raise ValueError("!")
+
+                        blobs_appr[:, 2] = blobs_appr[:, 2] * 2         # radius in diametr
+                        blobs_appr[:, [5, 6]] = blobs_appr[:, [6, 5]]   # swap params
+
+                        st.session_state['detected'] = True              
+                        st.session_state['BLOBs_data'] = blobs_appr
+                        st.session_state['detectedParticles'] = blobs_appr.shape[0]
+                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['param-pre-2'], st.session_state['param-pre-3']]
         
                     st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
 
@@ -586,9 +534,9 @@ try:
                         temp_max_r_nm = 10.0
                         temp_min_r_nm = 1.0
                         temp_r_step = 0.1
-                        if (st.session_state['BLOBs'] is not None) and (st.session_state['scale'] is not None):
-                            temp_max_r_nm = np.max(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
-                            temp_min_r_nm = np.min(st.session_state['BLOBs'][:, 2]) * st.session_state['scale']
+                        if (st.session_state['BLOBs_data'] is not None) and (st.session_state['scale'] is not None):
+                            temp_max_r_nm = np.max(st.session_state['BLOBs_data'][:, 2]) * st.session_state['scale']
+                            temp_min_r_nm = np.min(st.session_state['BLOBs_data'][:, 2]) * st.session_state['scale']
                             temp_r_step = (temp_max_r_nm - temp_min_r_nm) / 100
                             if temp_r_step < 0.2:
                                 temp_r_step = 0.1
@@ -623,7 +571,27 @@ try:
                             disabled = st.session_state['settingDefault'],
                             help = "The higher the reliability, the clearer the nanoparticle is against the background of the image"
                         )
-                
+                        
+
+                        if st.session_state['param-pre-3']:
+                            if ('param-filt-4' not in st.session_state) or st.session_state['settingDefault']:
+                                st.session_state['param-filt-4'] = 2500
+
+                            st.slider("Area of background irregularities",
+                                key = 'param-filt-4',
+                                min_value = 0,
+                                step = 25,
+                                max_value = 5000,
+                                disabled = st.session_state['settingDefault'],
+                                help = help_str
+                            )
+
+                            temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
+                            temp_img = ExpApp.PreprocessingTopHat(temp_img, 7)   
+
+                            _, img_contours, st.session_state['big_contours'] = ExpApp2.FindAreasToDelete(temp_img, 85, st.session_state['param-filt-4'])
+                            temp_BLOBs_data = ExpApp2.DeleteBorderPointsM(st.session_state['BLOBs_data'], img_contours, 255)
+                         
                     divider = 1
                     if st.session_state['scale'] is not None:
                         divider = st.session_state['scale']
@@ -636,11 +604,12 @@ try:
                     }
             
                     # Filtering
-                    st.session_state['BLOBs_filter'], _ = ExpApp.my_FilterBlobs_change(
-                        st.session_state['BLOBs'],
-                        st.session_state['BLOBs_params'],
+                    BLOBs_data_filt = ExpApp.my_FilterBlobs_change(
+                        st.session_state['BLOBs_data'] if not st.session_state['param-pre-3'] else temp_BLOBs_data,
                         params_filter
                     )
+
+                    st.session_state['BLOBs_filter'] = BLOBs_data_filt[:, :3]
                     st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
 
                     if (st.session_state['filteredParticles'] < 1):
@@ -669,9 +638,11 @@ try:
                             # Slider for comparing the results before and after detection
                             st.toggle("Comparison mode", value = True, key = 'comparison', disabled = False, help = help_str)
 
-                            # 
-                            #st.toggle("Display preprocessing image", key = 'preprocess', disabled = False, help = help_str)
-
+                            #
+                            st.toggle("Display area of background irregularities", key = 'areas', disabled = False,
+                                help = "The areas with background irregularities are colored red"
+                            )
+                            
                             # Saving
                             selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
 
@@ -837,10 +808,6 @@ try:
         # Display source image by st.image
         if (st.session_state['imgUpload']):
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
-
-            if (st.session_state['preprocess']):
-                viewImage.paste(Image.fromarray(currentImage), (0,0))
-
             draw = ImageDraw.Draw(viewImage)
 
             if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
@@ -872,25 +839,26 @@ try:
                 for BLOB in st.session_state['BLOBs_filter']:                
                     y, x, d = BLOB; r = d/2
                     draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+            
+            if st.session_state['areas']:
+                if st.session_state['big_contours'] is not None:
+                    viewImage = np.array(viewImage)
+                    cv2.drawContours(
+                        viewImage,
+                        st.session_state['big_contours'],
+                        thickness = -1, color = (255, 50, 50), contourIdx = -1
+                    )
+                    viewImage = Image.fromarray(viewImage)
+
 
             st.session_state['imgBLOB'] = viewImage
             
-            if (st.session_state['comparison']):
-                if (st.session_state['preprocess']):
-                    temp = st.session_state['srcImg'].copy().convert('RGB')
-                    temp.paste(srcImage, (0,0))
-
-                    CustComp.img_box(
-                        temp,
-                        st.session_state['imgBLOB'],
-                        st.session_state['imgPlaceholder']
-                    )
-                else:
-                    CustComp.img_box(
-                        st.session_state['srcImg'],
-                        st.session_state['imgBLOB'],                        
-                        st.session_state['imgPlaceholder']
-                    )
+            if (st.session_state['comparison']):                
+                CustComp.img_box(
+                    st.session_state['srcImg'],
+                    st.session_state['imgBLOB'],                        
+                    st.session_state['imgPlaceholder']
+                )
             else:
                 CustComp.img_box(
                     st.session_state['imgBLOB'],
