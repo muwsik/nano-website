@@ -784,7 +784,7 @@ def my_FilterBlobs_change(blobs_data, params):
 
         if ((c0 >= thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
             filtered_blobs.append(blob)
-
+    
     return np.array(filtered_blobs)
 
 @st.cache_data(show_spinner = False, max_entries = 5)

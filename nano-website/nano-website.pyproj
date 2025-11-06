@@ -45,7 +45,6 @@
   <ItemGroup>
     <Content Include="qr-code.svg" />
     <Content Include="requirements.txt" />
-    <Content Include="userGuideCVAT-12-09.pdf" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />

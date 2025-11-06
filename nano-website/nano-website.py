@@ -609,200 +609,204 @@ try:
                         params_filter
                     )
 
-                    st.session_state['BLOBs_filter'] = BLOBs_data_filt[:, :3]
-                    st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
+                    if (BLOBs_data_filt.shape[0] != 0):
+                        st.session_state['BLOBs_filter'] = BLOBs_data_filt[:, :3]
+                        st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
+                    else:
+                        st.session_state['BLOBs_filter'] = []
+                        st.session_state['filteredParticles'] = 0
 
                     if (st.session_state['filteredParticles'] < 1):
                         st.warning("""
                             There are no nanoparticles satisfying the filtration settings!
                             Please change the filtering settings!
                         """, icon = ":material/warning:")
-                    else:                    
-                        # Info about filtered nanoparticles
-                        st.markdown(f"""
-                            <p class = 'text'>
-                                Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
-                            </p>""", unsafe_allow_html = True
-                        )
+                                      
+                    # Info about filtered nanoparticles
+                    st.markdown(f"""
+                        <p class = 'text'>
+                            Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
+                        </p>""", unsafe_allow_html = True
+                    )
                                         
-                        with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
-                            # Displaying the scale
-                            st.toggle("Estimated scale display", key = 'displayScale', disabled = False, help = help_str)
+                    with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
+                        # Displaying the scale
+                        st.toggle("Estimated scale display", key = 'displayScale', disabled = False, help = help_str)
 
-                            if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
-                                st.warning("""
-                                    The image scale could not be determined automatically!
-                                    Using default scale: 1.0 nm/px
-                                """, icon = ":material/warning:")                    
+                        if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
+                            st.warning("""
+                                The image scale could not be determined automatically!
+                                Using default scale: 1.0 nm/px
+                            """, icon = ":material/warning:")                    
 
-                            # Slider for comparing the results before and after detection
-                            st.toggle("Comparison mode", value = True, key = 'comparison', disabled = False, help = help_str)
+                        # Slider for comparing the results before and after detection
+                        st.toggle("Comparison mode", value = True, key = 'comparison', disabled = False, help = help_str)
 
-                            #
-                            st.toggle("Display area of background irregularities", key = 'areas', disabled = False,
-                                help = "The areas with background irregularities are colored red"
-                            )
+                        #
+                        st.toggle("Display area of background irregularities", key = 'areas', disabled = False,
+                            help = "The areas with background irregularities are colored red"
+                        )
                             
-                            # Saving
-                            selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
+                        # Saving
+                        selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
 
-                            option_saving = {
-                                0: "Particles on clear background (*.tif)",
-                                1: "Particles on EM-image (*.tif)",
-                                2: "Particles characteristics (*.csv)",
-                                3: "CVAT task (*.zip)"
-                            }
+                        option_saving = {
+                            0: "Particles on clear background (*.tif)",
+                            1: "Particles on EM-image (*.tif)",
+                            2: "Particles characteristics (*.csv)",
+                            3: "CVAT task (*.zip)"
+                        }
 
-                            selectionSave = selectboxCol.selectbox(
-                                "What results should be saved?",
-                                index = 1,
-                                placeholder = "Select options...",
-                                options = option_saving.keys(),
-                                format_func = lambda option: option_saving[option]
-                            )
+                        selectionSave = selectboxCol.selectbox(
+                            "What results should be saved?",
+                            index = 2,
+                            placeholder = "Select options...",
+                            options = option_saving.keys(),
+                            format_func = lambda option: option_saving[option]
+                        )
 
-                            fileResult = io.BytesIO()
-                            fileResultName = 'None'
-                            button_download_disabled = False
+                        fileResult = io.BytesIO()
+                        fileResultName = 'None'
+                        button_download_disabled = False
 
-                            match selectionSave:
-                                case 0:
-                                    temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'])
-                                    draw = ImageDraw.Draw(temp)
-                                    for BLOB in st.session_state['BLOBs_filter']:                
-                                        y, x, d = BLOB; r = d/2          
-                                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                        match selectionSave:
+                            case 0:
+                                temp = Image.new(mode = "RGBA", size = st.session_state['sizeImage'])
+                                draw = ImageDraw.Draw(temp)
+                                for BLOB in st.session_state['BLOBs_filter']:                
+                                    y, x, d = BLOB; r = d/2          
+                                    draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
-                                    temp.save(fileResult, format = 'png')
-                                    fileResultName = "particls-" + Path(uploadedImg.name).stem + ".tif"
+                                temp.save(fileResult, format = 'png')
+                                fileResultName = f"particls-{Path(uploadedImg.name).stem}.tif"
 
-                                case 1:
-                                    imgBLOB = st.session_state['srcImg'].convert("RGB")
-                                    draw = ImageDraw.Draw(imgBLOB)                            
-                                    for BLOB in st.session_state['BLOBs_filter']:                
-                                        y, x, d = BLOB; r = d/2
-                                        draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+                            case 1:
+                                imgBLOB = st.session_state['srcImg'].convert("RGB")
+                                draw = ImageDraw.Draw(imgBLOB)                            
+                                for BLOB in st.session_state['BLOBs_filter']:                
+                                    y, x, d = BLOB; r = d/2
+                                    draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
-                                    imgBLOB.save(fileResult, format = 'png')
-                                    fileResultName = "particls+image-" + Path(uploadedImg.name).stem + ".tif"
+                                imgBLOB.save(fileResult, format = 'png')
+                                fileResultName = f"particls+image-{Path(uploadedImg.name).stem}.tif"
 
-                                case 2:
-                                    fileResult = io.StringIO()
+                            case 2:
+                                fileResult = io.StringIO()
 
-                                    temp_writer = csv.writer(fileResult, delimiter = ';')
-                                    if st.session_state['scale'] is not None: 
-                                        temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
-                                    else:
-                                       temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
-                    
-                                    temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
-                                    temp_writer.writerows(st.session_state['BLOBs_filter'])
-
-                                    fileResultName = "particls_info-" + Path(uploadedImg.name).stem + ".csv"
-                                case 3:
-
-                                    st.write()
-
-                                    imageData= {
-                                        'name': Path(uploadedImg.name).stem,
-                                        'width': st.session_state['srcImg'].size[0],
-                                        'height': st.session_state['srcImg'].size[1],
-                                        'buffer': uploadedImg.getvalue()
-                                    }
-
-                                    fileResult = API2CVAT.ExportToCVAT(imageData, st.session_state['BLOBs_filter'])
-
-                                    fileResultName = f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
-                                case _:
-                                    button_download_disabled = True
-
-
-                            buttonCol.download_button(
-                                label = "",
-                                icon = ":material/download:",
-                                data = fileResult.getvalue(),
-                                file_name = fileResultName,
-                                disabled = button_download_disabled
-                            )
-
-
-                        with st.expander("Quality evaluation", expanded = False):
-                            
-                            uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"],
-                                help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
-                                If file is *.ZIP, it must match the form CVAT for image 1.1."""
-                            )
-                            
-                            if uploadedGT is not None:
-                                gt_blobs = None
-
-                                if uploadedGT.type == 'text/csv':
-                                    string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
-                                    reader = csv.reader(string_data, delimiter = ',')
-                                    gt_blobs = np.array(list(reader), dtype=float) 
-
-                                    gt_blobs[:, 2] = gt_blobs[:, 2] * 2
-
-                                elif uploadedGT.type == 'application/zip':                                    
-                                    gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
+                                temp_writer = csv.writer(fileResult, delimiter = ';')
+                                if st.session_state['scale'] is not None: 
+                                    temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
                                 else:
-                                    raise ValueError("!")
+                                    temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
+                    
+                                temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
+                                temp_writer.writerows(st.session_state['BLOBs_filter'])
+
+                                fileResultName = f"particls_info-{Path(uploadedImg.name).stem}.csv"
+                            case 3:
+
+                                st.write()
+
+                                imageData= {
+                                    'name': Path(uploadedImg.name).stem,
+                                    'width': st.session_state['srcImg'].size[0],
+                                    'height': st.session_state['srcImg'].size[1],
+                                    'buffer': uploadedImg.getvalue()
+                                }
+
+                                fileResult = API2CVAT.ExportToCVAT(imageData, st.session_state['BLOBs_filter'])
+
+                                fileResultName = f"{Path(uploadedImg.name).stem}-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
+                            case _:
+                                button_download_disabled = True
 
 
-                                if gt_blobs is not None:
-                                    roi = acc.blobs2roi(gt_blobs, 980, 1240)
+                        buttonCol.download_button(
+                            label = "",
+                            icon = ":material/download:",
+                            data = fileResult.getvalue(),
+                            file_name = fileResultName,
+                            disabled = button_download_disabled
+                        )
 
-                                    match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
-                                    st.write(f"""
-                                        Accuracy: {match / (match + no_match + fake) * 100:.2f}%
-                                        (TP {match}; FN {no_match}; FP {fake})""")
+
+                    with st.expander("Quality evaluation", expanded = False):
+                            
+                        uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"],
+                            help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
+                            If file is *.ZIP, it must match the form CVAT for image 1.1."""
+                        )
+                            
+                        if uploadedGT is not None:
+                            gt_blobs = None
+
+                            if uploadedGT.type == 'text/csv':
+                                string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
+                                reader = csv.reader(string_data, delimiter = ',')
+                                gt_blobs = np.array(list(reader), dtype=float) 
+
+                                gt_blobs[:, 2] = gt_blobs[:, 2] * 2
+
+                            elif uploadedGT.type == 'application/zip':                                    
+                                gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
+                            else:
+                                raise ValueError("!")
 
 
-                                    # visual
-                                    if st.toggle("Display nanoparticles"):
+                            if gt_blobs is not None:
+                                roi = acc.blobs2roi(gt_blobs, 980, 1240)
 
-                                        fig = px.imshow(st.session_state['srcImg'],
-                                            color_continuous_scale = 'gray'
-                                        )
+                                match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
+                                st.write(f"""
+                                    Accuracy: {match / (match + no_match + fake) * 100:.2f}%
+                                    (TP {match}; FN {no_match}; FP {fake})""")
 
-                                        BLOBs_detect = acc.blobs_in_roi(st.session_state['BLOBs_filter'], roi)[0]
 
-                                        BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
-                                        BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
-                                        for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
-                                            for temp_BLOB in temp_BLOBs:
-                                                y, x, d = temp_BLOB
-                                                fig.add_shape(type = "circle",
-                                                    xref = "x", yref = "y",
-                                                    x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
-                                                    line = dict(
-                                                        color = temp_color,
-                                                        width = 0.75,
-                                                    ),
-                                                )
+                                # visual
+                                if st.toggle("Display nanoparticles"):
 
-                                        fig.add_shape(type="rect",
-                                            xref = "x", yref = "y",
-                                            x0 = roi[1], y0 = roi[0],
-                                            x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                                            line = dict(
-                                                color = "red",
-                                                width = 4,
-                                                dash = "dot",
+                                    fig = px.imshow(st.session_state['srcImg'],
+                                        color_continuous_scale = 'gray'
+                                    )
+
+                                    BLOBs_detect = acc.blobs_in_roi(st.session_state['BLOBs_filter'], roi)[0]
+
+                                    BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
+                                    BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
+                                    for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
+                                        for temp_BLOB in temp_BLOBs:
+                                            y, x, d = temp_BLOB
+                                            fig.add_shape(type = "circle",
+                                                xref = "x", yref = "y",
+                                                x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
+                                                line = dict(
+                                                    color = temp_color,
+                                                    width = 0.75,
+                                                ),
                                             )
+
+                                    fig.add_shape(type="rect",
+                                        xref = "x", yref = "y",
+                                        x0 = roi[1], y0 = roi[0],
+                                        x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                                        line = dict(
+                                            color = "red",
+                                            width = 4,
+                                            dash = "dot",
                                         )
+                                    )
 
-                                        fig.update_coloraxes(showscale=False)
-                                        fig.update_layout(hovermode = False)  
-                                        fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
-                                        fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
+                                    fig.update_coloraxes(showscale=False)
+                                    fig.update_layout(hovermode = False)  
+                                    fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
+                                    fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
       
-                                        st.markdown("""
-                                            By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
-                                            :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
-                                            """)
+                                    st.markdown("""
+                                        By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
+                                        :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
+                                        """)
 
-                                        st.plotly_chart(fig, use_container_width = True)
+                                    st.plotly_chart(fig, use_container_width = True)
 
     
         # Display source image by st.image
@@ -1555,7 +1559,7 @@ try:
                     <li>
                         <p class = 'text'>
                             Более подробная информация об интеграции с CVAT представлена в расширенном мануале
-                            <a href = "https://github.com/muwsik/nano-website/blob/0adf75a0b091e8c6137c6a5604937cc0bfb5b6e1/nano-website/userGuideCVAT-12-09.pdf"
+                            <a href = "https://disk.yandex.ru/i/9J9XGtNtY--frA"
                                 >здесь</a>.
                         </p>
                     </li>
