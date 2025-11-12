@@ -50,7 +50,7 @@ def set_style(color):
                 border-left: 0px dashed gray;
             }}
 
-            .st-key-center_button {{
+            .st-key-center_item {{
                 margin: 0 auto;
                 display: block;
             }}

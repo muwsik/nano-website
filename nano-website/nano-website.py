@@ -1,8 +1,7 @@
 # Run application
-# streamlit run .\nano-website\app.py --server.enableXsrfProtection false
+# streamlit run .\nano-website\nano-website.py
 
 import streamlit as st
-import base64
 
 import io, csv
 from pathlib import Path
@@ -66,6 +65,11 @@ def defaultDetectTab():
 
 def defaultStatTab():
     st.session_state['calcStatictic'] = False
+    
+    st.session_state['statBLOBs'] = None
+    st.session_state['statImage'] = None
+    st.session_state['statImageName'] = None
+
 
     st.session_state['distView'] = False
     st.session_state['normalize'] = False
@@ -177,11 +181,6 @@ def dialog_feedback():
 
 def update_sessionState(key, value):
     st.session_state[key] = value
-
-
-@st.cache_data(show_spinner = False)
-def loadFile(fileName) -> base64: 
-    return base64.b64encode(open(fileName, "rb").read()).decode()
 
 
 
@@ -326,7 +325,10 @@ try:
                             st.session_state['param-pre-3'] = True
 
                     st.toggle("Suppression of background irregularities",
-                              key = 'param-pre-3')
+                        key = 'param-pre-3',                              
+                        disabled = st.session_state['settingDefault'],
+                        help = help_str
+                    )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         use_container_width = True,
@@ -728,86 +730,6 @@ try:
                             file_name = fileResultName,
                             disabled = button_download_disabled
                         )
-
-
-                    with st.expander("Quality evaluation", expanded = False):
-                            
-                        uploadedGT = st.file_uploader("Choose file", type = ["csv", "zip"],
-                            help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
-                            If file is *.ZIP, it must match the form CVAT for image 1.1."""
-                        )
-                            
-                        if uploadedGT is not None:
-                            gt_blobs = None
-
-                            if uploadedGT.type == 'text/csv':
-                                string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
-                                reader = csv.reader(string_data, delimiter = ',')
-                                gt_blobs = np.array(list(reader), dtype=float) 
-
-                                gt_blobs[:, 2] = gt_blobs[:, 2] * 2
-
-                            elif uploadedGT.type == 'application/zip':                                    
-                                gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
-                            else:
-                                raise ValueError("!")
-
-
-                            if gt_blobs is not None:
-                                roi = acc.blobs2roi(gt_blobs, 980, 1240)
-
-                                match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = acc.accur_estimation2(gt_blobs, st.session_state['BLOBs_filter'], roi, 0.25)
-                                st.write(f"""
-                                    Accuracy: {match / (match + no_match + fake) * 100:.2f}%
-                                    (TP {match}; FN {no_match}; FP {fake})""")
-
-
-                                # visual
-                                if st.toggle("Display nanoparticles"):
-
-                                    fig = px.imshow(st.session_state['srcImg'],
-                                        color_continuous_scale = 'gray'
-                                    )
-
-                                    BLOBs_detect = acc.blobs_in_roi(st.session_state['BLOBs_filter'], roi)[0]
-
-                                    BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
-                                    BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
-                                    for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
-                                        for temp_BLOB in temp_BLOBs:
-                                            y, x, d = temp_BLOB
-                                            fig.add_shape(type = "circle",
-                                                xref = "x", yref = "y",
-                                                x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
-                                                line = dict(
-                                                    color = temp_color,
-                                                    width = 0.75,
-                                                ),
-                                            )
-
-                                    fig.add_shape(type="rect",
-                                        xref = "x", yref = "y",
-                                        x0 = roi[1], y0 = roi[0],
-                                        x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                                        line = dict(
-                                            color = "red",
-                                            width = 4,
-                                            dash = "dot",
-                                        )
-                                    )
-
-                                    fig.update_coloraxes(showscale=False)
-                                    fig.update_layout(hovermode = False)  
-                                    fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
-                                    fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
-      
-                                    st.markdown("""
-                                        By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
-                                        :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
-                                        """)
-
-                                    st.plotly_chart(fig, use_container_width = True)
-
     
         # Display source image by st.image
         if (st.session_state['imgUpload']):
@@ -890,66 +812,53 @@ try:
                 format_func = lambda option: option_map[option]
             ) 
                 
-            StatsBLOBs = None
-            uploadedImgName = None
-            imgForVisual = None
             match selection_use:
                 case 0:
                     if (not st.session_state['detected']):
                         st.session_state['calcStatictic'] = False
                         st.warning("""
                             Nanoparticle detection is necessary to calculate their statistics.
-                            Please go to "Automatic detection" tab.
-                        """, icon = ":material/warning:")
+                            Please go to "Automatic detection" tab. """, icon = ":material/warning:")
                     elif (st.session_state['filteredParticles'] < 10):
                         st.session_state['calcStatictic'] = False
                         st.warning("""
                             Nanoparticles after detection and filtration are less than 10! 
                             Please go to the "Detection" tab and change the detection,
-                                filtering settings or upload another SEM image!
-                        """, icon = ":material/warning:")
+                            filtering settings or upload another SEM image! """, icon = ":material/warning:")
                     else:                        
-                        StatsBLOBs = st.session_state['BLOBs_filter']
-                        uploadedImgName = Path(uploadedImg.name).stem
-                        imgForVisual = st.session_state['srcImg'].convert('RGB')
+                        st.session_state['calcStatictic'] = True
+                        st.session_state['statBLOBs'] = st.session_state['BLOBs_filter']
+                        st.session_state['statImageName'] = Path(uploadedImg.name).stem
+                        st.session_state['statImage'] = st.session_state['srcImg'].convert('RGB')
                 case 1:
                     st.markdown(f"""
                         Import <a href='https://app.cvat.ai/'>CVAT</a> data to calculate statistics (format 'CVAT for images 1.1')
-                    """, unsafe_allow_html = True
-                    )
+                        """, unsafe_allow_html = True)
+
                     uploadedFileCVAT = st.file_uploader(
                         label = "Uploder CVAT file",
                         type = ["zip"],
-                        label_visibility = 'collapsed'
-                    )
+                        label_visibility = 'collapsed')
+
                     if uploadedFileCVAT is None:
                         st.session_state['calcStatictic'] = False
                     else:
-                        StatsBLOBs, uploadedImgName, imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
+                        st.session_state['calcStatictic'] = True
+                        st.session_state['statBLOBs'], st.session_state['statImageName'], imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
                         
-                        imgForVisual = Image.open(imageCVAT).convert('RGB')
-                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(imgForVisual.convert("L"))
+                        st.session_state['statImage'] = Image.open(imageCVAT).convert('RGB')
+                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(st.session_state['statImage'].convert("L"))
                         
                         if st.session_state['scale'] is not None:
-                            st.session_state['sizeImage'] = (imgForVisual.size[0], st.session_state['scaleData'][0])
+                            st.session_state['sizeImage'] = (st.session_state['statImage'].size[0], st.session_state['scaleData'][0])
                         else:
-                            st.session_state['sizeImage'] = imgForVisual.size
+                            st.session_state['sizeImage'] = st.session_state['statImage'].size
                 case _:
                     pass
-                
-            st.button("Calculate statistics",
-                key = 'center_button',
-                on_click = update_sessionState,
-                args = ("calcStatictic", True),
-                disabled = False if (StatsBLOBs is not None) else True,
-                help = "Detect nanoparticles on this cite or upload them from CVAT"
-            )           
 
         if (not st.session_state['calcStatictic']):
             defaultStatTab()
         else:
-            boolIndexSelectedBLOBs = None       
-            
             with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
                 st.markdown(f"""
                     <p class = 'text'>
@@ -959,8 +868,10 @@ try:
                         which can be normalized to the area of the SEM image.
                     </p>""", unsafe_allow_html = True
                 )
-                
-                diameter_nm = StatsBLOBs[:, 2]  
+                                
+                boolIndexSelectedBLOBs = None   
+
+                diameter_nm = st.session_state['statBLOBs'][:, 2]  
                 if st.session_state['scale'] is not None:
                     diameter_nm = diameter_nm * st.session_state['scale']
 
@@ -1029,7 +940,7 @@ try:
                     buttonPlaceholder.download_button(
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
-                        file_name = uploadedImgName + "-dist-diameters.csv",
+                        file_name = st.session_state['statImageName'] + "-dist-diameters.csv",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -1154,10 +1065,6 @@ try:
                       
                     if st.session_state['scale'] is None:
                         pass
-                        # st.warning("""
-                        #     The image scale could not be determined automatically!
-                        #     Using default scale: 1.0 nm/px
-                        # """, icon = ":material/warning:")
                     else:                    
                         st.markdown(f"""
                             <div class = 'text'>
@@ -1185,7 +1092,7 @@ try:
    
                     st.markdown(f"""
                         <div class = 'text'>
-                            Quantity: <b>{len(StatsBLOBs)}</b>
+                            Quantity: <b>{len(st.session_state['statBLOBs'])}</b>
                             {temp_add_str}
                         </div>""", unsafe_allow_html = True)
 
@@ -1260,7 +1167,7 @@ try:
 
                     match selectionUse:
                         case 0: 
-                            currentBLOBs = StatsBLOBs
+                            currentBLOBs = st.session_state['statBLOBs']
                             if boolIndexSelectedBLOBs is not None:         
                                 currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
 
@@ -1292,42 +1199,39 @@ try:
 
                             st.plotly_chart(fig, use_container_width = True)
                         case 1: 
-                            currentBLOBs = StatsBLOBs
+                            currentBLOBs = st.session_state['statBLOBs']
                             if boolIndexSelectedBLOBs is not None:         
                                 currentBLOBs = currentBLOBs[boolIndexSelectedBLOBs]
 
-                            draw = ImageDraw.Draw(imgForVisual)                            
+                            tempImage = st.session_state['statImage'].copy()
+                            draw = ImageDraw.Draw(tempImage)                            
                             for BLOB in currentBLOBs:                
                                 y, x, d = BLOB; r = d/2
                                 draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
                             
-                            st.image(imgForVisual, use_container_width = True)
+                            st.image(tempImage, use_container_width = True)
                         case _:
                             pass
 
                     
                 # END db13
 
-            with st.expander("Some information charts (demo)", icon = ":material/data_thresholding:"):
+            with st.expander("Nanoparticle spatial distribution", icon = ":material/data_thresholding:"):
                 st.markdown(f"""
                     <p class = 'text'>
                         Visual representation of nanoparticle-based statistics in image.
-                        A detailed description is provided in the work on the second link below.
+                        A detailed description is provided in the work on the [2] link below.
                     </p>""", unsafe_allow_html = True)
 
-                currentBLOBs = np.copy(StatsBLOBs)
+                currentBLOBs = np.copy(st.session_state['statBLOBs'])
                 if st.session_state['scale'] is not None:         
                     currentBLOBs = currentBLOBs * st.session_state['scale']
 
                 fullDist, minDist = NanoStat.euclideanDistance(currentBLOBs) 
 
                 db21, db22, db23 = st.columns([1, 1, 1])
-                st.markdown(f"""
-                    <div class = 'about' style = "text-align: center;">
-                        Any other information or chart
-                    </div>""", unsafe_allow_html = True)
-
-                # ?
+                
+                # Fraction of empty subareas
                 with db21.container(border = True, height = heightCol - 75):              
                     x = np.arange(5, 100, 5)
 
@@ -1335,7 +1239,7 @@ try:
 
                     for i, size in enumerate(x):
                         temp = NanoStat.uniformity(
-                            StatsBLOBs,
+                            st.session_state['statBLOBs'],
                             st.session_state['sizeImage'],
                             size
                         )
@@ -1371,7 +1275,7 @@ try:
 
                 # END db21
 
-                # ?
+                # Distance to nearest nanoparticle
                 with db22.container(border = True, height = heightCol - 75):                
 
                     fig = ff.create_distplot(
@@ -1381,8 +1285,8 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Distance to the nearest nanoparticle", font = dict(size=27)),
-                        xaxis_title_text = 'Distance to the nearest nanoparticle, nm',
+                        title = dict(text = "Distance to nearest nanoparticle", font = dict(size=27)),
+                        xaxis_title_text = 'Distance to nearest nanoparticle, nm',
                         yaxis_title_text = 'Particle fraction',
                         showlegend = False
                     )
@@ -1402,7 +1306,7 @@ try:
                     st.plotly_chart(fig, use_container_width = True)
                 # END db22
 
-                # ?
+                # Average density of nanoparticles
                 with db23.container(border = True, height = heightCol - 75):                
                     x = np.arange(5, 100, 1)
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
@@ -1437,6 +1341,96 @@ try:
                     st.plotly_chart(fig, use_container_width = True)
                 # END db23
             
+            with st.expander("Quality evaluation", expanded = False, icon = ":material/verified:"):
+                st.markdown(f"""
+                    <p class = 'text'>
+                        Quality evaluation of the automatically detected nanoparticles 
+                        based on the Jacquard measure and the expert's manual marking.
+                        A detailed description is provided in the work on the [2] link below.
+                    </p>""", unsafe_allow_html = True)
+                
+                if selection_use == 1:
+                    st.warning("""This section is intended to evaluate the automatic detection of nanoparticles.
+                        But now used data imported from CVAT.""")
+
+                uploadedGT = st.file_uploader("Expert markup file", type = ["csv", "zip"],
+                    help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
+                    If file is *.ZIP, it must match the form CVAT for image 1.1."""
+                )
+                            
+                if uploadedGT is not None:
+                    gt_blobs = None
+
+                    if uploadedGT.type == 'text/csv':
+                        string_data = io.StringIO(uploadedGT.getvalue().decode("utf-8"))
+                        reader = csv.reader(string_data, delimiter = ',')
+                        gt_blobs = np.array(list(reader), dtype=float) 
+
+                        gt_blobs[:, 2] = gt_blobs[:, 2] * 2
+
+                    elif uploadedGT.type == 'application/zip':                                    
+                        gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
+                    else:
+                        raise ValueError("!")
+
+
+                    if (gt_blobs is not None) and (st.session_state['statBLOBs'] is not None):
+                        roi = acc.blobs2roi(gt_blobs, 980, 1240)
+
+                        temp_res = acc.accur_estimation2(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
+                        match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = temp_res
+
+                        st.write(f"""
+                            Accuracy: {match / (match + no_match + fake) * 100:.2f}%
+                            (TP {match}; FN {no_match}; FP {fake})""")
+
+
+                        # visual
+                        if st.toggle("Display nanoparticles"):
+
+                            fig = px.imshow(st.session_state['statImage'],
+                                color_continuous_scale = 'gray'
+                            )
+
+                            BLOBs_detect = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
+
+                            BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
+                            BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
+                            for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
+                                for temp_BLOB in temp_BLOBs:
+                                    y, x, d = temp_BLOB
+                                    fig.add_shape(type = "circle",
+                                        xref = "x", yref = "y",
+                                        x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
+                                        line = dict(
+                                            color = temp_color,
+                                            width = 0.75,
+                                        ),
+                                    )
+
+                            fig.add_shape(type="rect",
+                                xref = "x", yref = "y",
+                                x0 = roi[1], y0 = roi[0],
+                                x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                                line = dict(
+                                    color = "red",
+                                    width = 4,
+                                    dash = "dot",
+                                )
+                            )
+
+                            fig.update_coloraxes(showscale=False)
+                            fig.update_layout(hovermode = False)  
+                            fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
+                            fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
+      
+                            st.markdown("""
+                                By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
+                                :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
+                                """)
+
+                            st.plotly_chart(fig, use_container_width = True)
+
 
     ## TAB 3
     with tabHelp:
