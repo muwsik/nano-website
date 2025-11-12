@@ -54,6 +54,7 @@ def defaultDetectTab():
     st.session_state['detectedParticles'] = 0    
     st.session_state['filteredParticles'] = 0 
     st.session_state['imgBLOB'] = None
+    st.session_state['shapesBLOB'] = None
     st.session_state['timeDetection'] = None
     st.session_state['detectionSettings'] = None
 
@@ -494,7 +495,7 @@ try:
                         else:
                             raise ValueError("!")
 
-                        blobs_appr[:, 2] = blobs_appr[:, 2] * 2         # radius in diametr
+                        blobs_appr[:, 2] = blobs_appr[:, 2] * 2         # radius -> diametr
                         blobs_appr[:, [5, 6]] = blobs_appr[:, [6, 5]]   # swap params
 
                         st.session_state['detected'] = True              
@@ -1388,9 +1389,14 @@ try:
                         # visual
                         if st.toggle("Display nanoparticles"):
                             
-                            fig = px.imshow(st.session_state['statImage'],
-                                color_continuous_scale = 'gray'
-                            )
+                            fig = go.Figure()
+
+                            fig.add_trace(go.Heatmap(
+                                z = np.array(st.session_state['statImage'].convert("L")),
+                                colorscale = 'gray',
+                                hoverinfo = 'skip',  
+                                showscale = False,   
+                            ))
                             
                             ALL = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
 
@@ -1405,7 +1411,39 @@ try:
                                 for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
                                 for y,x,d in zip(*temp_BLOBs.T)
                             ]
-                            fig.update_layout(shapes = shapes_list, width = 700, height = 600)
+                            fig.update_layout(shapes = shapes_list, height = 600)
+
+
+                            temp_gt_blobs = gt_blobs[:, 2] * st.session_state['scale']
+                            fig.add_trace(go.Scatter(
+                                x = gt_blobs[:, 1],
+                                y = gt_blobs[:, 0],
+                                mode = 'markers',
+                                marker = dict(size = 15, opacity = 0),  
+                                hovertemplate = ("labeled <br>"
+                                    "x: %{x:.1f} px<br>" +
+                                    "y: %{y:.1f} px<br>" +
+                                    "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
+                                ),
+                                customdata = list(zip(gt_blobs[:, 2], temp_gt_blobs)),
+                                showlegend = False
+                            ))
+
+                            temp_ALL = ALL[:, 2] * st.session_state['scale']
+                            fig.add_trace(go.Scatter(
+                                x = ALL[:, 1],
+                                y = ALL[:, 0],
+                                mode = 'markers',
+                                marker = dict(size = 15, opacity = 0),  
+                                hovertemplate = ("detected <br>"
+                                    "x: %{x:.1f} px<br>" +
+                                    "y: %{y:.1f} px<br>" +
+                                    "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
+                                ),
+                                customdata = list(zip(ALL[:, 2], temp_ALL)),
+                                showlegend = False
+                            ))
+
 
                             fig.add_shape(type = "rect",
                                 xref = "x", yref = "y",
@@ -1418,10 +1456,10 @@ try:
                                 )
                             )
 
-                            fig.update_coloraxes(showscale=False)
-                            fig.update_layout(hovermode = False)  
-                            fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
-                            fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
+                            fig.update_coloraxes(showscale = False)
+                            fig.update_layout(hovermode = 'closest')
+                            fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
+                            fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
                             st.markdown("""
                                 By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
