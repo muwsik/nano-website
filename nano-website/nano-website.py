@@ -1378,7 +1378,7 @@ try:
                         roi = acc.blobs2roi(gt_blobs, 980, 1240)
 
                         temp_res = acc.accur_estimation2(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
-                        match, no_match, fake, blobs_no_match, blobs_fake, blobs_match, _ = temp_res
+                        match, no_match, fake, FN, FP, TP, _ = temp_res
 
                         st.write(f"""
                             Accuracy: {match / (match + no_match + fake) * 100:.2f}%
@@ -1387,28 +1387,27 @@ try:
 
                         # visual
                         if st.toggle("Display nanoparticles"):
-
+                            
                             fig = px.imshow(st.session_state['statImage'],
                                 color_continuous_scale = 'gray'
                             )
+                            
+                            ALL = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
 
-                            BLOBs_detect = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
+                            color_list = ['blue', 'green', 'red', 'yellow']
+                            BLOBs_list = [ALL, TP, FN, FP]
+                            shapes_list = [
+                                {
+                                    'type': 'circle',
+                                    'x0': x-d/2, 'y0': y-d/2, 'x1': x+d/2, 'y1': y+d/2,
+                                    'line': {'width': 0.75, 'color': temp_color}
+                                }
+                                for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
+                                for y,x,d in zip(*temp_BLOBs.T)
+                            ]
+                            fig.update_layout(shapes = shapes_list, width = 700, height = 600)
 
-                            BLOBs_list = [BLOBs_detect, blobs_match, blobs_no_match, blobs_fake]
-                            BLOBs_color_list = ['blue', 'green', 'red', 'yellow']
-                            for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
-                                for temp_BLOB in temp_BLOBs:
-                                    y, x, d = temp_BLOB
-                                    fig.add_shape(type = "circle",
-                                        xref = "x", yref = "y",
-                                        x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
-                                        line = dict(
-                                            color = temp_color,
-                                            width = 0.75,
-                                        ),
-                                    )
-
-                            fig.add_shape(type="rect",
+                            fig.add_shape(type = "rect",
                                 xref = "x", yref = "y",
                                 x0 = roi[1], y0 = roi[0],
                                 x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
@@ -1430,6 +1429,51 @@ try:
                                 """)
 
                             st.plotly_chart(fig, use_container_width = True)
+
+
+
+                            # fig = px.imshow(st.session_state['statImage'],
+                            #     color_continuous_scale = 'gray'
+                            # )
+
+                            # BLOBs_detect = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
+
+                            # 
+                            # BLOBs_
+                            # for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
+                            #     for temp_BLOB in temp_BLOBs:
+                            #         y, x, d = temp_BLOB
+                            #         fig.add_shape(type = "circle",
+                            #             xref = "x", yref = "y",
+                            #             x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
+                            #             line = dict(
+                            #                 color = temp_color,
+                            #                 width = 0.75,
+                            #             ),
+                            #         )
+
+                            # fig.add_shape(type="rect",
+                            #     xref = "x", yref = "y",
+                            #     x0 = roi[1], y0 = roi[0],
+                            #     x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                            #     line = dict(
+                            #         color = "red",
+                            #         width = 4,
+                            #         dash = "dot",
+                            #     )
+                            # )
+
+                            # fig.update_coloraxes(showscale=False)
+                            # fig.update_layout(hovermode = False)  
+                            # fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
+                            # fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
+      
+                            # st.markdown("""
+                            #     By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
+                            #     :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
+                            #     """)
+
+                            # st.plotly_chart(fig, use_container_width = True)
 
 
     ## TAB 3
