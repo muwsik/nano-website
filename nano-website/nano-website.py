@@ -153,7 +153,7 @@ def dialog_feedback():
 
         sendImg = False
         if st.session_state["imgUpload"]:
-            sendImg = st.toggle("The current uploaded image on website will be sent", value = True)
+            sendImg = st.toggle("The current uploaded image on site will be sent", value = True)
 
         submitButtonClick = st.form_submit_button('Send feedback', icon = ":material/drafts:")
 
@@ -172,7 +172,7 @@ def dialog_feedback():
                 "image-type": st.session_state['uploadedImg'].type
             })
 
-        result, response = webBot.message2email(dataFeedback)
+        result, _ = webBot.message2email(dataFeedback)
         
         if result:
             st.success("Feedback successful sent!")
@@ -1378,7 +1378,7 @@ try:
                     if (gt_blobs is not None) and (st.session_state['statBLOBs'] is not None):
                         roi = acc.blobs2roi(gt_blobs, 980, 1240)
 
-                        temp_res = acc.accur_estimation2(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
+                        temp_res = acc.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
                         match, no_match, fake, FN, FP, TP, _ = temp_res
 
                         st.write(f"""

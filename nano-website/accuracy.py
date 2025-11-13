@@ -2,6 +2,23 @@ import numpy as np
 import streamlit as st
 
 @st.cache_data(show_spinner = False, max_entries = 5)
+def accur_estimationDiametr(blobs_gt, blobs_est, roi, thres = 0.25):
+    temp_blobs_gt = blobs_gt.copy()
+    temp_blobs_est = blobs_est.copy()
+    
+    temp_blobs_gt[:, 2] = temp_blobs_gt[:, 2] / 2
+    temp_blobs_est[:, 2] = temp_blobs_est[:, 2] / 2
+
+    temp = accur_estimation2(temp_blobs_gt, temp_blobs_est, roi, thres)
+    match, no_match, fake, FN, FP, TP, _ = temp
+
+    FN[:, 2] = FN[:, 2] * 2
+    FP[:, 2] = FP[:, 2] * 2
+    TP[:, 2] = TP[:, 2] * 2
+
+    return match, no_match, fake, FN, FP, TP, _
+
+@st.cache_data(show_spinner = False, max_entries = 5)
 def accur_estimation2(blobs_gt, blobs_est, roi, thres = 0.25):
     
     blobs_gt, _ = blobs_in_roi(blobs_gt, roi)
