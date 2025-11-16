@@ -92,7 +92,7 @@ def set_style(color):
             }}
 
             .footer {{
-                background-color: #f1f1f1;
+                background-color: rgb(0, 0, 0);
                 color: #808080;
                 text-align: center;
                 padding: 1px;

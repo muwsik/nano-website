@@ -1369,14 +1369,14 @@ try:
 
                         gt_blobs[:, 2] = gt_blobs[:, 2] * 2
 
-                    elif uploadedGT.type == 'application/zip':                                    
+                    elif (uploadedGT.type == 'application/zip') or (uploadedGT.type == 'application/x-zip-compressed'):                                    
                         gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedGT) 
                     else:
                         raise ValueError("!")
 
 
                     if (gt_blobs is not None) and (st.session_state['statBLOBs'] is not None):
-                        roi = acc.blobs2roi(gt_blobs, 980, 1240)
+                        roi = acc.blobs2roi(gt_blobs, st.session_state['sizeImage'][1], st.session_state['sizeImage'][0])
 
                         temp_res = acc.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
                         match, no_match, fake, FN, FP, TP, _ = temp_res
@@ -1386,7 +1386,6 @@ try:
                             (TP {match}; FN {no_match}; FP {fake})""")
 
 
-                        # visual
                         if st.toggle("Display nanoparticles"):
                             
                             fig = go.Figure()
@@ -1457,7 +1456,13 @@ try:
                             )
 
                             fig.update_coloraxes(showscale = False)
-                            fig.update_layout(hovermode = 'closest')
+                            fig.update_layout(
+                                margin = marginChart,
+                                hovermode = 'closest',
+                                xaxis_title = None,
+                                yaxis_title = None,
+                                xaxis = dict(showticklabels = False),
+                                yaxis = dict(showticklabels = False))
                             fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
                             fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
@@ -1467,51 +1472,6 @@ try:
                                 """)
 
                             st.plotly_chart(fig, use_container_width = True)
-
-
-
-                            # fig = px.imshow(st.session_state['statImage'],
-                            #     color_continuous_scale = 'gray'
-                            # )
-
-                            # BLOBs_detect = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
-
-                            # 
-                            # BLOBs_
-                            # for temp_BLOBs, temp_color in zip(BLOBs_list, BLOBs_color_list):
-                            #     for temp_BLOB in temp_BLOBs:
-                            #         y, x, d = temp_BLOB
-                            #         fig.add_shape(type = "circle",
-                            #             xref = "x", yref = "y",
-                            #             x0 = x-d/2, y0 = y-d/2, x1 = x+d/2, y1 = y+d/2,
-                            #             line = dict(
-                            #                 color = temp_color,
-                            #                 width = 0.75,
-                            #             ),
-                            #         )
-
-                            # fig.add_shape(type="rect",
-                            #     xref = "x", yref = "y",
-                            #     x0 = roi[1], y0 = roi[0],
-                            #     x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                            #     line = dict(
-                            #         color = "red",
-                            #         width = 4,
-                            #         dash = "dot",
-                            #     )
-                            # )
-
-                            # fig.update_coloraxes(showscale=False)
-                            # fig.update_layout(hovermode = False)  
-                            # fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], autorange = False)
-                            # fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], autorange = False)
-      
-                            # st.markdown("""
-                            #     By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
-                            #     :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
-                            #     """)
-
-                            # st.plotly_chart(fig, use_container_width = True)
 
 
     ## TAB 3
@@ -1529,18 +1489,17 @@ try:
 
         text_col.markdown(f"""
             <div>
-                <p class = 'text'>Все дальнейшие шаги выполняются на владке "Automatic detection"!</p>
+                <p class = 'text'>Все дальнейшие шаги выполняются на вкладке «Automatic detection».</p>
                 <ul>
                     <li>
                         <p class = 'text'>
-                            Шаг 1. Загрузка исходного СЭМ-изображения (кнопка "Browse file").
+                            Шаг 1. Загрузка исходного СЭМ-изображения (кнопка «Browse file»).
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            Шаг 2. Детектирование наночастиц (кнопка "Nanoparticles detection" становится 
-                            активной после загрузки изображения). Процесс детектирования занимает некоторое время,
-                            в среднем до одной минуты.                      
+                            Шаг 2. Детектирование наночастиц (кнопка «Nanoparticles detection» становится активной после
+                            загрузки изображения). Процесс детектирования занимает некоторое время, в среднем до одной минуты.                     
                         </p>
                     </li>
                     <li>
@@ -1553,9 +1512,9 @@ try:
                     <li>
                         <p class = 'text'>
                             Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
-                            (снять галочку "Use default settings"). ВАЖНО, подтверждение параметров детектирования 
-                            осуществяется нажанием кнопки "Nanoparticles detection". Параметры фильтрации применяются
-                            автоматически.
+                            (снять галочку «Use default settings»). <strong>ВАЖНО:</strong> подтверждение параметров 
+                            детектирования осуществляется повторным нажатием кнопки «Nanoparticles detection». Параметры
+                            фильтрации применяются автоматически.
                         </p>
                     </li>
                 </ul>
@@ -1572,31 +1531,27 @@ try:
 
         text_col.markdown(f"""
             <div>
-                <p class = 'text'>Указанный функционал доступен на владке "Automatic detection" после детектирования наночастиц!</p>
+                <p class = 'text'>Указанный функционал доступен на вкладке «Automatic detection» после детектирования наночастиц.</p>
                 <ul>
                     <li>
                         <p class = 'text'>
                             Результаты детектирования можно скачать в нескольких вариантах:
-                            (1) Найденные частицы на прозрачном фоне,
-                            (2) Найденные частицы, наложенные на исходное изображение,
-                            (3) В формате с указанием координат центра и радиуса каждой частицы.
-                            Для этого нужно в выпадающем списке "What results should be saved?" выбрать нужный вариант 
+                            (1) Найденные частицы на прозрачном фоне. (2) Найденные частицы, наложенные на исходное изображение.
+                            (3) Файл с указанием координат центра и радиуса каждой частицы.
+                            Для этого нужно в выпадающем списке «What results should be saved?» выбрать нужный вариант 
                             и нажать кнопку, расположенную правее.
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            Если на изображении присутсвует мерная шкала и её физический размер,
-                            то масштаб определяется автоматически. Визуализировать оценённый масштаб
-                            можно с помощью переключателя "Display scale".
+                            Если на изображении присутствует мерная шкала и указан её физический размер, масштаб 
+                            определяется автоматически. Визуализировать вычисленный масштаб можно с помощью 
+                            переключателя «Display scale».
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            Режим сравнения активируется с помощью переключателя "Comparison mode".
-                            В этом режиме можно: (1) Скрыть\показать разметку на всём изображении нажатием ЛКМ,
-                            (2) Скрыть\показать разметку в приближенной области нажатием ПКМ,
-                            (3) Увеличить\уменьшить размер области приближения - колёсико мыши
+                            Режим сравнения в доработке!
                         </p>
                     </li>
                 </ul>
@@ -1607,36 +1562,36 @@ try:
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
 
-         # Guide 3
+        # Guide 3
         st.subheader("Интеграция с CVAT", anchor = False)
         text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
         text_col.markdown(f"""
-            <div>
+            <div>              
                 <ul>
                     <li>
                         <p class = 'text'>
                             Результаты детектирования можно скачать в формате, поддерживаемом <a href=https://app.cvat.ai/>CVAT</a>.
-                            Для этого на вкладке "Automatic detection" после детектирования наночастиц
-                            нужно в выпадающем списке "What results should be saved?" выбрать 
-                            пункт "CVAT task" и нажать кнопку, расположенную правее.
-                            Скаченный backup-архив можно использовать для создания новой задачи CVAT.
+                            Для этого на вкладке «Automatic detection» после детектирования наночастиц
+                            нужно в выпадающем списке «What results should be saved?» выбрать
+                            пункт «CVAT task» и нажать кнопку, расположенную правее. Скачанный backup-архив можно 
+                            использовать для создания новой задачи CVAT.
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            Разметку полученную в CVAT можно экспортировать на сайт.
-                            Первоначально необходимо выгрузить из CVAT backup-архив задачи с нужной разметкой.
-                            Далее на вкладке «Statistics dashboard» в выпадающем списке «Which nanoparticles to use»
-                            нужно выбрать пункт «Import from CVAT» и загрузить backup-архив в соответствующее поле.
-                            В результате кнопка «Calculate statistics» должна стать активной.
+                            Разметку, полученную в CVAT, можно импортировать на сайт. Для этого сначала необходимо выгрузить
+                            из CVAT backup-архив задачи с нужной разметкой. Затем на вкладке «Statistics dashboard» 
+                            в выпадающем списке «Which nanoparticles to use» нужно выбрать пункт «Import from CVAT» и 
+                            загрузить backup-архив в соответствующее поле. Если все условия выполнены, ниже автоматически 
+                            отобразятся все разделы со статистикой.
                         </p>
                     </li>
                     <li>
                         <p class = 'text'>
-                            Более подробная информация об интеграции с CVAT представлена в расширенном мануале
-                            <a href = "https://disk.yandex.ru/i/9J9XGtNtY--frA"
-                                >здесь</a>.
+                            Более подробная информация об интеграции с CVAT приведена в 
+                            <a href = "https://disk.yandex.ru/i/2U5wgJ8IjskREQ"
+                                >расширенном руководстве</a>.
                         </p>
                     </li>
                 </ul>
@@ -1646,7 +1601,45 @@ try:
             <div class = 'text' style = "text-align: center;">
                 A video guide will be added here soon!
             </div>""", unsafe_allow_html = True)
-    
+        
+
+        # Guide 4
+        st.subheader("Оценка качества детектирования", anchor = False)
+        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
+
+        text_col.markdown(f"""
+            <div>
+                <p class = 'text'>Все дальнейшие шаги выполняются на владке «Statistics dashboard».</p>
+                <ul>                    
+                    <li>
+                        <p class = 'text'>
+                            В разделе «Quality evaluation» можно получить численную оценку качества детектирования наночастиц.
+                            Для этого, в первую очередь, необходим результат автоматического детектирования. Он должен быть
+                            либо на вкладке «Automatic detection», либо в виде backup-архива CVAT, который нужно загрузить 
+                            в разделе «Global dashboard settings». Далее требуется загрузить файл с экспертной разметкой, 
+                            также в формате backup-архива CVAT, в соответствующее поле раздела «Quality evaluation». Если 
+                            все условия выполнены, ниже отобразится качество в процентах. Подробно процедура оценки качества 
+                            описана в работе [2].
+                        </p>
+                    </li>
+                    <li>
+                        <p class = 'text'>
+                            Дополнительно можно визуализировать результат оценки качества детектирования. Для этого
+                            переключите тумблер «Display nanoparticles». В результате ниже появится интерактивный график,
+                            на котором будут отмечены наночастицы четырёх типов: "Синие" - это автоматически детектированные
+                            частицы, которые сопоставлены с "зелёными" наночастицами, отмеченными экспертом (TP).
+                            "Красные" — это наночастицы, которые были помечены экспертом, но не были детектированы 
+                            автоматически (FN). "Жёлтые" - это автоматически детектированные наночастицы, которые не были 
+                            подтверждены экспертом (FP).
+                        </p>
+                    </li>
+                </ul>
+            </div>""", unsafe_allow_html = True)
+       
+        media_col.markdown(f"""
+            <div class = 'text' style = "text-align: center;">
+                A video guide will be added here soon!
+            </div>""", unsafe_allow_html = True)
     
     ## How to cite
     tempCol = st.columns([0.8, 0.2], vertical_alignment = 'center')
