@@ -4,27 +4,31 @@
 import streamlit as st
 
 import io, csv
-from pathlib import Path
+import cv2, skimage, scipy
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageOps
 import time, datetime
-import cv2
-
-import skimage
-import scipy
-
-import style, autoscale
-import NanoStatistics as NanoStat
-import ExponentialApproximation as ExpApp
-import ExponentialApproximation2 as ExpApp2
-import CustomComponents as CustComp
-import WebsiteBot as webBot
-import API2CVAT
-import accuracy as acc
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
+
+# content
+import content.style as style
+import content.tooltips as tooltips
+import content.instructions as instruct
+
+# utils
+import utils.autoscale as autoscale
+import utils.NanoStatistics as NanoStat
+import utils.ExponentialApproximation as ExpApp
+import utils.ExponentialApproximation2 as ExpApp2
+import utils.CustomComponents as CustComp
+import utils.WebsiteBot as webBot
+import utils.API2CVAT as API2CVAT
+import utils.accuracy as accuracy
+
 
 import traceback
     
@@ -1376,9 +1380,9 @@ try:
 
 
                     if (gt_blobs is not None) and (st.session_state['statBLOBs'] is not None):
-                        roi = acc.blobs2roi(gt_blobs, st.session_state['sizeImage'][1], st.session_state['sizeImage'][0])
+                        roi = accuracy.blobs2roi(gt_blobs, st.session_state['sizeImage'][1], st.session_state['sizeImage'][0])
 
-                        temp_res = acc.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
+                        temp_res = accuracy.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
                         match, no_match, fake, FN, FP, TP, _ = temp_res
 
                         st.write(f"""
@@ -1397,7 +1401,7 @@ try:
                                 showscale = False,   
                             ))
                             
-                            ALL = acc.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
+                            ALL = accuracy.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
 
                             color_list = ['blue', 'green', 'red', 'yellow']
                             BLOBs_list = [ALL, TP, FN, FP]
@@ -1669,7 +1673,7 @@ try:
                 </p> </li>
             </ul>
         </div>""", unsafe_allow_html = True)
-    tempCol[1].image(r"./nano-website/qr-code.svg",
+    tempCol[1].image(r"./nano-website/content/qr-code.svg",
         caption = "Web Nanoparticles QR-code",
         use_container_width = True
     )   
@@ -1682,4 +1686,4 @@ try:
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception(False)
+    dialog_exception()
