@@ -193,7 +193,7 @@ def update_sessionState(key, value):
 try:
     # Loading CSS styles
     st.set_page_config(page_title = "Web Nanoparticles", layout = "wide")
-    style.set_style(colorRGBA_str)
+    style.loadStyles(colorRGBA_str)
     
     # Initial loading of session states
     if 'rerun' not in st.session_state:
@@ -202,21 +202,10 @@ try:
         loadDefault_sessionState(True)
     
     ## Header
-    st.markdown("<div class = 'header'>WEB NANOPARTICLES</div>", unsafe_allow_html = True)
-    
-    st.markdown("""
-        <div class = 'about'>
-            Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
-            <br>It will help you to detect nanoparticles in the image and calculate their statictics.
-        </div>
-    """, unsafe_allow_html = True)
+    instruct.Header()
 
-    st.markdown("""
-        <div style = "padding-bottom: 25px" class = 'about'>
-            Examples of SEM images for analysis are <a href=https://doi.org/10.6084/m9.figshare.11783661.v1>here</a>.
-        </div>
-    """, unsafe_allow_html = True)
-
+    ## About
+    instruct.About()
 
     ## Main content area
     tabDetect, tabStat, tabHelp = st.tabs([
@@ -305,7 +294,7 @@ try:
                     st.slider("Nanoparticle brightness",
                         key = 'param-pre-1',
                         disabled = st.session_state['settingDefault'],
-                        help = "The average brightness of nanoparticles and its surroundings in the image"
+                        help = tooltips.Detect.Brightness
                     )
 
                     option_nanoparticleSize = {
@@ -323,7 +312,7 @@ try:
                         options = option_nanoparticleSize.keys(),
                         format_func = lambda option: option_nanoparticleSize[option],
                         disabled = st.session_state['settingDefault'],
-                        help = "Hipotetical diameter of nanoparticles in pixels"
+                        help = tooltips.Detect.Diameter
                     )
 
                     if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
@@ -332,7 +321,7 @@ try:
                     st.toggle("Suppression of background irregularities",
                         key = 'param-pre-3',                              
                         disabled = st.session_state['settingDefault'],
-                        help = help_str
+                        help = tooltips.Detect.Irregularities
                     )
         
                     pushDetectButton = st.button("Nanoparticles detection",
@@ -511,12 +500,7 @@ try:
 
                 # Detection results
                 if st.session_state['detected']:
-                    temp_time = st.session_state['timeDetection']
-                    st.markdown(f"""
-                        <p class = 'text'>
-                            Nanoparticles detected: <b>{st.session_state['detectedParticles']}</b> ({temp_time//60}m : {temp_time%60:02}s)
-                        </p>""", unsafe_allow_html = True
-                    )
+                    instruct.DetectResult(st.session_state['detectedParticles'], st.session_state['timeDetection'])
 
                     # Warning about not correctly detection results 
                     if (st.session_state['detectedParticles'] < 1):            
@@ -535,7 +519,7 @@ try:
                         st.slider("Nanoparticle center brightness",
                             key = 'param-filt-1',
                             disabled = st.session_state['settingDefault'],
-                            help = "Brightness in the central pixel of the nanoparticle"
+                            help = tooltips.Filtarion.Brightness
                         )
 
                         temp_max_r_nm = 10.0
@@ -564,7 +548,8 @@ try:
                             step = temp_r_step,
                             max_value = temp_max,
                             format = "%0.1f",
-                            disabled = st.session_state['settingDefault']
+                            disabled = st.session_state['settingDefault'],
+                            help = tooltips.Filtarion.Diameter
                         )
 
                         if ('param-filt-3' not in st.session_state) or st.session_state['settingDefault']:
@@ -576,7 +561,7 @@ try:
                             step = 0.01,
                             max_value = 1.0,
                             disabled = st.session_state['settingDefault'],
-                            help = "The higher the reliability, the clearer the nanoparticle is against the background of the image"
+                            help = tooltips.Filtarion.Reliability
                         )
                         
 
@@ -590,7 +575,7 @@ try:
                                 step = 25,
                                 max_value = 5000,
                                 disabled = st.session_state['settingDefault'],
-                                help = help_str
+                                help = tooltips.Filtarion.Irregularities
                             )
 
                             temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
@@ -630,15 +615,11 @@ try:
                         """, icon = ":material/warning:")
                                       
                     # Info about filtered nanoparticles
-                    st.markdown(f"""
-                        <p class = 'text'>
-                            Nanoparticles after filtration: <b>{st.session_state['filteredParticles']}</b>
-                        </p>""", unsafe_allow_html = True
-                    )
+                    instruct.FiltrationResult(st.session_state['filteredParticles'])
                                         
                     with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
                         # Displaying the scale
-                        st.toggle("Estimated scale display", key = 'displayScale', disabled = False, help = help_str)
+                        st.toggle("Estimated scale", key = 'displayScale', help = tooltips.Visualization.Scale)
 
                         if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
                             st.warning("""
@@ -646,12 +627,10 @@ try:
                                 Using default scale: 1.0 nm/px
                             """, icon = ":material/warning:")                    
 
-                        # Slider for comparing the results before and after detection
-                        st.toggle("Comparison mode", value = True, key = 'comparison', disabled = False, help = help_str)
-
-                        #
-                        st.toggle("Display area of background irregularities", key = 'areas', disabled = False,
-                            help = "The areas with background irregularities are colored red"
+                        # Highlighting background irregularities
+                        st.toggle("Highlighting background irregularities",
+                            key = 'areas',
+                            help = tooltips.Visualization.Irregularities
                         )
                             
                         # Saving
@@ -804,7 +783,10 @@ try:
         marginChart = dict(l=10, r=10, t=40, b=5)
         marginChartLess = dict(l=5, r=5, t=0, b=5)
               
-        with st.expander("Global dashboard settings", expanded = not st.session_state['calcStatictic'], icon = ":material/rule_settings:"):
+        with st.expander("Global dashboard settings",
+            expanded = not st.session_state['calcStatictic'],
+            icon = ":material/rule_settings:"
+        ):
             option_map = {
                 0: "Automatically detected",
                 1: "Import from CVAT"
@@ -836,10 +818,7 @@ try:
                         st.session_state['statImageName'] = Path(uploadedImg.name).stem
                         st.session_state['statImage'] = st.session_state['srcImg'].convert('RGB')
                 case 1:
-                    st.markdown(f"""
-                        Import <a href='https://app.cvat.ai/'>CVAT</a> data to calculate statistics (format 'CVAT for images 1.1')
-                        """, unsafe_allow_html = True)
-
+                    instruct.LabelUploderFileCVAT()
                     uploadedFileCVAT = st.file_uploader(
                         label = "Uploder CVAT file",
                         type = ["zip"],
@@ -865,14 +844,7 @@ try:
             defaultStatTab()
         else:
             with st.expander("Particle parameters", expanded = True, icon = ":material/app_registration:"):
-                st.markdown(f"""
-                    <p class = 'text'>
-                        The main parameters of nanoparticles can be represented as primary values: 
-                        the average diameters, its deviations, or a histogram of the diameters distribution. 
-                        Or secondary values: particle mass, volume, area (projection onto a two-dimensional plane), 
-                        which can be normalized to the area of the SEM image.
-                    </p>""", unsafe_allow_html = True
-                )
+                instruct.AboutSectionParticleParams()
                                 
                 boolIndexSelectedBLOBs = None   
 
@@ -1471,12 +1443,12 @@ try:
                             fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
                             st.markdown("""
-                                <div style = "text-align: center;">
-                                    By algorithm particles is:<br>
-                                    <span style = "color: white; background-color: #007bff; padding: 2px 6px; border-radius: 4px; font-weight: bold;">All detected</span>
-                                    <span style = "color: white; background-color: #28a745; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Correctly identified (TP)</span>
-                                    <span style = "color: white; background-color: #dc3545; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Not identified (FN)</span>
-                                    <span style = "color: white; background-color: #fd7e14; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Identified but not confirmed by expert (FP)</span>
+                                <div style="text-align: center;">
+                                    Types particles in chart:<br>
+                                    <span class="particle-label blue">Detect by algorithm</span>
+                                    <span class="particle-label green">Correctly identified by algorithm (TP)</span>
+                                    <span class="particle-label red">Not identified by algorithm (FN)</span>
+                                    <span class="particle-label orange">Identified but not confirmed by expert (FP)</span>
                                 </div>
                             """, unsafe_allow_html=True)
 
