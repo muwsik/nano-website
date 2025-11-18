@@ -1355,8 +1355,8 @@ try:
                     </p>""", unsafe_allow_html = True)
                 
                 if selection_use == 1:
-                    st.warning("""This section is intended to evaluate the automatic detection of nanoparticles.
-                        But now used data imported from CVAT.""")
+                    st.warning("""This section is designed for evaluating automated nanoparticle detection algorithms. 
+                        Currently using data imported from CVAT - please verify data accuracy before proceeding.""")
 
                 uploadedGT = st.file_uploader("Expert markup file", type = ["csv", "zip"],
                     help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
@@ -1471,9 +1471,14 @@ try:
                             fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
                             st.markdown("""
-                                By algorithm particles is: :blue-badge[All detected] :green-badge[Correctly identified (TP)]
-                                :red-badge[Not identified (FN)] :orange-badge[Identified but not confirmed by expert (FP)]
-                                """)
+                                <div style = "text-align: center;">
+                                    By algorithm particles is:<br>
+                                    <span style = "color: white; background-color: #007bff; padding: 2px 6px; border-radius: 4px; font-weight: bold;">All detected</span>
+                                    <span style = "color: white; background-color: #28a745; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Correctly identified (TP)</span>
+                                    <span style = "color: white; background-color: #dc3545; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Not identified (FN)</span>
+                                    <span style = "color: white; background-color: #fd7e14; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Identified but not confirmed by expert (FP)</span>
+                                </div>
+                            """, unsafe_allow_html=True)
 
                             st.plotly_chart(fig, use_container_width = True)
 
