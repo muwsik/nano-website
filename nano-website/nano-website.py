@@ -431,13 +431,13 @@ try:
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
                                 # параметр функции Гаусса для сглаживания
-                                "sigma_gauss": 1.5,
+                                "sigma_gauss": 1.25,
                                 # размер диска Top-Hat
-                                "sz_th":  8,
+                                "sz_th":  9,
                                 # порог яркости для отбрасывания лок. максимумов
                                 "thr_br": float(st.session_state['param-pre-1']),   
                                 # минимальное расстояние между локальными максимумами при их поиске 
-                                "min_dist": 5,
+                                "min_dist": 3,
                                 # размер окна аппроксимации
                                 "wsize": 7,     
                                 # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
@@ -1354,105 +1354,148 @@ try:
                     if (gt_blobs is not None) and (st.session_state['statBLOBs'] is not None):
                         roi = accuracy.blobs2roi(gt_blobs, st.session_state['sizeImage'][1], st.session_state['sizeImage'][0])
 
+                        accuracyPlaceholder = st.empty()
+
+                        l, r = st.columns([2, 1])
+
+                        with r:
+                            if st.toggle("Duplicate filtering settings", disabled = True if selection_use == 1 else False):
+                                temp_brightness = st.slider("Nanoparticle center brightness", value = 10)
+
+                                temp_diameter = st.slider("Nanoparticle diameter, px",
+                                    value = (np.min(st.session_state['BLOBs_data'][:, 2]), np.max(st.session_state['BLOBs_data'][:, 2])),
+                                    min_value = 0.5,
+                                    step = 0.25,
+                                    format = "%0.1f"
+                                )
+
+                                temp_reliability = st.slider("Nanoparticle reliability",
+                                    value = 0.7,
+                                    min_value = 0.0,
+                                    step = 0.01,
+                                    max_value = 1.0
+                                )
+
+                                params_filter_2 = {
+                                    "thr_c0": temp_brightness,
+                                    "min_thr_d": temp_diameter[0],   
+                                    "max_thr_d": temp_diameter[1], 
+                                    "thr_error": 1 - temp_reliability, 
+                                }
+            
+                                # Filtering
+                                temp_Filt_BLOBs_data = ExpApp.my_FilterBlobs_change(
+                                    st.session_state['BLOBs_data'],
+                                    params_filter_2
+                                )
+
+
+                                temp_filt_BLOBs = []
+                                if (temp_Filt_BLOBs_data.shape[0] != 0):
+                                    temp_filt_BLOBs = temp_Filt_BLOBs_data[:, :3]
+
+                                # ОЧЕНЬ ПЛОХО!!!
+                                st.session_state['statBLOBs'] = np.array(temp_filt_BLOBs)
+
                         temp_res = accuracy.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
                         match, no_match, fake, FN, FP, TP, _ = temp_res
 
-                        st.write(f"""
+                        accuracyPlaceholder.write(f"""
                             Accuracy: {match / (match + no_match + fake) * 100:.2f}%
                             (TP {match}; FN {no_match}; FP {fake})""")
 
-
-                        if st.toggle("Display nanoparticles"):
+                        with l:
+                            if st.toggle("Display nanoparticles"):
                             
-                            fig = go.Figure()
+                                fig = go.Figure()
 
-                            fig.add_trace(go.Heatmap(
-                                z = np.array(st.session_state['statImage'].convert("L")),
-                                colorscale = 'gray',
-                                hoverinfo = 'skip',  
-                                showscale = False,   
-                            ))
+                                fig.add_trace(go.Heatmap(
+                                    z = np.array(st.session_state['statImage'].convert("L")),
+                                    colorscale = 'gray',
+                                    hoverinfo = 'skip',  
+                                    showscale = False,   
+                                ))
                             
-                            ALL = accuracy.blobs_in_roi(st.session_state['statBLOBs'], roi)[0]
+                                ALL, _ = accuracy.blobs_in_roi(st.session_state['statBLOBs'], roi)
 
-                            color_list = ['blue', 'green', 'red', 'yellow']
-                            BLOBs_list = [ALL, TP, FN, FP]
-                            shapes_list = [
-                                {
-                                    'type': 'circle',
-                                    'x0': x-d/2, 'y0': y-d/2, 'x1': x+d/2, 'y1': y+d/2,
-                                    'line': {'width': 0.75, 'color': temp_color}
-                                }
-                                for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
-                                for y,x,d in zip(*temp_BLOBs.T)
-                            ]
-                            fig.update_layout(shapes = shapes_list, height = 600)
-
-
-                            temp_gt_blobs = gt_blobs[:, 2] * st.session_state['scale']
-                            fig.add_trace(go.Scatter(
-                                x = gt_blobs[:, 1],
-                                y = gt_blobs[:, 0],
-                                mode = 'markers',
-                                marker = dict(size = 15, opacity = 0),  
-                                hovertemplate = ("labeled <br>"
-                                    "x: %{x:.1f} px<br>" +
-                                    "y: %{y:.1f} px<br>" +
-                                    "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
-                                ),
-                                customdata = list(zip(gt_blobs[:, 2], temp_gt_blobs)),
-                                showlegend = False
-                            ))
-
-                            temp_ALL = ALL[:, 2] * st.session_state['scale']
-                            fig.add_trace(go.Scatter(
-                                x = ALL[:, 1],
-                                y = ALL[:, 0],
-                                mode = 'markers',
-                                marker = dict(size = 15, opacity = 0),  
-                                hovertemplate = ("detected <br>"
-                                    "x: %{x:.1f} px<br>" +
-                                    "y: %{y:.1f} px<br>" +
-                                    "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
-                                ),
-                                customdata = list(zip(ALL[:, 2], temp_ALL)),
-                                showlegend = False
-                            ))
+                                color_list = ['blue', 'green', 'red', 'yellow']
+                                BLOBs_list = [ALL, TP, FN, FP]
+                                shapes_list = [
+                                    {
+                                        'type': 'circle',
+                                        'x0': x-d/2, 'y0': y-d/2, 'x1': x+d/2, 'y1': y+d/2,
+                                        'line': {'width': 0.75, 'color': temp_color}
+                                    }
+                                    for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
+                                    for y,x,d in zip(*temp_BLOBs.T)
+                                ]
+                                fig.update_layout(shapes = shapes_list, height = 600)
 
 
-                            fig.add_shape(type = "rect",
-                                xref = "x", yref = "y",
-                                x0 = roi[1], y0 = roi[0],
-                                x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                                line = dict(
-                                    color = "red",
-                                    width = 4,
-                                    dash = "dot",
+                                temp_gt_blobs = gt_blobs[:, 2] * st.session_state['scale']
+                                fig.add_trace(go.Scatter(
+                                    x = gt_blobs[:, 1],
+                                    y = gt_blobs[:, 0],
+                                    mode = 'markers',
+                                    marker = dict(size = 15, opacity = 0),  
+                                    hovertemplate = ("labeled <br>"
+                                        "x: %{x:.1f} px<br>" +
+                                        "y: %{y:.1f} px<br>" +
+                                        "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
+                                    ),
+                                    customdata = list(zip(gt_blobs[:, 2], temp_gt_blobs)),
+                                    showlegend = False
+                                ))
+
+                                temp_ALL = ALL[:, 2] * st.session_state['scale']
+                                fig.add_trace(go.Scatter(
+                                    x = ALL[:, 1],
+                                    y = ALL[:, 0],
+                                    mode = 'markers',
+                                    marker = dict(size = 15, opacity = 0),  
+                                    hovertemplate = ("detected <br>"
+                                        "x: %{x:.1f} px<br>" +
+                                        "y: %{y:.1f} px<br>" +
+                                        "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
+                                    ),
+                                    customdata = list(zip(ALL[:, 2], temp_ALL)),
+                                    showlegend = False
+                                ))
+
+
+                                fig.add_shape(type = "rect",
+                                    xref = "x", yref = "y",
+                                    x0 = roi[1], y0 = roi[0],
+                                    x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                                    line = dict(
+                                        color = "red",
+                                        width = 4,
+                                        dash = "dot",
+                                    )
                                 )
-                            )
 
-                            fig.update_coloraxes(showscale = False)
-                            fig.update_layout(
-                                margin = marginChart,
-                                hovermode = 'closest',
-                                xaxis_title = None,
-                                yaxis_title = None,
-                                xaxis = dict(showticklabels = False),
-                                yaxis = dict(showticklabels = False))
-                            fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
-                            fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
+                                fig.update_coloraxes(showscale = False)
+                                fig.update_layout(
+                                    margin = marginChart,
+                                    hovermode = 'closest',
+                                    xaxis_title = None,
+                                    yaxis_title = None,
+                                    xaxis = dict(showticklabels = False),
+                                    yaxis = dict(showticklabels = False))
+                                fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
+                                fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
-                            st.markdown("""
-                                <div style="text-align: center;">
-                                    Types particles in chart:<br>
-                                    <span class="particle-label blue">Detect by algorithm</span>
-                                    <span class="particle-label green">Correctly identified by algorithm (TP)</span>
-                                    <span class="particle-label red">Not identified by algorithm (FN)</span>
-                                    <span class="particle-label orange">Identified but not confirmed by expert (FP)</span>
-                                </div>
-                            """, unsafe_allow_html=True)
+                                st.markdown("""
+                                    <div style="text-align: center;">
+                                        Types particles in chart:<br>
+                                        <span class="particle-label blue">Detect by algorithm</span>
+                                        <span class="particle-label green">Correctly identified by algorithm (TP)</span>
+                                        <span class="particle-label red">Not identified by algorithm (FN)</span>
+                                        <span class="particle-label orange">Identified but not confirmed by expert (FP)</span>
+                                    </div>
+                                """, unsafe_allow_html=True)
 
-                            st.plotly_chart(fig, use_container_width = True)
+                                st.plotly_chart(fig, use_container_width = True)
 
 
     ## TAB 3
@@ -1663,4 +1706,4 @@ try:
         </div>""", unsafe_allow_html = True)
 
 except Exception as exc:
-    dialog_exception()
+    dialog_exception(False)

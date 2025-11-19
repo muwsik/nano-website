@@ -3,7 +3,17 @@ import streamlit as st
 def loadStyles(color):
     st.markdown(f"""
         <style>  
-            
+            iframe {{
+                width: 100%;
+                height: 90vh !important;                
+                min-height: 350px;
+                max-height: 750px;
+            }}
+
+            div.stVerticalBlock.st-key-image-container > div {{
+                height: 100% !important;
+            }}
+
             ::-webkit-scrollbar {{
                 display: none;
             }}            
