@@ -6,7 +6,7 @@ import streamlit as st
 import io, csv
 import cv2, skimage, scipy
 import numpy as np
-import time, datetime
+import time
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -35,8 +35,6 @@ import traceback
 
 ### Function ###
     
-help_str = "hint be added soon"
-
 colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
 
@@ -250,7 +248,8 @@ try:
             with colSetting:
                 st.toggle("Use default settings",
                     disabled = not st.session_state['imgUpload'],
-                    key = 'settingDefault'
+                    key = 'settingDefault',
+                    help = tooltips.DefaultToggle
                 )
 
                 # Preprocessing image
@@ -294,13 +293,13 @@ try:
                     st.slider("Nanoparticle brightness",
                         key = 'param-pre-1',
                         disabled = st.session_state['settingDefault'],
-                        help = tooltips.Detect.Brightness
+                        help = tooltips.Detection.Brightness
                     )
 
                     option_nanoparticleSize = {
                         0: "Small (1-10 pixels)",
-                        1: "Medium (10-20 pixels)",
-                        2: "Large (20-35 pixels)"      
+                        1: "Medium (5-15 pixels)",
+                        2: "Large (10-25 pixels)"      
                     }
 
                     if ('param-pre-2' not in st.session_state) or st.session_state['settingDefault']:
@@ -312,7 +311,7 @@ try:
                         options = option_nanoparticleSize.keys(),
                         format_func = lambda option: option_nanoparticleSize[option],
                         disabled = st.session_state['settingDefault'],
-                        help = tooltips.Detect.Diameter
+                        help = tooltips.Detection.Diameter
                     )
 
                     if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
@@ -321,13 +320,12 @@ try:
                     st.toggle("Suppression of background irregularities",
                         key = 'param-pre-3',                              
                         disabled = st.session_state['settingDefault'],
-                        help = tooltips.Detect.Irregularities
+                        help = tooltips.Detection.Irregularities
                     )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         use_container_width = True,
                         disabled = not st.session_state['imgUpload'],
-                        help = help_str,
                         on_click = update_sessionState,
                         args = ("detected", True)
                     )
@@ -393,7 +391,7 @@ try:
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
                                 # параметр функции Гаусса для сглаживания
-                                "sigma_gauss": 0.5,
+                                "sigma_gauss": 1,
                                 # размер диска Top-Hat
                                 "sz_th":  6,
                                 # порог яркости для отбрасывания лок. максимумов
@@ -514,7 +512,7 @@ try:
                     # Filtration settings
                     with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
                         if ('param-filt-1' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-filt-1'] = 10
+                            st.session_state['param-filt-1'] = 7
                                                     
                         st.slider("Nanoparticle center brightness",
                             key = 'param-filt-1',
@@ -553,7 +551,7 @@ try:
                         )
 
                         if ('param-filt-3' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-filt-3'] = 0.65
+                            st.session_state['param-filt-3'] = 0.75
 
                         st.slider("Nanoparticle reliability",
                             key = 'param-filt-3',
@@ -712,7 +710,8 @@ try:
                             icon = ":material/download:",
                             data = fileResult.getvalue(),
                             file_name = fileResultName,
-                            disabled = button_download_disabled
+                            disabled = button_download_disabled,
+                            help = tooltips.Visualization.Download
                         )
     
         # Display source image by st.image
@@ -797,7 +796,8 @@ try:
                 "Which nanoparticles to use?",
                 index = 2,
                 options = option_map.keys(),
-                format_func = lambda option: option_map[option]
+                format_func = lambda option: option_map[option],
+                help = tooltips.NanoparticlesSelectbox
             ) 
                 
             match selection_use:
@@ -855,164 +855,6 @@ try:
 
                 db11, db12, db13 = st.columns([4, 4, 4])            
 
-                # Particle size distribution
-                with db11.container(border = True, height = heightCol):
-                    left, rigth = st.columns([7, 1])
-                    left.subheader("Distribution of particle diameters", anchor = False)
-
-                    with rigth.popover("", icon=":material/settings:"):
-                        st.toggle("Display distribution function",
-                            key = 'distView',
-                            help = help_str
-                        )
-
-                        st.toggle("Normalize the vertical axis",
-                            key = 'normalize',
-                            help = help_str
-                        )
-
-                        st.toggle("Selecting individual columns",
-                            key = 'selection',
-                            help = help_str
-                        )
-
-                        st.number_input("Histogram step",
-                            key = 'step',
-                            min_value = 0.1,
-                            max_value = 5.0,
-                            step = 0.1,
-                            format = '%0.2f',
-                            value = 0.5
-                        )
-
-                        # Saving data for distribution NP diams chart
-                        buttonDataChartPlaceholder = st.empty()
-
-                        # Saving chart distribution of NP diams 
-                        buttonChartPlaceholder = st.empty()
-                          
-                    
-                    step = st.session_state['step']
-                    start = np.floor(diameter_nm.min()) - step
-                    end = np.ceil(diameter_nm.max()) + step
-
-                    counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
-                                        
-                    name_x = "Diameters, nm"
-                    temp = [[float(i), float(i+step)] for i in bins]
-                    fraction = counts / np.sum(counts) * 100
-                    if st.session_state['normalize']:
-                        bar_y = fraction
-                        name_y = "Particles fraction, %"
-                        hover_y = "%{y:.1f}% (%{customdata[2]:d})"
-                        dataChart = [list(pair) for pair in zip(temp, fraction)]
-                        customDataChart = list(zip(bins, bins + step, counts))
-                    else:
-                        bar_y = counts
-                        name_y = "Particles counts"
-                        hover_y = "%{y:d} (%{customdata[2]:.1f}%)"
-                        dataChart = [list(pair) for pair in zip(temp, counts)]
-                        customDataChart = list(zip(bins, bins + step, fraction))
-                                            
-                    file = io.StringIO()
-                    csv.writer(file, delimiter = ';').writerow([name_x, name_y])
-                    csv.writer(file, delimiter = ';').writerows(dataChart)
-                                        
-                    buttonDataChartPlaceholder.download_button(
-                        label = "Download data chart *.csv",
-                        data = file.getvalue(),
-                        file_name = f"{st.session_state['statImageName']}-dist-diameters.csv",
-                        use_container_width  = True,
-                        help = help_str
-                    )
-
-                    fig = go.Figure()
-
-                    fig = fig.add_trace(go.Bar(
-                        x = 0.5 * (bins[:-1] + bins[1:]),
-                        y = bar_y,
-                        customdata = customDataChart,
-                        showlegend = False,
-                        hovertemplate = (
-                            "Diameter: [%{customdata[0]:.1f}, %{customdata[1]:.1f}) nm<br>"
-                            "Particls: " + hover_y +
-                            "<extra></extra>"
-                        )
-                    ))
-
-                    if st.session_state['distView']:
-                        mu = np.mean(diameter_nm)
-                        sigma = np.std(diameter_nm)
-
-                        dist_x = np.arange(start, end, step * 0.1, dtype = float)
-                        dist_y = np.exp(-1/2 * ((dist_x - mu)/sigma)**2) / (sigma * np.sqrt(2 * np.pi))
-
-                        fig.add_trace(go.Scatter(
-                            x = dist_x, 
-                            y = dist_y * step * (100 if st.session_state['normalize'] else len(diameter_nm)),
-                            mode = 'lines',
-                            hoverinfo = 'skip',
-                            showlegend = False,
-                            line = dict(color = 'rgba(50, 50, 255, 0.75)')
-                        ))
-                        
-                        fig.add_trace(go.Scatter(
-                            x = [None], 
-                            y = [None],
-                            mode = 'lines',
-                            line = dict(width = 0),    
-                            showlegend = True,
-                            name = f"""Avg. diameter: {np.mean(diameter_nm):0.2f}<br>Std. dev. diameter:{np.std(diameter_nm):0.1f}<br>Particles: {len(st.session_state['statBLOBs'])}""",
-                        )) 
-                        
-                    fig.update_layout(
-                        margin = marginChartLess,
-                        xaxis_title_text = name_x,
-                        yaxis_title_text = name_y,                        
-                        bargap = 0,
-                        legend = dict(
-                            x = 0.95,
-                            y = 0.98,
-                            xanchor = 'right',
-                            yanchor = 'top'
-                        )
-                    )
-
-                    fig.update_xaxes(
-                        tickmode = 'linear',
-                        dtick = 1,
-                        tick0 = start,
-                        tickwidth = 2,
-                        showgrid = True,
-                        gridwidth = 1,
-                        minor = dict(
-                            dtick = step,
-                            ticklen = 4,
-                            showgrid = False
-                        )
-                    )
-                    
-                    fig.update_traces(
-                        marker_color = colorRGBA_str,
-                        marker_line_color = 'blue',
-                        marker_line_width = 1  
-                    )
-
-                    selectColumn = st.plotly_chart(
-                        fig,
-                        use_container_width = True,
-                        on_select = 'rerun' if st.session_state['selection'] else 'ignore',
-                        selection_mode = 'points'
-                    )
-
-                    if (st.session_state['selection']):
-                        if (selectColumn.selection['point_indices'] != []):
-                            minDiameterInColumn = selectColumn.selection['point_indices'][0] * step + start
-                            maxDiameterInColumn = minDiameterInColumn + step
-
-                            boolIndexSelectedBLOBs = (diameter_nm >= minDiameterInColumn) & (diameter_nm <= maxDiameterInColumn)
-                # END db11
-
                 # Nanoparticle parameters
                 with db12.container(border = True, height = heightCol):                        
                     
@@ -1054,96 +896,203 @@ try:
                                 key = "user-density"
                             )
                         else:
-                            st.markdown(f"""
-                                <div class = 'text' style = "font-size: 16px;">
-                                    Particles material density: <b>{materialDensity:.2e} ng/nm<sup>3</sup></b> 
-                                </div>""", unsafe_allow_html = True)
-                      
-                    if st.session_state['scale'] is None:
-                        pass
-                    else:                    
-                        st.markdown(f"""
-                            <div class = 'text'>
-                                Estimated scale: <b>{st.session_state['scale']:.3f} nm/px</b> 
-                            </div>""", unsafe_allow_html = True)
+                            instruct.MaterialDensity(materialDensity)
                     
-                    if selectionDensity != 4:
-                        st.markdown(f"""
-                            <div class = 'text'>
-                                Material: <b>{option_materialDensity[selectionDensity]}</b> 
-                            </div>""", unsafe_allow_html = True)
-                    else:
-                        st.markdown(f"""
-                            <div class = 'text'>
-                                Material: <b>{option_materialDensity[selectionDensity]} ({materialDensity:.2e} ng/nm<sup>3</sup>)</b> 
-                            </div>""", unsafe_allow_html = True)
+                    # Additional info
+                    if st.session_state['scale'] is None:
+                        pass # TODO input scale
+                    else:                    
+                        instruct.EstimatedScale(st.session_state["scale"])
+                    
+                    instruct.NameMaterial(selectionDensity, option_materialDensity, materialDensity)
 
-
-
-                    temp_add_str = ""
                     currentDiameter = diameter_nm
                     if boolIndexSelectedBLOBs is not None:
                         currentDiameter = currentDiameter[boolIndexSelectedBLOBs]
-                        temp_add_str = f"(includ {len(currentDiameter)} selected)"
-   
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Quantity: <b>{len(st.session_state['statBLOBs'])}</b>
-                            {temp_add_str}
-                        </div>""", unsafe_allow_html = True)
-
-                    st.subheader("Primary parameters", anchor = False)                    
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Average diameter: <b>{np.mean(currentDiameter):.3f} nm</b> 
-                        </div>""", unsafe_allow_html = True)
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Standart deviation diameters: <b>{np.std(currentDiameter):.3f} nm</b> 
-                        </div>""", unsafe_allow_html = True)
-
-
-                    st.subheader("Secondary parameters", anchor = False)  
-                    volumeParticls = (np.pi * currentDiameter**3) / 6
-                    areaParticls =  np.sum((np.pi * currentDiameter**2) / 4)
-                    massParticls = np.sum(volumeParticls * materialDensity)
-
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Mass: <b>{massParticls:0.2e} ng</b> 
-                        </div>""", unsafe_allow_html = True)   
                     
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Volume: <b>{np.sum(volumeParticls):0.2e} nm<sup>3</sup></b> 
-                        </div>""", unsafe_allow_html = True) 
+                    paramsNP = NanoStat.calculateParametersNP(
+                        currentDiameter,
+                        materialDensity,
+                        st.session_state['sizeImage'],
+                        st.session_state['scale'] # TODO add st.session_state with key 'areaImage'
+                    )
+
+                    # TODO fix boolIndexSelectedBLOBs
+                    instruct.Quantity(len(st.session_state['statBLOBs']), len(currentDiameter))
+
+                    # Primary parameters info                  
+                    instruct.PrimaryParameters(currentDiameter)
                     
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Area: <b>{areaParticls:0.2e} nm<sup>2</sup></b> 
-                        </div>""", unsafe_allow_html = True)
+                    # Secondary parameters info 
+                    instruct.SecondaryParameters(paramsNP)                   
                     
-
-                    imageArea = np.prod(st.session_state['sizeImage'])
-                    if st.session_state['scale'] is not None:
-                        imageArea = imageArea * st.session_state['scale']**2
-
-                    st.subheader("Secondary parameters (norm)",
-                        help = f"Values relative to the surface area is {imageArea:.2e} nm²",
-                        anchor = False
-                    )                    
-                       
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Area: <b>{areaParticls/imageArea*100:0.2f}</b> %
-                            </div>""", unsafe_allow_html = True)
-
-                    st.markdown(f"""
-                        <div class = 'text'>
-                            Mass: <b>{massParticls/imageArea:0.2e} ng/nm<sup>2</sup></b> 
-                        </div>""", unsafe_allow_html = True)                        
+                    # Norm secondary parameters info
+                    instruct.NormSecondaryParameters(paramsNP)                           
                 # END db12
+                
 
+                # Particle size distribution
+                with db11.container(border = True, height = heightCol):
+                    left, rigth = st.columns([7, 1])
+                    left.subheader("Distribution of particle diameters", anchor = False)
+
+                    with rigth.popover("", icon=":material/settings:"):
+                        st.toggle("Display distribution function",
+                            key = 'distView',
+                            help = tooltips.Distribution.Function
+                        )
+
+                        st.toggle("Normalize the vertical axis",
+                            key = 'normalize',
+                            help = tooltips.Distribution.Normalize
+                        )
+
+                        st.toggle("Selecting individual columns",
+                            key = 'selection',
+                            help = tooltips.Distribution.Selection
+                        )
+
+                        st.number_input("Histogram step",
+                            key = 'step',
+                            min_value = 0.1,
+                            max_value = 5.0,
+                            step = 0.1,
+                            format = '%0.2f',
+                            value = 0.5,
+                            help = tooltips.Distribution.Step
+                        )
+
+                        # Saving data for distribution NP diams chart
+                        buttonDataChartPlaceholder = st.empty()
+
+                        # Saving chart distribution of NP diams 
+                        buttonChartPlaceholder = st.empty()
+                          
+                    
+                    step = st.session_state['step']
+                    start = np.floor(diameter_nm.min()) - step
+                    end = np.ceil(diameter_nm.max()) + step
+
+                    counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
+                                        
+                    name_x = "Diameters, nm"
+                    temp = [[float(i), float(i+step)] for i in bins]
+                    fraction = counts / np.sum(counts) * 100
+                    if st.session_state['normalize']:
+                        bar_y = fraction
+                        name_y = "Particles fraction, %"
+                        hover_y = "%{y:.1f}% (%{customdata[2]:d})"
+                        dataChart = [list(pair) for pair in zip(temp, fraction)]
+                        customDataChart = list(zip(bins, bins + step, counts))
+                    else:
+                        bar_y = counts
+                        name_y = "Particles counts"
+                        hover_y = "%{y:d} (%{customdata[2]:.1f}%)"
+                        dataChart = [list(pair) for pair in zip(temp, counts)]
+                        customDataChart = list(zip(bins, bins + step, fraction))
+                                            
+                    file = io.StringIO()
+                    csv.writer(file, delimiter = ';').writerow([name_x, name_y])
+                    csv.writer(file, delimiter = ';').writerows(dataChart)
+                                        
+                    buttonDataChartPlaceholder.download_button(
+                        label = "Download data chart *.csv",
+                        data = file.getvalue(),
+                        file_name = f"{st.session_state['statImageName']}-dist-diameters.csv",
+                        use_container_width  = True,
+                        help = tooltips.Distribution.Download
+                    )
+
+                    fig = go.Figure()
+
+                    fig = fig.add_trace(go.Bar(
+                        x = 0.5 * (bins[:-1] + bins[1:]),
+                        y = bar_y,
+                        customdata = customDataChart,
+                        showlegend = False,
+                        hovertemplate = (
+                            "Diameter: [%{customdata[0]:.1f}, %{customdata[1]:.1f}) nm<br>"
+                            "Particls: " + hover_y +
+                            "<extra></extra>"
+                        )
+                    ))
+
+                    if st.session_state['distView']:
+                        mu = np.mean(diameter_nm)
+                        sigma = np.std(diameter_nm)
+
+                        dist_x = np.arange(start, end, step * 0.1, dtype = float)
+                        dist_y = np.exp(-1/2 * ((dist_x - mu)/sigma)**2) / (sigma * np.sqrt(2 * np.pi))
+
+                        fig.add_trace(go.Scatter(
+                            x = dist_x, 
+                            y = dist_y * step * (100 if st.session_state['normalize'] else len(diameter_nm)),
+                            mode = 'lines',
+                            hoverinfo = 'skip',
+                            showlegend = False,
+                            line = dict(color = 'rgba(50, 50, 255, 0.75)')
+                        ))
+                        
+                        fig.add_trace(go.Scatter(
+                            x = [None], 
+                            y = [None],
+                            mode = 'lines',
+                            line = dict(width = 0),    
+                            showlegend = True,
+                            name = f"""Particles: {len(st.session_state['statBLOBs'])}<br>Avg. diameter: {np.mean(diameter_nm):0.2f} nm<br>Std. dev. diameter: {np.std(diameter_nm):0.1f} nm""" 
+                            #name = f"""Particles: {len(st.session_state['statBLOBs'])}<br>Avg. diameter: {np.mean(diameter_nm):0.2f} nm<br>Std. dev. diameter: {np.std(diameter_nm):0.1f} nm<br>Mass: {massParticls:0.2e} ng<br>Volume: {np.sum(volumeParticls):0.2e} nm<sup>3</sup><br>Area: {areaParticls:0.2e} nm<sup>2</sup><br>Norm. area : {areaParticls/imageArea*100:0.2f}<br>Norm. mass: {massParticls/imageArea:0.2e} ng/nm<sup>2</sup>""",
+                        )) 
+                        
+                    fig.update_layout(
+                        margin = marginChartLess,
+                        xaxis_title_text = name_x,
+                        yaxis_title_text = name_y,                        
+                        bargap = 0,
+                        legend = dict(
+                            x = 1.1,
+                            y = 1.1,
+                            xanchor = 'right',
+                            yanchor = 'top',
+                            bgcolor='rgba(0,0,0,0)'
+                        )
+                    )
+
+                    fig.update_xaxes(
+                        tickmode = 'linear',
+                        dtick = 1,
+                        tick0 = start,
+                        tickwidth = 2,
+                        showgrid = True,
+                        gridwidth = 1,
+                        minor = dict(
+                            dtick = step,
+                            ticklen = 4,
+                            showgrid = False
+                        )
+                    )
+                    
+                    fig.update_traces(
+                        marker_color = colorRGBA_str,
+                        marker_line_color = 'blue',
+                        marker_line_width = 1  
+                    )
+
+                    selectColumn = st.plotly_chart(
+                        fig,
+                        use_container_width = True,
+                        on_select = 'rerun' if st.session_state['selection'] else 'ignore',
+                        selection_mode = 'points'
+                    )
+
+                    if (st.session_state['selection']):
+                        if (selectColumn.selection['point_indices'] != []):
+                            minDiameterInColumn = selectColumn.selection['point_indices'][0] * step + start
+                            maxDiameterInColumn = minDiameterInColumn + step
+
+                            boolIndexSelectedBLOBs = (diameter_nm >= minDiameterInColumn) & (diameter_nm <= maxDiameterInColumn)
+                # END db11
+
+                
                 # Heatmap of particle count
                 # or
                 # Visualization particles
@@ -1213,11 +1162,7 @@ try:
                 # END db13
 
             with st.expander("Nanoparticle spatial distribution", icon = ":material/data_thresholding:"):
-                st.markdown(f"""
-                    <p class = 'text'>
-                        Visual representation of nanoparticle-based statistics in image.
-                        A detailed description is provided in the work on the [2] link below.
-                    </p>""", unsafe_allow_html = True)
+                instruct.AboutSectionSpatialDistribution()
 
                 currentBLOBs = np.copy(st.session_state['statBLOBs'])
                 if st.session_state['scale'] is not None:         
@@ -1338,20 +1283,14 @@ try:
                 # END db23
             
             with st.expander("Quality evaluation", expanded = False, icon = ":material/verified:"):
-                st.markdown(f"""
-                    <p class = 'text'>
-                        Quality evaluation of the automatically detected nanoparticles 
-                        based on the Jacquard measure and the expert's manual marking.
-                        A detailed description is provided in the work on the [2] link below.
-                    </p>""", unsafe_allow_html = True)
+                instruct.AboutSectioQuality()
                 
                 if selection_use == 1:
                     st.warning("""This section is designed for evaluating automated nanoparticle detection algorithms. 
                         Currently using data imported from CVAT - please verify data accuracy before proceeding.""")
 
                 uploadedGT = st.file_uploader("Expert markup file", type = ["csv", "zip"],
-                    help = f"""If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.
-                    If file is *.ZIP, it must match the form CVAT for image 1.1."""
+                    help = tooltips.ExpertFileUploader
                 )
                             
                 if uploadedGT is not None:
@@ -1419,9 +1358,12 @@ try:
                         temp_res = accuracy.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
                         match, no_match, fake, FN, FP, TP, _ = temp_res
 
-                        accuracyPlaceholder.write(f"""
-                            Accuracy: {match / (match + no_match + fake) * 100:.2f}%
-                            (TP {match}; FN {no_match}; FP {fake})""")
+                        accuracyPlaceholder.markdown(f"""
+                            <p class = 'text center'>
+                                Accuracy: {match / (match + no_match + fake) * 100:.2f}%
+                                (TP {match}; FN {no_match}; FP {fake})
+                            </p>
+                        """, unsafe_allow_html = True)
 
                         with l:
                             if st.toggle("Display nanoparticles"):
@@ -1504,15 +1446,7 @@ try:
                                 fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
                                 fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
       
-                                st.markdown("""
-                                    <div style="text-align: center;">
-                                        Types particles in chart:<br>
-                                        <span class="particle-label blue">Detect by algorithm</span>
-                                        <span class="particle-label green">Correctly identified by algorithm (TP)</span>
-                                        <span class="particle-label red">Not identified by algorithm (FN)</span>
-                                        <span class="particle-label orange">Identified but not confirmed by expert (FP)</span>
-                                    </div>
-                                """, unsafe_allow_html=True)
+                                instruct.LegendChartQuality()
 
                                 st.plotly_chart(fig, use_container_width = True)
 
@@ -1526,203 +1460,24 @@ try:
             dialog_feedback()
 
 
-        # Guide 1
-        st.subheader("Детектирование и фильтрация наночастиц", anchor = False)
-        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-        text_col.markdown(f"""
-            <div>
-                <p class = 'text'>Все дальнейшие шаги выполняются на вкладке «Automatic detection».</p>
-                <ul>
-                    <li>
-                        <p class = 'text'>
-                            Шаг 1. Загрузка исходного СЭМ-изображения (кнопка «Browse file»).
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Шаг 2. Детектирование наночастиц (кнопка «Nanoparticles detection» становится активной после
-                            загрузки изображения). Процесс детектирования занимает некоторое время, в среднем до одной минуты.                     
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Шаг 3. После успешного детектирования производится фильтрация найденных наночастиц
-                            (используются параметры по умолчанию). Отфильтрованные частицы отображаются
-                            на изображении в виде окружностей.
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
-                            (снять галочку «Use default settings»). <strong>ВАЖНО:</strong> подтверждение параметров 
-                            детектирования осуществляется повторным нажатием кнопки «Nanoparticles detection». Параметры
-                            фильтрации применяются автоматически.
-                        </p>
-                    </li>
-                </ul>
-            </div>""", unsafe_allow_html = True)
-
-        media_col.markdown(f"""
-            <div class = 'text' style = "text-align: center;">
-                A video guide will be added here soon!
-            </div>""", unsafe_allow_html = True)
+        # Guide 1: Detection and filtration of nanoparticles
+        instruct.Guide1()
                 
-        # Guide 2
-        st.subheader("Взаимодейтсвие с результатами детектирования", anchor = False)
-        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
+        # Guide 2: Interaction with detection results
+        instruct.Guide2()
 
-        text_col.markdown(f"""
-            <div>
-                <p class = 'text'>Указанный функционал доступен на вкладке «Automatic detection» после детектирования наночастиц.</p>
-                <ul>
-                    <li>
-                        <p class = 'text'>
-                            Результаты детектирования можно скачать в нескольких вариантах:
-                            (1) Найденные частицы на прозрачном фоне. (2) Найденные частицы, наложенные на исходное изображение.
-                            (3) Файл с указанием координат центра и радиуса каждой частицы.
-                            Для этого нужно в выпадающем списке «What results should be saved?» выбрать нужный вариант 
-                            и нажать кнопку, расположенную правее.
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Если на изображении присутствует мерная шкала и указан её физический размер, масштаб 
-                            определяется автоматически. Визуализировать вычисленный масштаб можно с помощью 
-                            переключателя «Display scale».
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Режим сравнения в доработке!
-                        </p>
-                    </li>
-                </ul>
-            </div>""", unsafe_allow_html = True)
-       
-        media_col.markdown(f"""
-            <div class = 'text' style = "text-align: center;">
-                A video guide will be added here soon!
-            </div>""", unsafe_allow_html = True)
+        # Guide 3: Integration with CVAT
+        instruct.Guide3()        
 
-        # Guide 3
-        st.subheader("Интеграция с CVAT", anchor = False)
-        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-        text_col.markdown(f"""
-            <div>              
-                <ul>
-                    <li>
-                        <p class = 'text'>
-                            Результаты детектирования можно скачать в формате, поддерживаемом <a href=https://app.cvat.ai/>CVAT</a>.
-                            Для этого на вкладке «Automatic detection» после детектирования наночастиц
-                            нужно в выпадающем списке «What results should be saved?» выбрать
-                            пункт «CVAT task» и нажать кнопку, расположенную правее. Скачанный backup-архив можно 
-                            использовать для создания новой задачи CVAT.
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Разметку, полученную в CVAT, можно импортировать на сайт. Для этого сначала необходимо выгрузить
-                            из CVAT backup-архив задачи с нужной разметкой. Затем на вкладке «Statistics dashboard» 
-                            в выпадающем списке «Which nanoparticles to use» нужно выбрать пункт «Import from CVAT» и 
-                            загрузить backup-архив в соответствующее поле. Если все условия выполнены, ниже автоматически 
-                            отобразятся все разделы со статистикой.
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Более подробная информация об интеграции с CVAT приведена в 
-                            <a href = "https://disk.yandex.ru/i/2U5wgJ8IjskREQ"
-                                >расширенном руководстве</a>.
-                        </p>
-                    </li>
-                </ul>
-            </div>""", unsafe_allow_html = True)
-       
-        media_col.markdown(f"""
-            <div class = 'text' style = "text-align: center;">
-                A video guide will be added here soon!
-            </div>""", unsafe_allow_html = True)
+        # Guide 4: Evaluation of detection quality
+        instruct.Guide4()        
         
-
-        # Guide 4
-        st.subheader("Оценка качества детектирования", anchor = False)
-        text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-        text_col.markdown(f"""
-            <div>
-                <p class = 'text'>Все дальнейшие шаги выполняются на владке «Statistics dashboard».</p>
-                <ul>                    
-                    <li>
-                        <p class = 'text'>
-                            В разделе «Quality evaluation» можно получить численную оценку качества детектирования наночастиц.
-                            Для этого, в первую очередь, необходим результат автоматического детектирования. Он должен быть
-                            либо на вкладке «Automatic detection», либо в виде backup-архива CVAT, который нужно загрузить 
-                            в разделе «Global dashboard settings». Далее требуется загрузить файл с экспертной разметкой, 
-                            также в формате backup-архива CVAT, в соответствующее поле раздела «Quality evaluation». Если 
-                            все условия выполнены, ниже отобразится качество в процентах. Подробно процедура оценки качества 
-                            описана в работе [2].
-                        </p>
-                    </li>
-                    <li>
-                        <p class = 'text'>
-                            Дополнительно можно визуализировать результат оценки качества детектирования. Для этого
-                            переключите тумблер «Display nanoparticles». В результате ниже появится интерактивный график,
-                            на котором будут отмечены наночастицы четырёх типов: "Синие" - это автоматически детектированные
-                            частицы, которые сопоставлены с "зелёными" наночастицами, отмеченными экспертом (TP).
-                            "Красные" — это наночастицы, которые были помечены экспертом, но не были детектированы 
-                            автоматически (FN). "Жёлтые" - это автоматически детектированные наночастицы, которые не были 
-                            подтверждены экспертом (FP).
-                        </p>
-                    </li>
-                </ul>
-            </div>""", unsafe_allow_html = True)
-       
-        media_col.markdown(f"""
-            <div class = 'text' style = "text-align: center;">
-                A video guide will be added here soon!
-            </div>""", unsafe_allow_html = True)
     
     ## How to cite
-    tempCol = st.columns([0.8, 0.2], vertical_alignment = 'center')
-
-    tempCol[0].markdown("""
-        <div class = 'cite'> <b>How to cite</b>:
-            <ul>
-                <li> <p class = 'cite'>
-                    [1] An article about this site will be published soon, don't miss it!
-                </p> </li>
-                <li> <p class = 'cite'>
-                    [2] Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
-                    Boiko D.A., Sulimova V.V., Kurbakov M.Yu. [et al.] 
-                    // Nanomaterials. 2022. Vol. 12, No. 21. Pp. 3914. 
-                    DOI: <a href=https://www.mdpi.com/2079-4991/12/21/3914>10.3390/nano12213914</a>.
-                </p> </li>
-                <li> <p class = 'cite'>
-                    [3] Determining the Orderliness of Carbon Materials with Nanoparticle Imaging and Explainable Machine Learning. 
-                    Kurbakov M.Yu., Sulimova V.V., Kopylov A.V. [et al.]
-                    // Nanoscale. 2024. Vol. 16, No. 28. Pp. 13663-13676. 
-                    DOI: <a href=https://pubs.rsc.org/en/content/articlelanding/2024/nr/d4nr00952e>10.1039/d4nr00952e</a>.
-                </p> </li>                
-                <li> <p class = 'cite'>
-                    [4] Interpretable Graph Methods for Determining Nanoparticles Ordering in Electron Microscopy Images.
-                    Kurbakov M.Yu., Sulimova V.V., Seredin O.S., Kopylov A.V. // Computer Optics. 2025. Vol. 49, No 3. Pp. 470-479.
-                    DOI: <a href=https://computeroptics.ru/eng/KO/Annot/KO49-3/490313e.html>10.18287/2412-6179-CO-1568</a>.
-                </p> </li>
-            </ul>
-        </div>""", unsafe_allow_html = True)
-    tempCol[1].image(r"./nano-website/content/qr-code.svg",
-        caption = "Web Nanoparticles QR-code",
-        use_container_width = True
-    )   
+    instruct.HowCite()
     
     ## Footer
-    st.markdown(f"""
-        <div class = 'footer'>
-            Laboratory of Cognitive Technologies and Simulating Systems,
-            Tula State University © {datetime.datetime.now().year} (E-mail: muwsik@mail.ru)
-        </div>""", unsafe_allow_html = True)
+    instruct.Footer()
 
 except Exception as exc:
     dialog_exception(False)
