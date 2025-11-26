@@ -1,13 +1,13 @@
 # -*- coding: cp1251 -*-
 
-import streamlit as st
+import os
 import requests
 import datetime
 import uuid
 import base64
 
 
-PASSWORD = st.secrets["PASSWORD"]
+PASSWORD = os.environ["PASSWORD"]
 URL = r"https://script.google.com/macros/s/AKfycbzygeiJmBaL4Qu9FRL2iS-bPrFGLPCFgyut72ZE6UHA9hr3ChbTkh1_7BwbNXRqxw9Y/exec"    
 EMAIL = r"nanoweb.assist@gmail.com"
 

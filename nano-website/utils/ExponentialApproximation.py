@@ -782,7 +782,6 @@ def my_FilterBlobs_change(blobs_data, params):
         c0 = blob[3]
         norm_error = blob[6]
         
-        print(blob, params)
         if ((c0 >= thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
             filtered_blobs.append(blob)
     

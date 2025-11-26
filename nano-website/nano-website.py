@@ -289,7 +289,7 @@ try:
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
                     if ('param-pre-1' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-pre-1'] = 10
+                            st.session_state['param-pre-1'] = 5
                     
                     st.slider("Nanoparticle brightness",
                         key = 'param-pre-1',
@@ -304,7 +304,7 @@ try:
                     }
 
                     if ('param-pre-2' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-pre-2'] = 1
+                            st.session_state['param-pre-2'] = 2
 
                     st.selectbox("Hypothetical nanoparticles diameter",
                         key = 'param-pre-2',
@@ -395,11 +395,11 @@ try:
                                 # параметр функции Гаусса для сглаживания
                                 "sigma_gauss": 0.5,
                                 # размер диска Top-Hat
-                                "sz_th":  7,
+                                "sz_th":  6,
                                 # порог яркости для отбрасывания лок. максимумов
                                 "thr_br": float(st.session_state['param-pre-1']),   
                                 # минимальное расстояние между локальными максимумами при их поиске 
-                                "min_dist": 6,
+                                "min_dist": 3,
                                 # размер окна аппроксимации
                                 "wsize": 9,     
                                 # выбор лучшей точки в окрестности лок.макс. по norm_error (1 - по с1, 2 - по с0, 3 - по norm_error) 
@@ -431,9 +431,9 @@ try:
                                 # размер окна медианного фильтра
                                 "sz_med" : 3,
                                 # параметр функции Гаусса для сглаживания
-                                "sigma_gauss": 1.25,
+                                "sigma_gauss": 1.5,
                                 # размер диска Top-Hat
-                                "sz_th":  9,
+                                "sz_th":  8,
                                 # порог яркости для отбрасывания лок. максимумов
                                 "thr_br": float(st.session_state['param-pre-1']),   
                                 # минимальное расстояние между локальными максимумами при их поиске 
@@ -579,7 +579,7 @@ try:
                             )
 
                             temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
-                            temp_img = ExpApp.PreprocessingTopHat(temp_img, 7)   
+                            temp_img = ExpApp.PreprocessingTopHat(temp_img, 9)   
 
                             _, img_contours, st.session_state['big_contours'] = ExpApp2.FindAreasToDelete(temp_img, 85, st.session_state['param-filt-4'])
                             temp_BLOBs_data = ExpApp2.DeleteBorderPointsM(st.session_state['BLOBs_data'], img_contours, 255)
@@ -784,17 +784,18 @@ try:
         marginChartLess = dict(l=5, r=5, t=0, b=5)
               
         with st.expander("Global dashboard settings",
-            expanded = not st.session_state['calcStatictic'],
+            expanded = True,
             icon = ":material/rule_settings:"
         ):
             option_map = {
                 0: "Automatically detected",
-                1: "Import from CVAT"
+                1: "Import from CVAT",
+                2: "None"
             }
 
             selection_use = st.selectbox(
                 "Which nanoparticles to use?",
-                index = 1,
+                index = 2,
                 options = option_map.keys(),
                 format_func = lambda option: option_map[option]
             ) 
@@ -838,7 +839,7 @@ try:
                         else:
                             st.session_state['sizeImage'] = st.session_state['statImage'].size
                 case _:
-                    pass
+                    st.session_state['calcStatictic'] = False
 
         if (not st.session_state['calcStatictic']):
             defaultStatTab()
@@ -878,13 +879,17 @@ try:
                         st.number_input("Histogram step",
                             key = 'step',
                             min_value = 0.1,
-                            max_value = 1.0,
+                            max_value = 5.0,
                             step = 0.1,
                             format = '%0.2f',
                             value = 0.5
                         )
-                        
-                        buttonPlaceholder = st.empty()
+
+                        # Saving data for distribution NP diams chart
+                        buttonDataChartPlaceholder = st.empty()
+
+                        # Saving chart distribution of NP diams 
+                        buttonChartPlaceholder = st.empty()
                           
                     
                     step = st.session_state['step']
@@ -912,12 +917,11 @@ try:
                     file = io.StringIO()
                     csv.writer(file, delimiter = ';').writerow([name_x, name_y])
                     csv.writer(file, delimiter = ';').writerows(dataChart)
-
-                    
-                    buttonPlaceholder.download_button(
+                                        
+                    buttonDataChartPlaceholder.download_button(
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
-                        file_name = st.session_state['statImageName'] + "-dist-diameters.csv",
+                        file_name = f"{st.session_state['statImageName']}-dist-diameters.csv",
                         use_container_width  = True,
                         help = help_str
                     )
@@ -928,6 +932,7 @@ try:
                         x = 0.5 * (bins[:-1] + bins[1:]),
                         y = bar_y,
                         customdata = customDataChart,
+                        showlegend = False,
                         hovertemplate = (
                             "Diameter: [%{customdata[0]:.1f}, %{customdata[1]:.1f}) nm<br>"
                             "Particls: " + hover_y +
@@ -946,17 +951,31 @@ try:
                             x = dist_x, 
                             y = dist_y * step * (100 if st.session_state['normalize'] else len(diameter_nm)),
                             mode = 'lines',
-                            name = '',
                             hoverinfo = 'skip',
-                            line = dict(color = 'rgba(0,0,255,0.75)')
-                        ))         
-
+                            showlegend = False,
+                            line = dict(color = 'rgba(50, 50, 255, 0.75)')
+                        ))
+                        
+                        fig.add_trace(go.Scatter(
+                            x = [None], 
+                            y = [None],
+                            mode = 'lines',
+                            line = dict(width = 0),    
+                            showlegend = True,
+                            name = f"""Avg. diameter: {np.mean(diameter_nm):0.2f}<br>Std. dev. diameter:{np.std(diameter_nm):0.1f}<br>Particles: {len(st.session_state['statBLOBs'])}""",
+                        )) 
+                        
                     fig.update_layout(
                         margin = marginChartLess,
                         xaxis_title_text = name_x,
-                        yaxis_title_text = name_y,
-                        showlegend = False,
-                        bargap = 0
+                        yaxis_title_text = name_y,                        
+                        bargap = 0,
+                        legend = dict(
+                            x = 0.95,
+                            y = 0.98,
+                            xanchor = 'right',
+                            yanchor = 'top'
+                        )
                     )
 
                     fig.update_xaxes(

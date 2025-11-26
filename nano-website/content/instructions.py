@@ -19,18 +19,18 @@ def About():
     """, unsafe_allow_html = True)
 
 
-def DetectResult(_countNP, _time):
+def DetectResult(countNP, time):
     st.markdown(f"""
         <p class = 'text'>
-            Nanoparticles detected: <b>{_countNP}</b> ({_time//60}m : {_time%60:02}s)
+            Nanoparticles detected: <b>{countNP}</b> ({time//60}m : {time%60:02}s)
         </p>
     """, unsafe_allow_html = True)
 
 
-def FiltrationResult(_countNP):
+def FiltrationResult(countNP):
     st.markdown(f"""
         <p class = 'text'>
-            Nanoparticles after filtration: <b>{_countNP}</b>
+            Nanoparticles after filtration: <b>{countNP}</b>
         </p>
     """, unsafe_allow_html = True)
 
