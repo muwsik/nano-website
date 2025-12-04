@@ -1,6 +1,7 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
+from matplotlib import use
 import streamlit as st
 
 import io, csv
@@ -9,6 +10,7 @@ import numpy as np
 import time
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from types import SimpleNamespace
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -28,6 +30,7 @@ import utils.CustomComponents as CustComp
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
 import utils.accuracy as accuracy
+import utils.structured as structured
 
 
 import traceback
@@ -1282,7 +1285,7 @@ try:
                     st.plotly_chart(fig, use_container_width = True)
                 # END db23
             
-            with st.expander("Quality evaluation", expanded = False, icon = ":material/verified:"):
+            with st.expander("Quality evaluation", icon = ":material/verified:"):
                 instruct.AboutSectioQuality()
                 
                 if selection_use == 1:
@@ -1449,7 +1452,57 @@ try:
                                 instruct.LegendChartQuality()
 
                                 st.plotly_chart(fig, use_container_width = True)
+            
+        with st.expander("Structured nanoparticles", icon = ":material/pattern:"):
+            with st.container():
+                pass
 
+
+
+            tempFile = st.file_uploader("temp")
+
+            if tempFile is not None:
+                string_data = io.StringIO(tempFile.getvalue().decode("utf-8"))
+                reader = csv.reader(string_data, delimiter = ',')
+                BLOBs = np.array(list(reader), dtype = float)
+                points2D = BLOBs[:, :2]
+
+                distE = structured.EuclideanDistances(points2D)
+
+                settings = SimpleNamespace(
+                    DENSITY_NEIGHBOUR_COUNT = 3,
+                    DENSITY_WEIGHT = 1.5,
+                    PCA_NEIGHBOUR_COUNT = 8,
+                    THR_QUALITY = 0.85,
+                    #LINE_LENGTH = 7,
+                    #WEIGHT_COAXIS = 1.75,
+                    #THR_LINE_START = 0.85,
+                    #COAXIS_PERIOD = 6,
+                    #METRIC_THRESHOLD = 0.03 * _density + 1
+                )
+
+                temp, angle, slopeCoef, quality = structured.calculateFeaturesPD(points2D, distE, settings)
+
+                img = Image.new("RGBA", (1300, 900), (255, 255, 255, 255))
+                draw = ImageDraw.Draw(img, "RGBA")
+
+                for i, (y, x) in enumerate(points2D):
+                    dx = 5 / np.sqrt(slopeCoef[i]**2 + 1)
+                    dy = 5 / np.sqrt(1 + 1/slopeCoef[i]**2)
+
+                    if slopeCoef[i] > 0:
+                        x0, x1 = x + dy, x - dy
+                        y0, y1 = y - dx, y + dx
+                    else:
+                        x0, x1 = x - dy, x + dy
+                        y0, y1 = y - dx, y + dx
+
+                    draw.line((x0, y0, x1, y1), fill = (255, 0, 0, int(quality[i] * 255)), width = 2)
+                    
+                    r = 1
+                    draw.ellipse((x - r, y - r, x + r, y + r), fill = (0, 0, 0, 255))
+
+                st.image(img, use_column_width = True)
 
     ## TAB 3
     with tabHelp:
