@@ -1,10 +1,23 @@
 import math
-import ctypes
+#import ctypes
+from types import SimpleNamespace
 import numpy as np
 from scipy.spatial.distance import squareform
 
 
-def EuclideanDistances(_points): # TO DO use matrix operations
+params = SimpleNamespace(
+                    DENSITY_NEIGHBOUR_COUNT = 3,
+                    DENSITY_WEIGHT = 1.5,
+                    PCA_NEIGHBOUR_COUNT = 8,
+                    THR_QUALITY = 0.85,
+                    LINE_LENGTH = 7,
+                    WEIGHT_METRIC_THR = 0.03,
+                    WEIGHT_COAXIS = 1.75,
+                    COAXIS_PERIOD = 6,
+                )
+
+
+def euclideanDistances(_points): # TO DO use matrix operations
     pointsCount = np.shape(_points)[0]
     distances = np.zeros((pointsCount, pointsCount)) + np.inf
     for i in range(pointsCount):
@@ -14,7 +27,7 @@ def EuclideanDistances(_points): # TO DO use matrix operations
                 distances[j, i] = distances[i, j]
     return distances
 
-def FindNearest(_pointIndex, _metric, _unusingIndexFlag, _nearestThreshold = np.inf):
+def findNearest(_pointIndex, _metric, _unusingIndexFlag, _nearestThreshold = np.inf):
     tempMetric = _metric[_pointIndex[:, np.newaxis], _unusingIndexFlag]
     if (np.min(tempMetric) > _nearestThreshold):
         return -1
@@ -59,6 +72,8 @@ def trendLine(_points):
     return math.tan(-thetta * np.pi / 180), quality
 
 
+
+
 ### 1. prevailing directions 
 def calculateFeaturesPD(BLOBs, distE, settings):
     countParticles = BLOBs.shape[0]
@@ -70,7 +85,7 @@ def calculateFeaturesPD(BLOBs, distE, settings):
     numberSmallestDistances = settings.DENSITY_NEIGHBOUR_COUNT * countParticles
     smallestDistances = np.partition(vectorDist, numberSmallestDistances)
     density = np.sum(smallestDistances[:numberSmallestDistances:]) / numberSmallestDistances
-    weightDensity = density * settings.DENSITY_WEIGHT
+    density = density * settings.DENSITY_WEIGHT
 
     # 1.2 create local group particles
     for i in range(countParticles):
@@ -79,7 +94,7 @@ def calculateFeaturesPD(BLOBs, distE, settings):
         neighbourPointsIndexs = np.array([i])
 
         for _ in range(settings.PCA_NEIGHBOUR_COUNT - 1):
-            nearestIndex = FindNearest(neighbourPointsIndexs, distE, unusingIndexFlag, weightDensity)
+            nearestIndex = findNearest(neighbourPointsIndexs, distE, unusingIndexFlag, density)
             if (nearestIndex != -1):
                 neighbourPointsIndexs = np.insert(neighbourPointsIndexs, 0, nearestIndex)
                 unusingIndexFlag[nearestIndex] = False
@@ -132,7 +147,7 @@ if __name__ == "__main__":
         BLOBs = np.array(list(reader), dtype = float)
         points2D = BLOBs[:, :2]
 
-    distE = EuclideanDistances(points2D)
+    distE = euclideanDistances(points2D)
                 
     settings = SimpleNamespace(
                     DENSITY_NEIGHBOUR_COUNT = 3,
