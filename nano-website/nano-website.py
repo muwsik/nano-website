@@ -1453,28 +1453,31 @@ try:
             
         with st.expander("Structured nanoparticles", icon = ":material/pattern:"):  
             tempFile = st.file_uploader("File with coords particles")
+
+            settings = structured.Parameters()
+
             with st.form('structured-parameters'):
                 l, c, r = st.columns([1, 1, 1], gap = 'large')
 
                 l.subheader("Parameters for prevailing directions", anchor = False)
-                structured.params.DENSITY_NEIGHBOUR_COUNT = l.slider("DENSITY_NEIGHBOUR_COUNT",
+                settings.DENSITY_NEIGHBOUR_COUNT = l.slider("DENSITY_NEIGHBOUR_COUNT",
                     min_value = 1, value = 3, max_value = 25)
-                structured.params.DENSITY_WEIGHT = l.slider("DENSITY_WEIGHT",
+                settings.DENSITY_WEIGHT = l.slider("DENSITY_WEIGHT",
                     min_value = 0.0, value = 1.5, max_value = 3.0)
-                structured.params.PCA_NEIGHBOUR_COUNT = l.slider("PCA_NEIGHBOUR_COUNT",
+                settings.PCA_NEIGHBOUR_COUNT = l.slider("PCA_NEIGHBOUR_COUNT",
                     min_value = 3, value = 8, max_value = 25)
-                structured.params.THR_QUALITY = l.slider("THR_QUALITY",
+                settings.THR_QUALITY = l.slider("THR_QUALITY",
                     min_value = 0.0, value = 0.85, max_value = 1.0)
             
                 c.subheader("Parameters for lines construction by SUP", anchor = False)
-                structured.params.LINE_LENGTH = c.slider("LINE_LENGTH",
+                settings.LINE_LENGTH = c.slider("LINE_LENGTH",
                     min_value = 5, value = 8, max_value = 25)
-                structured.params.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
+                settings.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
                     min_value = 0.0, value = 0.03, max_value = 1.0)
-                structured.params.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
+                settings.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
                     min_value = 0.0, value = 1.5, max_value = 3.0)            
-                structured.params.COAXIS_PERIOD = c.slider("COAXIS_PERIOD",
-                    min_value = 1, value = 6, max_value = 10)
+                settings.COAXIS_PERIOD = c.slider("COAXIS_PERIOD",
+                    min_value = 1, value = 6, max_value = 12)
 
                 r.subheader("Parameters for lines construction by MSF", anchor = False)
                 
@@ -1486,11 +1489,9 @@ try:
                 BLOBs = np.array(list(reader), dtype = float)
                 points2D = BLOBs[:, :2]
 
-                distE = structured.euclideanDistances(points2D)                
-
-                temp, angle, slopeCoef, quality = structured.calculateFeaturesPD(points2D, distE, structured.params)
-
-                st.write(temp)
+                temp = structured.PrevailingDirections(points2D, settings)
+                
+                st.write(temp.features(settings))
                 
 
     ## TAB 3
