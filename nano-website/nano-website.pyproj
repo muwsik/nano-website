@@ -47,6 +47,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="content\qr-code.svg" />
+    <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>

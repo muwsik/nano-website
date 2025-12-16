@@ -34,12 +34,18 @@ import utils.structured as structured
 
 
 import traceback
+import joblib
     
 
 ### Function ###
     
 colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
+
+
+@st.cache_resource
+def load_SVM_model():
+    return joblib.load("./nano-website/content/svc_best-comb_mean2-3-new.joblib")
 
 
 def defaultDetectTab():
@@ -1459,48 +1465,53 @@ try:
             
         with st.expander("Structured nanoparticles", icon = ":material/pattern:"):  
             tempFile = st.file_uploader("File with coords particles")
-
-            currentSettings = structured.Parameters()
-
-            with st.form('structured-parameters'):
-                l, c, r = st.columns([1, 1, 1], gap = 'large')
-                l2, cr2 = st.columns([1, 2], gap = 'large')
-
-                l.subheader("Parameters for prevailing directions", anchor = False)
-                currentSettings.DENSITY_NEIGHBOUR_COUNT = l.slider("DENSITY_NEIGHBOUR_COUNT",
-                    min_value = 1, value = 3, max_value = 25)
-                currentSettings.DENSITY_WEIGHT = l.slider("DENSITY_WEIGHT",
-                    min_value = 0.0, value = 1.5, max_value = 3.0)
-                currentSettings.PCA_NEIGHBOUR_COUNT = l.slider("PCA_NEIGHBOUR_COUNT",
-                    min_value = 3, value = 8, max_value = 25)
-                currentSettings.THR_QUALITY = l2.slider("THR_QUALITY",
-                    min_value = 0.0, value = 0.85, max_value = 1.0)
-            
-                c.subheader("Parameters for lines construction by SUP", anchor = False)
-                currentSettings.MIN_LINE_SUP_LENGTH = c.slider("MIN_LINE_SUP_LENGTH",
-                    min_value = 5, value = 12, max_value = 20)
-                currentSettings.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
-                    min_value = 0.0, value = 0.03, max_value = 1.0)
-                currentSettings.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
-                    min_value = 0.0, value = 1.5, max_value = 3.0)            
-                currentSettings.COAXIS_PERIOD = cr2.slider("COAXIS_PERIOD",
-                    min_value = 1, value = 6, max_value = 12)
-
-                r.subheader("Parameters for lines construction by MSF", anchor = False)
-                currentSettings.MIN_LINE_MSF_LENGTH = r.slider("MIN_LINE_MSF_LENGTH",
-                    min_value = 5, value = 5, max_value = 20)
-                currentSettings.MAX_DISTANCE = r.slider("MAX_DISTANCE",
-                    min_value = 5.0, value = 20.0, max_value = 50.0)
-                currentSettings.NUMBER_LONGEST_LINE = r.slider("NUMBER_LONGEST_LINE",
-                    min_value = 5, value = 20, max_value = 50)
-                
-                st.form_submit_button("Apply and recalculate", disabled = tempFile is None)
             
             if tempFile is not None:
+                currentSettings = structured.Parameters()
+
+                with st.form('structured-parameters'):
+                    l, c, r = st.columns([1, 1, 1], gap = 'large')
+                    l2, cr2 = st.columns([1, 2], gap = 'large')
+
+                    l.subheader("Parameters for prevailing directions", anchor = False)
+                    currentSettings.DENSITY_NEIGHBOUR_COUNT = l.slider("DENSITY_NEIGHBOUR_COUNT",
+                        min_value = 1, value = 3, max_value = 25)
+                    currentSettings.DENSITY_WEIGHT = l.slider("DENSITY_WEIGHT",
+                        min_value = 0.0, value = 1.5, max_value = 3.0)
+                    currentSettings.PCA_NEIGHBOUR_COUNT = l.slider("PCA_NEIGHBOUR_COUNT",
+                        min_value = 3, value = 8, max_value = 25)
+                    currentSettings.THR_QUALITY = l2.slider("THR_QUALITY",
+                        min_value = 0.0, value = 0.85, max_value = 1.0)
+            
+                    c.subheader("Parameters for lines construction by SUP", anchor = False)
+                    currentSettings.MIN_LINE_SUP_LENGTH = c.slider("MIN_LINE_SUP_LENGTH",
+                        min_value = 5, value = 12, max_value = 20)
+                    currentSettings.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
+                        min_value = 0.0, value = 0.03, max_value = 1.0)
+                    currentSettings.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
+                        min_value = 0.0, value = 1.5, max_value = 3.0)            
+                    currentSettings.COAXIS_PERIOD = cr2.slider("COAXIS_PERIOD",
+                        min_value = 1, value = 6, max_value = 12)
+
+                    r.subheader("Parameters for lines construction by MSF", anchor = False)
+                    currentSettings.MIN_LINE_MSF_LENGTH = r.slider("MIN_LINE_MSF_LENGTH",
+                        min_value = 5, value = 12, max_value = 20)
+                    currentSettings.MAX_DISTANCE = r.slider("MAX_DISTANCE",
+                        min_value = 5.0, value = 20.0, max_value = 50.0)
+                    currentSettings.NUMBER_LONGEST_LINE = r.slider("NUMBER_LONGEST_LINE",
+                        min_value = 5, value = 20, max_value = 50)
+                
+                    st.form_submit_button("Apply and recalculate", disabled = tempFile is None)
+            
                 string_data = io.StringIO(tempFile.getvalue().decode("utf-8"))
-                reader = csv.reader(string_data, delimiter = ',')
-                BLOBs = np.array(list(reader), dtype = float)
+                reader = csv.reader(string_data, delimiter = ';')
+                next(reader)
+                next(reader)
+                BLOBs = np.array(list(reader), dtype=float)
+                BLOBs[:, 2] = BLOBs[:, 2] / 2
                 points2D = BLOBs[:, :2]
+
+
 
                 if (st.session_state['struct'] is None):
                     st.session_state['struct'] = structured.Structured(points2D, currentSettings)
@@ -1585,7 +1596,22 @@ try:
                 )
                 r.pyplot(fig, clear_figure = True)
                 
+                tempModel = load_SVM_model()
                 
+                tempFeatures = [[np.mean(f8), np.mean(f9), f10, f11, f2, f3, f7]]
+                Y_pred = tempModel.predict(tempFeatures)
+                Y_prob = 1 / (1 + np.power(1.5, -tempModel.decision_function(tempFeatures)))
+                
+                tempClass = 'ordered' if Y_pred > 0 else 'disordered'
+                tempProb = (Y_prob[0] if Y_pred > 0 else (1 - Y_prob[0])) * 100
+
+                st.markdown(f"""
+                    <div class = 'text' style = "text-align: center;">
+                        Estimated сlass: <b>{tempClass}</b>.
+                        Probability of belonging to <b>{tempClass}</b> class: {tempProb:.2f}%
+                    </div>
+                """, unsafe_allow_html = True)
+
 
     ## TAB 3
     with tabHelp:

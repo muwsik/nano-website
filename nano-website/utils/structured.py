@@ -648,7 +648,7 @@ def average_length_top_segments(segments: list[list[int]], N: int) -> float | No
     Возвращает float или None если сегментов нет.
     """
     if not segments:
-        return None
+        return 0
 
     # сортируем по убыванию длины
     segments_sorted = sorted(segments, key=len, reverse=True)
@@ -660,9 +660,9 @@ def average_length_top_segments(segments: list[list[int]], N: int) -> float | No
     lengths = [len(seg) for seg in top_segments]
 
     if not lengths:
-        return None
+        return 0
 
-    return sum(lengths) / len(lengths)
+    return (sum(lengths) / len(lengths)) / len(segments_sorted[0])
 
 
 def showBlobs(_blobs, _ax, color='k') -> None:
