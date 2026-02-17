@@ -1602,7 +1602,7 @@ try:
                 Y_pred = tempModel.predict(tempFeatures)
                 Y_prob = 1 / (1 + np.power(1.5, -tempModel.decision_function(tempFeatures)))
                 
-                tempClass = 'ordered' if Y_pred > 0 else 'disordered'
+                tempClass = 'ordered (defects)' if Y_pred > 0 else 'disordered (not defects)'
                 tempProb = (Y_prob[0] if Y_pred > 0 else (1 - Y_prob[0])) * 100
 
                 st.markdown(f"""

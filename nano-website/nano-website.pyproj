@@ -46,6 +46,11 @@
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="content\images\detect.png" />
+    <Content Include="content\images\parameters1.png" />
+    <Content Include="content\images\parameters2.png" />
+    <Content Include="content\images\structuredFalse.png" />
+    <Content Include="content\images\structuredTrue.png" />
     <Content Include="content\qr-code.svg" />
     <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
@@ -55,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="content\" />
+    <Folder Include="content\images\" />
     <Folder Include="utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
