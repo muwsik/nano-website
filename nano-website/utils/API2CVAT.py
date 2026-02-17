@@ -5,7 +5,6 @@ import numpy as np
 
 import zipfile
 import json
-import time
 import math
 import io
 
@@ -127,6 +126,7 @@ def ImportJobFromCVAT(jobCVAT):
 
 
 @st.cache_data(show_spinner = False, max_entries = 5)
+# taskCVAT: path to zip file CVAT with labeled particles
 def ImportTaskFromCVAT(taskCVAT):
     with zipfile.ZipFile(taskCVAT, 'r') as tempZipFile:
         annotations = tempZipFile.read('annotations.json')
@@ -150,7 +150,7 @@ def ImportTaskFromCVAT(taskCVAT):
         x = (coordinates[0][0] + coordinates[1][0]) / 2
         y = (coordinates[0][1] + coordinates[1][1]) / 2
         
-        BLOBs.append([y, x, d])
+        BLOBs.append([y, x, d]) #! particle diameters !
 
     return np.array(BLOBs), imgFileName, io.BytesIO(imageBytes)
 

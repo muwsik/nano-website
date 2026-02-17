@@ -1398,7 +1398,7 @@ try:
                                     {
                                         'type': 'circle',
                                         'x0': x-d/2, 'y0': y-d/2, 'x1': x+d/2, 'y1': y+d/2,
-                                        'line': {'width': 0.75, 'color': temp_color}
+                                        'line': {'width': 1.0, 'color': temp_color}
                                     }
                                     for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
                                     for y,x,d in zip(*temp_BLOBs.T)
@@ -1437,16 +1437,16 @@ try:
                                 ))
 
 
-                                fig.add_shape(type = "rect",
-                                    xref = "x", yref = "y",
-                                    x0 = roi[1], y0 = roi[0],
-                                    x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                                    line = dict(
-                                        color = "red",
-                                        width = 4,
-                                        dash = "dot",
-                                    )
-                                )
+                                # fig.add_shape(type = "rect",
+                                #     xref = "x", yref = "y",
+                                #     x0 = roi[1], y0 = roi[0],
+                                #     x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
+                                #     line = dict(
+                                #         color = "red",
+                                #         width = 4,
+                                #         dash = "dot",
+                                #     )
+                                # )
 
                                 fig.update_coloraxes(showscale = False)
                                 fig.update_layout(
@@ -1485,7 +1485,7 @@ try:
             
                     c.subheader("Parameters for lines construction by SUP", anchor = False)
                     currentSettings.MIN_LINE_SUP_LENGTH = c.slider("MIN_LINE_SUP_LENGTH",
-                        min_value = 5, value = 12, max_value = 20)
+                        min_value = 5, value = 10, max_value = 20)
                     currentSettings.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
                         min_value = 0.0, value = 0.03, max_value = 1.0)
                     currentSettings.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
@@ -1495,7 +1495,7 @@ try:
 
                     r.subheader("Parameters for lines construction by MSF", anchor = False)
                     currentSettings.MIN_LINE_MSF_LENGTH = r.slider("MIN_LINE_MSF_LENGTH",
-                        min_value = 5, value = 12, max_value = 20)
+                        min_value = 5, value = 10, max_value = 20)
                     currentSettings.MAX_DISTANCE = r.slider("MAX_DISTANCE",
                         min_value = 5.0, value = 20.0, max_value = 50.0)
                     currentSettings.NUMBER_LONGEST_LINE = r.slider("NUMBER_LONGEST_LINE",
