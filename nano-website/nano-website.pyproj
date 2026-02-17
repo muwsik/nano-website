@@ -46,7 +46,7 @@
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="content\images\detect.png" />
+    <Content Include="content\images\detection.png" />
     <Content Include="content\images\parameters1.png" />
     <Content Include="content\images\parameters2.png" />
     <Content Include="content\images\structuredFalse.png" />

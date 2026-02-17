@@ -64,12 +64,10 @@ pip install -r requirements.txt
 ## Запуск
 
 ```bash
-python nano-website.py
+streamlit run nano-website.py
 ```
 
-После запуска приложение будет доступно в браузере по адресу:
-
-http://localhost:8501
+После запуска приложение будет доступно в браузере!
 
 ## Использование и документация
 
@@ -92,15 +90,15 @@ http://localhost:8501
 ### Примеры результатов работы
 
 #### Детектирование наночастиц
-![Detection example](content/images/detection.png)
+![Detection example](nano-website/content/images/detection.png)
 
 #### Анализ параметров наночастиц
-![Parameters example](content/images/parameters1.png)
-![Parameters example](content/images/parameters2.png)
+![Parameters example](nano-website/content/images/parameters1.png)
+![Parameters example](nano-website/content/images/parameters2.png)
 
 #### Оценка структурированности и наличие дефектов поверхности
-![Structure example](content/images/structuredTrue.png)
-![Structure example](content/images/structuredFalse.png)
+![Structure example](nano-website/content/images/structuredTrue.png)
+![Structure example](nano-website/content/images/structuredFalse.png)
 
 ## Структура проекта
 
