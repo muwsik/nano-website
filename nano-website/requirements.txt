@@ -7,3 +7,4 @@ joblib
 plotly
 scipy
 matplotlib
+streamlit==1.45.1

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>autoscale.py</StartupFile>
+    <StartupFile>utils\structured.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,28 +25,37 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="CustomComponents.py" />
-    <Compile Include="ExponentialApproximation.py" />
-    <Compile Include="app.py" />
-    <Compile Include="NanoStatistics.py">
+    <Compile Include="utils\accuracy.py" />
+    <Compile Include="utils\API2CVAT.py" />
+    <Compile Include="content\instructions.py" />
+    <Compile Include="content\tooltips.py" />
+    <Compile Include="utils\CustomComponents.py" />
+    <Compile Include="utils\ExponentialApproximation.py" />
+    <Compile Include="nano-website.py" />
+    <Compile Include="utils\ExponentialApproximation2.py" />
+    <Compile Include="utils\NanoStatistics.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="style.py">
+    <Compile Include="content\style.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="autoscale.py">
+    <Compile Include="utils\autoscale.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="WebsiteBot.py" />
+    <Compile Include="utils\structured.py" />
+    <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="content\qr-code.svg" />
+    <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="images\" />
+    <Folder Include="content\" />
+    <Folder Include="utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

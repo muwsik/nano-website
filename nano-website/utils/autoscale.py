@@ -35,7 +35,6 @@ def scaleLength(c_fullImage, start_y):
 
     return None, None
 
-
 def findText(c_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
     result = reader.readtext(c_footnoteImage, detail = 0, blocklist = 'SOo')
@@ -52,11 +51,14 @@ def increase(c_text):
 
 def scale(c_text):
     try:
-        matchesScale = re.findall(r"[0-9]*\.?[0-9]+[nup]m", c_text)[0]
+        matchesScale = re.findall(r"[0-9]*\.?[0-9]+(?:nm|um|pm|pum)", c_text)[0]
         if matchesScale[-2] == 'n':
             _scale = float(matchesScale[:-2])
         elif matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
-            _scale = float(matchesScale[:-2]) * 1000
+            if matchesScale[-3] == '0':
+                _scale = float(matchesScale[:-2]) * 1000
+            else:
+                _scale = float(matchesScale[:-3]) * 1000
     except Exception:
         _scale = None
         matchesScale = None
@@ -65,6 +67,14 @@ def scale(c_text):
 
 @st.cache_data(show_spinner = False)
 def estimateScale(c_image):
+
+    if isinstance(c_image, np.ndarray):
+        pass
+    elif isinstance(c_image, Image.Image):
+        c_image = np.array(c_image, dtype = 'uint8')
+    else:
+        raise ValueError("!")
+
     lowerBound = findBorder(c_image)
     if (lowerBound is not None):      
         text = findText(c_image[lowerBound:, :])
@@ -79,7 +89,7 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Projects\VICTORIA\15-SE-1k-T1.bmp"
+    img_path = r"D:\Cloud\Mycroscopy\Mass\статья\TableM1\1\ED 779-A1_0050.tif"
 
     img = Image.open(img_path).convert('L')
     grayImage = np.array(img, dtype='uint8')
@@ -126,17 +136,18 @@ if __name__ == "__main__":
         rows=1, 
         cols=2, 
         column_widths=[0.7, 0.3],  # ширина колонок (70% и 30%)
-        horizontal_spacing=0.05,     # расстояние между графиками
+        horizontal_spacing=0.07,     # расстояние между графиками
         specs=[[{"type": "heatmap"}, {"type": "scatter"}]]  # типы графиков
     )
 
     # Добавляем изображение (как heatmap) в первую колонку
     fig.add_trace(
-        go.Heatmap(z=grayImage, colorscale="Viridis", showscale=False),
+        go.Heatmap(z=grayImage, colorscale="gray", showscale=False),
         row=1, col=1
     )
-    
-    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64)
+
+    print(len(grayImage[0]), len(grayImage))
+    row_sum = np.sum(grayImage, axis = 1, dtype = np.int64) / (len(grayImage[0]) * 255 )
     # Добавляем Scatter во вторую колонку
     fig.add_trace(
         go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
@@ -145,13 +156,42 @@ if __name__ == "__main__":
 
     # Настраиваем оси и внешний вид
     fig.update_layout(
-        title="Изображение + график справа",
-        xaxis_title="X (изображение)",
-        yaxis_title="Y (изображение)",
-        xaxis2_title="X (график)",
-        yaxis2_title="Y (график)",
+        #title="Изображение + график справа",
+        #xaxis_title="X (изображение)",
+        yaxis_title="Номер строки",
+        xaxis2_title = "Сумма интенсивностей",
+        #yaxis2_title = "Номер строки",
         width=800,  # общая ширина фигуры
-        height=400, # высота
+        height=500, # высота
+    )
+
+    fig.update_xaxes(
+        title_text=None,           # убираем подпись
+        showticklabels=False,      # убираем подписи делений
+        ticks="",                  # убираем сами деления
+        row=1, col=1
+    )  # для heatmap
+
+    fig.update_yaxes(
+        range=[0, 1000], 
+        autorange="reversed", 
+        row=1, col=1,
+        constrain="domain"  # ограничивает масштабирование
+    )  # для heatmap
+
+    fig.update_yaxes(
+        range=[0, 1000], 
+        autorange="reversed", 
+        row=1, col=2,
+        constrain="domain",  # ограничивает масштабирование
+        scaleanchor="y",     # привязывает масштаб к первой оси
+        scaleratio=1         # сохраняет соотношение 1:1
+    )  # для scatter
+
+    # ДОПОЛНИТЕЛЬНО: отключаем автоматические отступы
+    fig.update_layout(
+        yaxis=dict(automargin=False),
+        yaxis2=dict(automargin=False)
     )
 
     fig.show()

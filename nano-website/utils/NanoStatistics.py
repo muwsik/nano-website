@@ -6,6 +6,7 @@ from scipy.spatial import distance
 import plotly.express as px
 import plotly.figure_factory as ff
 
+#
 def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
     fake_BLOBS = np.zeros((count, 3))
 
@@ -23,6 +24,7 @@ def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
 
     return fake_BLOBS
 
+#
 @st.cache_data(show_spinner = False, max_entries = 5)
 def uniformity(BLOBs, sizeImage, sizeBlock):
     heightBlocks = int(np.ceil(sizeImage[1] / sizeBlock))
@@ -37,24 +39,49 @@ def uniformity(BLOBs, sizeImage, sizeBlock):
 
     return counter
 
+#
 @st.cache_data(show_spinner = False, max_entries = 5)
-def euclideanDistance(_blobs):
-    points = _blobs[:, 0:2]
+def euclideanDistance(c_blobs):
+    points = c_blobs[:, 0:2]
     fullEuclideanDist = distance.cdist(points, points, 'euclidean')
 
-    nblobs = np.shape(_blobs)[0]
+    nblobs = np.shape(c_blobs)[0]
     minEuclideanDist = np.min(fullEuclideanDist + np.eye(nblobs, nblobs) * 10 **6, axis = 0)
 
     return fullEuclideanDist, minEuclideanDist
 
+#
 @st.cache_data(show_spinner = False, max_entries = 5)
-def averageDensityInNeighborhood(_thresholds, _fullDist):
-    distanceLess = np.zeros(len(_thresholds))
+def averageDensityInNeighborhood(c_thresholds, c_fullDist):
+    distanceLess = np.zeros(len(c_thresholds))
 
-    for i, threshold in enumerate(_thresholds):
-        distanceLess[i] = (np.less(_fullDist, threshold).sum() - len(_fullDist)) / (np.pi * threshold**2)
+    for i, threshold in enumerate(c_thresholds):
+        distanceLess[i] = (np.less(c_fullDist, threshold).sum() - len(c_fullDist)) / (np.pi * threshold**2)
 
     return distanceLess
+
+#
+@st.cache_data(show_spinner = False, max_entries = 5)
+def calculateParametersNP(diameters, density, imageSize, scale):
+    volume = (np.pi * diameters**3) / 6
+    area =  np.sum((np.pi * diameters**2) / 4)
+    mass = np.sum(volume * density)
+
+    imageArea = np.prod(imageSize)
+    if scale is not None:
+        imageArea = imageArea * (scale**2)
+
+    normArea = area/imageArea*100
+    normMass = mass/imageArea
+
+    return {
+        "volume": np.sum(volume),
+        "area": area,
+        "mass": mass,
+        "normArea": normArea,
+        "normMass": normMass,
+        "imageArea": imageArea
+    }
 
 ### main
 if __name__ == "__main__":

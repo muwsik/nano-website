@@ -770,25 +770,22 @@ def CACHE_ExponentialApproximationMask_v3(c_img, c_lm, c_xy2, c_helpMatrs, c_par
     return blobs_full, values_full
 
 @st.cache_data(show_spinner = False, max_entries = 5)
-def my_FilterBlobs_change(blobs_ext, blobs_params, params):
+def my_FilterBlobs_change(blobs_data, params):
     thr_c0 = params["thr_c0"]
     thr_d_min = params["min_thr_d"]
     thr_d_max = params["max_thr_d"]
     thr_error = params["thr_error"]
 
     filtered_blobs = []
-    blobs_rest = []
-    for blob, val in zip(blobs_ext, blobs_params):
+    for blob in blobs_data:
         d = blob[2]
-        c0 = val[0]
-        norm_error = val[3]
-
+        c0 = blob[3]
+        norm_error = blob[6]
+        
         if ((c0 >= thr_c0) and (norm_error <= thr_error) and (d <= thr_d_max) and (d >= thr_d_min)):
             filtered_blobs.append(blob)
-        else:
-            blobs_rest.append(blob)
-
-    return np.array(filtered_blobs), blobs_rest
+    
+    return np.array(filtered_blobs)
 
 @st.cache_data(show_spinner = False, max_entries = 5)
 def CACHE_ExponentialApproximationMask_v3_parallel(c_img, c_lm, c_xy2, c_helpMatrs, c_params, nProc = 4, c_prn = False):

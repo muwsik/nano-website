@@ -1,31 +1,26 @@
 import streamlit as st
 
-def set_style(color):
+def loadStyles(color):
     st.markdown(f"""
-        <style>            
+        <style>  
             iframe {{
                 width: 100%;
-                height: 80vh;
+                height: 90vh !important;                
+                min-height: 350px;
+                max-height: 750px;
             }}
 
-            .stImage {{
-                display: flex;
-                justify-content: center;
-            }}
-
-            .stImage img {{
-                height: 80%;
-                width: auto;
-                object-fit: contain;
-            }}
-
-            h3 {{
-                font-size: 21px !important;
-                padding: 8px 0px 5px 0px !important;
+            div.stVerticalBlock.st-key-image-container > div {{
+                height: 100% !important;
             }}
 
             ::-webkit-scrollbar {{
                 display: none;
+            }}            
+
+            h3 {{
+                font-size: 21px !important;
+                padding: 8px 0px 5px 0px !important;
             }}
 
 	        .stTabs [data-baseweb = "tab"] {{
@@ -55,10 +50,6 @@ def set_style(color):
                 border-left: 0px dashed gray;
             }}
 
-            .st-key-right_button button {{
-                float: right;
-            }}
-
             .st-key-button_contact button p {{
                 font-size: 20px;
                 color: black;
@@ -73,8 +64,11 @@ def set_style(color):
                 text-align: justify;
             }}
 
+            .text.center {{ text-align: center; }}
+
             .cite {{
-                font-size: 1.5vw;
+                font-size: 1.25vw;
+                text-align: justify;
             }}
 
             .header {{
@@ -94,8 +88,22 @@ def set_style(color):
                 text-align: center;
             }}
 
+            .particle-label {{
+                color: white;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: bold;
+                display: inline-block;
+                margin: 2px;
+            }}
+
+            .particle-label.blue    {{ background-color: #007bff; }}
+            .particle-label.green   {{ background-color: #28a745; }}
+            .particle-label.red     {{ background-color: #dc3545; }}
+            .particle-label.orange  {{ background-color: #fd7e14; }}
+
             .footer {{
-                background-color: #f1f1f1;
+                background-color: rgb(0, 0, 0);
                 color: #808080;
                 text-align: center;
                 padding: 1px;
