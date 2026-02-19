@@ -15,30 +15,9 @@
 
 ## Технологии
 
-**Основной язык**
-
-* Python
-
-**Веб-интерфейс**
-
-* Streamlit
-
-**Компьютерное зрение и анализ**
-
-* EasyOCR (распознавание текстовой информации на изображениях)
-* OpenCV
-* scikit-image
-* Pillow
-
-**Научные вычисления**
-
-* NumPy
-* SciPy
-
-**Визуализация**
-
-* Matplotlib
-* Plotly
+| Основной язык | Веб-интерфейс | Компьютерное зрение | Визуализация |
+|---------------|--------------|---------------------|--------------|
+| Python | Streamlit | EasyOCR, OpenCV, Scikit-image | Plotly |
 
 
 ## Структура проекта
@@ -49,21 +28,22 @@
 * `requirements.txt` — зависимости проекта
 
 
-## Установка
+## Установка (Linux)
 
 1. Клонировать репозиторий:
 
 ```bash
+# Initial packages installation for Python projects
+# sudo apt install -y git python3-full build-essential
 git clone https://github.com/muwsik/nano-website.git
-cd nano-website
+cd nano-website/nano-website
 ```
 
 2. (Рекомендуется) создать виртуальное окружение:
 
 ```bash
 python -m venv venv
-source venv/bin/activate   # Linux / Mac
-venv\Scripts\activate      # Windows
+source venv/bin/activate
 ```
 
 3. Установить зависимости:
@@ -103,12 +83,12 @@ streamlit run nano-website.py
 ![Detection example](nano-website/content/images/detection.png)
 
 #### Анализ параметров наночастиц
-![Parameters example](nano-website/content/images/parameters1.png)
-![Parameters example](nano-website/content/images/parameters2.png)
+![Parameters example1](nano-website/content/images/parameters1.png)
+![Parameters example2](nano-website/content/images/parameters2.png)
 
 #### Оценка структурированности и наличие дефектов поверхности
-![Structure example](nano-website/content/images/structuredTrue.png)
-![Structure example](nano-website/content/images/structuredFalse.png)
+![Structure example1](nano-website/content/images/structuredTrue.png)
+![Structure example2](nano-website/content/images/structuredFalse.png)
 
 
 ## Связанные публикации
@@ -131,6 +111,7 @@ streamlit run nano-website.py
    https://doi.org/10.18287/2412-6179-CO-1568
 
 
-## Автор
+## Авторы
 
-Kurbakov M.Yu., Tula State University
+Kurbakov M.Yu., Sulimova V.V., Seredin O.S., Kopylov A.V., Pavlova V.S.
+Laboratory of Cognitive Technologies and Simulating Systems, Tula State University
