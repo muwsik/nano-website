@@ -7,11 +7,10 @@ import uuid
 import base64
 
 
-PASSWORD = os.environ["PASSWORD"]
 URL = r"https://script.google.com/macros/s/AKfycbzygeiJmBaL4Qu9FRL2iS-bPrFGLPCFgyut72ZE6UHA9hr3ChbTkh1_7BwbNXRqxw9Y/exec"    
 EMAIL = r"nanoweb.assist@gmail.com"
 
-def message2email(data):
+def message2email(data):   
     messageUID = str(uuid.uuid4())
 
     payload = {
@@ -23,7 +22,7 @@ def message2email(data):
         "dumpData": f"Dump website: {data['dump']} \n\n" + f"Info: {data['add-info']}",
         "imageType": "None",
         "imageData": "None",
-        "secret": PASSWORD
+        "secret": os.environ["PASSWORD"]
     }
 
     if (data["image-type"] is not None) and (data["image-data"] is not None):

@@ -397,6 +397,6 @@ def Footer():
     st.markdown(f"""
         <div class = 'footer'>
             Laboratory of Cognitive Technologies and Simulating Systems,
-            Tula State University © {datetime.datetime.now().year} (E-mail: muwsik@mail.ru)
+            Tula State University © {datetime.datetime.now().year} (E-mail: nanoweb.assist@gmail.com)
         </div>
     """, unsafe_allow_html = True)

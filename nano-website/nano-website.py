@@ -1618,8 +1618,10 @@ try:
         if st.button("If you have any difficulties with our tool, please contact us (click here)",
             key = 'button_contact',
             use_container_width = True
-        ):
-            dialog_feedback()
+        ):            
+            st.warning("""The ability to submit a report is limited.
+                Please contact us at nanoweb.assist@gmail.com""")
+            #dialog_feedback()
 
 
         # Guide 1: Detection and filtration of nanoparticles
@@ -1642,4 +1644,4 @@ try:
     instruct.Footer()
 
 except Exception as exc:
-    dialog_exception(False)
+    dialog_exception(False) # not passing email with error 
