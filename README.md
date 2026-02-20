@@ -37,7 +37,7 @@
 # sudo apt update
 # sudo apt install -y git python3 python3-venv python3-pip build-essential
 git clone https://github.com/muwsik/nano-website.git
-cd nano-website/nano-website
+cd nano-website
 ```
 
 2. (Рекомендуется) создать виртуальное окружение:
@@ -50,14 +50,14 @@ source nano-venv/bin/activate
 3. Установить зависимости:
 
 ```bash
-pip install -r requirements.txt
+pip install -r nano-website/requirements.txt
 ```
 
 
 ## Запуск
 
 ```bash
-streamlit run nano-website.py
+streamlit run nano-website/nano-website.py
 ```
 
 После запуска приложение будет доступно в браузере!
