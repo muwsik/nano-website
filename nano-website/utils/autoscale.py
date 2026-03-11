@@ -19,19 +19,15 @@ def findBorder(c_fullImage, thr = 0.5):
     
     return None
 
-def scaleLength(c_fullImage, start_y):
-    _, width = c_fullImage.shape
-    first_white_index = None
-    last_white_index = None
+def scaleLength(borderLine, threshBin = 128):
+    binLine = (borderLine > threshBin).astype(np.uint8)
 
-    for x in range(1, width):
-        if (c_fullImage[start_y, x] >= 230 ) and (c_fullImage[start_y, x-1] <= 55):
-            if first_white_index is None:
-                first_white_index = x
-            last_white_index = x
+    diffLine = np.diff(binLine)
 
-    if first_white_index is not None and last_white_index is not None:
-        return last_white_index - first_white_index, first_white_index
+    indices = np.where(diffLine == 1)[0] + 1    # +1 for the ordinal number
+
+    if indices.size:
+        return indices[-1] - indices[0], indices[0]
 
     return None, None
 
@@ -79,7 +75,7 @@ def estimateScale(c_image):
     if (lowerBound is not None):      
         text = findText(c_image[lowerBound:, :])
         scaleVal, scaleText = scale(text)
-        scaleLengthVal, startPixelScale = scaleLength(c_image, lowerBound)
+        scaleLengthVal, startPixelScale = scaleLength(c_image[lowerBound])
 
         if (scaleVal is not None) and (scaleLengthVal is not None):
             return scaleVal / scaleLengthVal, [lowerBound, startPixelScale, scaleLengthVal, scaleText]
@@ -89,9 +85,12 @@ def estimateScale(c_image):
 ### main
 if __name__ == "__main__":    
 
-    img_path = r"D:\Cloud\Mycroscopy\Mass\статья\TableM1\1\ED 779-A1_0050.tif"
+    img_path = r"D:\Cloud\Mycroscopy\Mass\статья\2026-03-02-Kashin\SE\100k\ED-779-A2_Pd_7_0003.tif"
 
     img = Image.open(img_path).convert('L')
+
+    img = img.resize((1280, 960))
+
     grayImage = np.array(img, dtype='uint8')
 
     # Высота только изображения (без нижней сноски)
@@ -118,7 +117,7 @@ if __name__ == "__main__":
         scaleVal, _ = scale(text)
 
         # Длина шкалы в пикселях
-        scaleLengthVal, _ = scaleLength(grayImage, lowerBound)
+        scaleLengthVal, _ = scaleLength(grayImage[lowerBound])
         print(f"Длина шкалы: {scaleLengthVal} px")
 
         if (scaleVal is not None) and (scaleLengthVal is not None):
@@ -146,11 +145,10 @@ if __name__ == "__main__":
         row=1, col=1
     )
 
-    print(len(grayImage[0]), len(grayImage))
     row_sum = np.sum(grayImage, axis = 1, dtype = np.int64) / (len(grayImage[0]) * 255 )
     # Добавляем Scatter во вторую колонку
     fig.add_trace(
-        go.Scatter(y=np.arange(1,len(row_sum),1), x=row_sum, mode="lines"),
+        go.Scatter(y=np.arange(1,len(row_sum),1), x = row_sum, mode = "lines+markers"),
         row=1, col=2
     )
 

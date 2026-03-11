@@ -1,6 +1,7 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
+from json import tool
 import streamlit as st
 
 import io, csv
@@ -235,6 +236,8 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 
+                srcImage = srcImage.resize((1280, 960)) # TO DO
+
                 defaultDetectTab()
                 st.session_state['srcImg'] = srcImage
                 st.session_state['fileImageName'] = uploadedImg.name
@@ -255,15 +258,14 @@ try:
                         st.session_state['imgPlaceholder'] = st.empty()
 
             # Detection settings and results
-            with colSetting:
-                st.toggle("Use default settings",
-                    disabled = not st.session_state['imgUpload'],
-                    key = 'settingDefault',
-                    help = tooltips.DefaultToggle
-                )
-
+            with colSetting: 
                 # Preprocessing image
-                with st.spinner("Preprocessing image...", show_time = True):                           
+                with st.spinner("Preprocessing image...", show_time = True):  
+                    st.toggle("Use default settings",
+                        disabled = not st.session_state['imgUpload'],
+                        key = 'settingDefault',
+                        help = tooltips.DefaultToggle
+                    )                         
                     
                     tempArrImg = np.array(srcImage, dtype = 'uint8')
 
@@ -277,7 +279,7 @@ try:
                         
                     st.session_state['sizeImage'] = srcImage.size
 
-                    if (st.session_state['typeImg'] is None):
+                    if (st.session_state['typeImg'] is None) or st.session_state['settingDefault']:
                         data = np.array(srcImage, dtype = 'uint8').flatten()
                         counts, _ = np.histogram(data, bins = np.arange(0, 255, 1))
                         counts = counts / np.sum(counts)
@@ -287,49 +289,47 @@ try:
                             cumSum = cumSum + j
                             if (cumSum >= 0.5):
                                 if (i <= 127):
-                                    st.session_state['typeImg'] = 'SEM'
-                                else: st.session_state['typeImg'] = 'TEM'
+                                    st.session_state['typeImg'] = 1     # SEM
+                                else: st.session_state['typeImg'] = 2   # TEM
                                 break
-                            
-                    if (st.session_state['typeImg'] == 'TEM'):
-                        srcImage = ImageOps.invert(srcImage)
-
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
+                    st.radio("Type of microscope image",
+                        key = 'typeImg',
+                        options = tooltips.Options.TypeMicroscope.keys(),
+                        format_func = lambda option: tooltips.Options.TypeMicroscope[option],                        
+                        horizontal = True,                        
+                        disabled = st.session_state['settingDefault'],
+                        help = tooltips.TypeMicroscopePills
+                    )                    
+                    
                     if ('param-pre-1' not in st.session_state) or st.session_state['settingDefault']:
                             st.session_state['param-pre-1'] = 5
                     
-                    st.slider("Nanoparticle brightness",
+                    st.slider("Minimal nanoparticle brightness",
                         key = 'param-pre-1',
                         disabled = st.session_state['settingDefault'],
                         help = tooltips.Detection.Brightness
                     )
-
-                    option_nanoparticleSize = {
-                        0: "Small (1-10 pixels)",
-                        1: "Medium (5-15 pixels)",
-                        2: "Large (10-30 pixels)"      
-                    }
 
                     if ('param-pre-2' not in st.session_state) or st.session_state['settingDefault']:
                             st.session_state['param-pre-2'] = 2
 
                     st.selectbox("Hypothetical nanoparticles diameter",
                         key = 'param-pre-2',
-                        index = 0,
-                        options = option_nanoparticleSize.keys(),
-                        format_func = lambda option: option_nanoparticleSize[option],
+                        options = tooltips.Options.NanopartSize.keys(),
+                        format_func = lambda option: tooltips.Options.NanopartSize[option],
                         disabled = st.session_state['settingDefault'],
                         help = tooltips.Detection.Diameter
                     )
 
                     if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-pre-3'] = True
+                            st.session_state['param-pre-3'] = False
 
                     st.toggle("Suppression of background irregularities",
                         key = 'param-pre-3',                              
-                        disabled = st.session_state['settingDefault'],
+                        disabled = st.session_state['settingDefault'],                        
                         help = tooltips.Detection.Irregularities
                     )
         
@@ -340,21 +340,30 @@ try:
                         args = ("detected", True)
                     )
                     
-                    warningPlaceholder = st.empty()
+                    tempWarningPlaceholder = st.empty()
+                    tempSettings = [                        
+                        st.session_state['typeImg'],
+                        st.session_state['param-pre-1'],
+                        st.session_state['param-pre-2'],
+                        st.session_state['param-pre-3']
+                    ]
                     if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
-                        if (st.session_state['detectionSettings'] != [st.session_state['param-pre-1'], st.session_state['param-pre-2'], st.session_state['param-pre-3']]):
-                            warningPlaceholder.warning("""
-                                The detection settings have been changed.
-                                To accept the new settings, click the button "Nanoparticles detection"! 
-                            """, icon = ":material/warning:")
+                        if (st.session_state['detectionSettings'] != tempSettings):
+                            tempWarningPlaceholder.warning(tooltips.Warnings.DetectSettings,
+                                icon = ":material/warning:"
+                            )
                 
                 # Detecting
                 if pushDetectButton:
                     st.session_state['detected'] = False
-                    warningPlaceholder.empty()
+                    tempWarningPlaceholder.empty()
                     
                     timeStart = time.time()
-                    with st.spinner("Nanoparticles detection...", show_time = True):                    
+                    with st.spinner("Nanoparticles detection...", show_time = True): 
+                        
+                        if (st.session_state['typeImg'] == 2):
+                            srcImage = ImageOps.invert(srcImage)
+
                         currentImage = np.array(srcImage, dtype = 'uint8') 
                         
                         lowerBound = autoscale.findBorder(currentImage)        
@@ -502,7 +511,12 @@ try:
                         st.session_state['detected'] = True              
                         st.session_state['BLOBs_data'] = blobs_appr
                         st.session_state['detectedParticles'] = blobs_appr.shape[0]
-                        st.session_state['detectionSettings'] = [st.session_state['param-pre-1'], st.session_state['param-pre-2'], st.session_state['param-pre-3']]
+                        st.session_state['detectionSettings'] = [
+                            st.session_state['typeImg'],
+                            st.session_state['param-pre-1'],
+                            st.session_state['param-pre-2'],
+                            st.session_state['param-pre-3']
+                        ]
         
                     st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
 
@@ -512,10 +526,7 @@ try:
 
                     # Warning about not correctly detection results 
                     if (st.session_state['detectedParticles'] < 1):            
-                        st.warning("""
-                            Nanoparticles not found!
-                            Please change the detection settings or upload another SEM image!
-                        """, icon = ":material/warning:")
+                        st.warning(tooltips.Warnings.NoFoundNanos, icon = ":material/warning:")
                                     
                 # Action with correctly detection results
                 if (st.session_state['detected'] and st.session_state['detectedParticles'] > 0):
@@ -617,10 +628,7 @@ try:
                         st.session_state['filteredParticles'] = 0
 
                     if (st.session_state['filteredParticles'] < 1):
-                        st.warning("""
-                            There are no nanoparticles satisfying the filtration settings!
-                            Please change the filtering settings!
-                        """, icon = ":material/warning:")
+                        st.warning(tooltips.Warnings.FiltrSettings, icon = ":material/warning:")
                                       
                     # Info about filtered nanoparticles
                     instruct.FiltrationResult(st.session_state['filteredParticles'])
@@ -630,10 +638,7 @@ try:
                         st.toggle("Estimated scale", key = 'displayScale', help = tooltips.Visualization.Scale)
 
                         if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
-                            st.warning("""
-                                The image scale could not be determined automatically!
-                                Using default scale: 1.0 nm/px
-                            """, icon = ":material/warning:")                    
+                            st.warning(tooltips.Warnings.OutScale, icon = ":material/warning:")                    
 
                         # Highlighting background irregularities
                         st.toggle("Highlighting background irregularities",
@@ -644,19 +649,12 @@ try:
                         # Saving
                         selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
 
-                        option_saving = {
-                            0: "Particles on clear background (*.tif)",
-                            1: "Particles on EM-image (*.tif)",
-                            2: "Particles characteristics (*.csv)",
-                            3: "CVAT task (*.zip)"
-                        }
-
                         selectionSave = selectboxCol.selectbox(
                             "What results should be saved?",
-                            index = 2,
+                            index = 3,
                             placeholder = "Select options...",
-                            options = option_saving.keys(),
-                            format_func = lambda option: option_saving[option]
+                            options = tooltips.Options.Saving.keys(),
+                            format_func = lambda option: tooltips.Options.Saving[option]
                         )
 
                         fileResult = io.BytesIO()
@@ -796,33 +794,22 @@ try:
             expanded = True,
             icon = ":material/rule_settings:"
         ):
-            option_map = {
-                0: "Automatically detected",
-                1: "Import from CVAT",
-                2: "None"
-            }
 
-            selection_use = st.selectbox(
+            selectionUseNano = st.selectbox(
                 "Which nanoparticles to use?",
                 index = 2,
-                options = option_map.keys(),
-                format_func = lambda option: option_map[option],
-                help = tooltips.NanoparticlesSelectbox
+                options = tooltips.Options.NanoStatistic.keys(),
+                format_func = lambda option: tooltips.Options.NanoStatistic[option],
+                help = tooltips.NanopartSelectbox
             ) 
                 
-            match selection_use:
+            match selectionUseNano:
                 case 0:
+                    st.session_state['calcStatictic'] = False
                     if (not st.session_state['detected']):
-                        st.session_state['calcStatictic'] = False
-                        st.warning("""
-                            Nanoparticle detection is necessary to calculate their statistics.
-                            Please go to "Automatic detection" tab. """, icon = ":material/warning:")
+                        st.warning(tooltips.Warnings.NoResults, icon = ":material/warning:")
                     elif (st.session_state['filteredParticles'] < 10):
-                        st.session_state['calcStatictic'] = False
-                        st.warning("""
-                            Nanoparticles after detection and filtration are less than 10! 
-                            Please go to the "Detection" tab and change the detection,
-                            filtering settings or upload another SEM image! """, icon = ":material/warning:")
+                        st.warning(tooltips.Warnings.SmallResults, icon = ":material/warning:")
                     else:                        
                         st.session_state['calcStatictic'] = True
                         st.session_state['statBLOBs'] = st.session_state['BLOBs_filter']
@@ -874,20 +861,12 @@ try:
                     left.subheader("Nanoparticle parameters", anchor = False)
 
                     with rigth.popover("", icon=":material/settings:"):
-                        option_materialDensity = {
-                            0: "Palladium (Pd)",    # 12.02 * 10**-12 ng / nm^3
-                            1: "Cuprum (Cu)",       #  8.96 * 10**-12 ng / nm^3
-                            2: "Alloy 30% Au + 70% Pd (AuPd)",  # 14.10 * 10**-12 ng / nm^3
-                            3: "Alloy 70% Cu + 30% Zn (CuZn)",  #  8.42 * 10**-12 ng / nm^3
-                            4: "User density"
-                        }
-
                         selectionDensity = st.selectbox(
                             "Particles material",
                             index = 0,
-                            placeholder = "Select material...",
-                            options = option_materialDensity.keys(),
-                            format_func = lambda option: option_materialDensity[option],
+                            placeholder = "Select material type...",
+                            options = tooltips.Options.MaterialDensity.keys(),
+                            format_func = lambda option: tooltips.Options.MaterialDensity[option],
                         )
 
                         match selectionDensity:
@@ -898,7 +877,7 @@ try:
                             case 4: pass;
                             case _: materialDensity = 1
                         
-                        if selectionDensity == 4:
+                        if selectionDensity == 4:   # User material
                             materialDensity = st.number_input(
                                 "Particles material density on ng/nm³",
                                 min_value = 0.0,
@@ -916,8 +895,11 @@ try:
                     else:                    
                         instruct.EstimatedScale(st.session_state["scale"])
                     
-                    instruct.NameMaterial(selectionDensity, option_materialDensity, materialDensity)
-
+                    if selectionDensity == 4: # User material
+                        instruct.UserMaterial(tooltips.Options.MaterialDensity[selectionDensity], materialDensity)
+                    else:
+                        instruct.DefMaterial(tooltips.Options.MaterialDensity[selectionDensity])
+                    
                     currentDiameter = diameter_nm
                     currentBLOBs = BLOBs_nm
                     if boolIndexSelectedBLOBs is not None:
@@ -1052,8 +1034,9 @@ try:
                             mode = 'lines',
                             line = dict(width = 0),    
                             showlegend = True,
-                            name = f"""Particles: {len(st.session_state['statBLOBs'])}<br>Avg. diameter: {np.mean(diameter_nm):0.2f} nm<br>Std. dev. diameter: {np.std(diameter_nm):0.1f} nm""" 
-                            #name = f"""Particles: {len(st.session_state['statBLOBs'])}<br>Avg. diameter: {np.mean(diameter_nm):0.2f} nm<br>Std. dev. diameter: {np.std(diameter_nm):0.1f} nm<br>Mass: {massParticls:0.2e} ng<br>Volume: {np.sum(volumeParticls):0.2e} nm<sup>3</sup><br>Area: {areaParticls:0.2e} nm<sup>2</sup><br>Norm. area : {areaParticls/imageArea*100:0.2f}<br>Norm. mass: {massParticls/imageArea:0.2e} ng/nm<sup>2</sup>""",
+                            name = f"Particles: {len(st.session_state['statBLOBs'])}<br>"
+                                + f"Avg. diameter: {np.mean(diameter_nm):0.2f} nm<br>"
+                                + f"Std. dev. diameter: {np.std(diameter_nm):0.1f} nm" 
                         )) 
                         
                     fig.update_layout(
@@ -1110,20 +1093,15 @@ try:
                 # or
                 # Visualization particles
                 with db13.container(border = True, height = heightCol):
-                    option_typeChart = {
-                        0: "Heatmap of particle count",
-                        1: "Visualization particles",
-                    }
-
-                    selectionUse = st.selectbox(
+                    tempSelectionChart = st.selectbox(
                         "Type chart",
                         index = 1,
-                        options = option_typeChart.keys(),
-                        format_func = lambda option: option_typeChart[option],
+                        options = tooltips.Options.TypeChart.keys(),
+                        format_func = lambda option: tooltips.Options.TypeChart[option],
                         label_visibility = 'collapsed'
                     )
 
-                    match selectionUse:
+                    match tempSelectionChart:
                         case 0: 
                             currentBLOBs = st.session_state['statBLOBs']
                             if boolIndexSelectedBLOBs is not None:         
@@ -1298,9 +1276,8 @@ try:
             with st.expander("Quality evaluation", icon = ":material/verified:"):
                 instruct.AboutSectioQuality()
                 
-                if selection_use == 1:
-                    st.warning("""This section is designed for evaluating automated nanoparticle detection algorithms. 
-                        Currently using data imported from CVAT - please verify data accuracy before proceeding.""")
+                if selectionUseNano == 1:
+                    st.warning(tooltips.Warnings.NowUsingCVAT)
 
                 uploadedGT = st.file_uploader("Expert markup file", type = ["csv", "zip"],
                     help = tooltips.ExpertFileUploader
@@ -1330,7 +1307,7 @@ try:
                         l, r = st.columns([2, 1])
 
                         with r:
-                            if st.toggle("Duplicate filtering settings", disabled = True if selection_use == 1 else False):
+                            if st.toggle("Duplicate filtering settings", disabled = True if selectionUseNano == 1 else False):
                                 temp_brightness = st.slider("Nanoparticle center brightness", value = 10)
 
                                 temp_diameter = st.slider("Nanoparticle diameter, px",
@@ -1365,7 +1342,7 @@ try:
                                 if (temp_Filt_BLOBs_data.shape[0] != 0):
                                     temp_filt_BLOBs = temp_Filt_BLOBs_data[:, :3]
 
-                                # ОЧЕНЬ ПЛОХО!!!
+                                # ОЧЕНЬ ПЛОХО!!! :P
                                 st.session_state['statBLOBs'] = np.array(temp_filt_BLOBs)
 
                         temp_res = accuracy.accur_estimationDiametr(gt_blobs, st.session_state['statBLOBs'], roi, 0.25)                        
@@ -1436,7 +1413,6 @@ try:
                                     showlegend = False
                                 ))
 
-
                                 # fig.add_shape(type = "rect",
                                 #     xref = "x", yref = "y",
                                 #     x0 = roi[1], y0 = roi[0],
@@ -1463,7 +1439,7 @@ try:
 
                                 st.plotly_chart(fig, use_container_width = True)
             
-        with st.expander("Structured nanoparticles", icon = ":material/pattern:"):  
+        with st.expander("Structured nanoparticles (experimental)", icon = ":material/pattern:"):  
             tempFile = st.file_uploader("File with coords particles")
             
             if tempFile is not None:
@@ -1505,8 +1481,7 @@ try:
             
                 string_data = io.StringIO(tempFile.getvalue().decode("utf-8"))
                 reader = csv.reader(string_data, delimiter = ';')
-                next(reader)
-                next(reader)
+                next(reader); next(reader)
                 BLOBs = np.array(list(reader), dtype=float)
                 BLOBs[:, 2] = BLOBs[:, 2] / 2
                 points2D = BLOBs[:, :2]
@@ -1619,8 +1594,7 @@ try:
             key = 'button_contact',
             use_container_width = True
         ):            
-            st.warning("""The ability to submit a report is limited.
-                Please contact us at nanoweb.assist@gmail.com""")
+            st.warning(tooltips.Warnings.ReportLimit)
             #dialog_feedback()
 
 
@@ -1644,4 +1618,4 @@ try:
     instruct.Footer()
 
 except Exception as exc:
-    dialog_exception(False) # not passing email with error 
+    dialog_exception(False) # passing email with error 

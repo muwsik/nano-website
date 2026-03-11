@@ -9,7 +9,7 @@ def Header():
 def About():
     st.markdown("""
         <div class = 'about'>
-            Hello! It is an interactive tool for processing images from a scanning electron microscope (SEM).
+            Hello! It is an interactive tool for processing images from an electron microscope (SEM or TEM).
             <br>It will help you to detect nanoparticles in the image and calculate their statictics.
         </div>
     """, unsafe_allow_html = True)
@@ -70,19 +70,20 @@ def EstimatedScale(scale):
     """, unsafe_allow_html = True)
 
 
-def NameMaterial(key, options, density):
-    if key != 4:
-        st.markdown(f"""
-            <div class = 'text'>
-                Material: <b>{options[key]}</b> 
-            </div>
-        """, unsafe_allow_html = True)
-    else:
-        st.markdown(f"""
-            <div class = 'text'>
-                Material: <b>{options[key]} ({density:.2e} ng/nm<sup>3</sup>)</b> 
-            </div>
-        """, unsafe_allow_html = True)
+def DefMaterial(typeMaterial):
+    st.markdown(f"""
+        <div class = 'text'>
+            Material: <b>{typeMaterial}</b> 
+        </div>
+    """, unsafe_allow_html = True)
+
+    
+def UserMaterial(typeMaterial, density):
+    st.markdown(f"""
+        <div class = 'text'>
+            Material: <b>{typeMaterial} ({density:.2e} ng/nm<sup>3</sup>)</b> 
+        </div>
+    """, unsafe_allow_html = True)
 
 
 def Quantity(allNP, currentNP):
@@ -203,8 +204,9 @@ def Guide1():
                 </li>
                 <li>
                     <p class = 'text'>
-                        Шаг 2. Детектирование наночастиц (кнопка «Nanoparticles detection» становится активной после
-                        загрузки изображения). Процесс детектирования занимает некоторое время, в среднем до одной минуты.                     
+                        Шаг 2. Детектирование наночастиц (кнопка «Nanoparticles detection» становится активной 
+                        после загрузки изображения). Процесс детектирования занимает некоторое время, в среднем 
+                        от нескольких секунд до одной минуты.                     
                     </p>
                 </li>
                 <li>
