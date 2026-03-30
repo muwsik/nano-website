@@ -236,7 +236,7 @@ try:
             if (st.session_state['fileImageName'] != uploadedImg.name):                
                 srcImage = Image.open(uploadedImg).convert("L")
                 
-                srcImage = srcImage.resize((1280, 960)) # TO DO
+                srcImage = srcImage.resize((1280, 960)) # TO DO:fix
 
                 defaultDetectTab()
                 st.session_state['srcImg'] = srcImage
@@ -829,6 +829,10 @@ try:
                         st.session_state['statBLOBs'], st.session_state['statImageName'], imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
                         
                         st.session_state['statImage'] = Image.open(imageCVAT).convert('RGB')
+
+                        #TO DO: fix 
+                        st.session_state['statImage'] =  st.session_state['statImage'].resize((1280, 960))
+
                         st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(st.session_state['statImage'].convert("L"))
                         
                         if st.session_state['scale'] is not None:
