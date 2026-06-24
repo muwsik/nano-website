@@ -538,7 +538,7 @@ try:
                         st.slider("Nanoparticle center brightness",
                             key = 'param-filt-1',
                             disabled = st.session_state['settingDefault'],
-                            help = tooltips.Filtarion.Brightness
+                            help = tooltips.Filtration.Brightness
                         )
 
                         temp_max_r_nm = 10.0
@@ -568,7 +568,7 @@ try:
                             max_value = temp_max,
                             format = "%0.1f",
                             disabled = st.session_state['settingDefault'],
-                            help = tooltips.Filtarion.Diameter
+                            help = tooltips.Filtration.Diameter
                         )
 
                         if ('param-filt-3' not in st.session_state) or st.session_state['settingDefault']:
@@ -580,7 +580,7 @@ try:
                             step = 0.01,
                             max_value = 1.0,
                             disabled = st.session_state['settingDefault'],
-                            help = tooltips.Filtarion.Reliability
+                            help = tooltips.Filtration.Reliability
                         )
                         
 
@@ -594,7 +594,7 @@ try:
                                 step = 25,
                                 max_value = 5000,
                                 disabled = st.session_state['settingDefault'],
-                                help = tooltips.Filtarion.Irregularities
+                                help = tooltips.Filtration.Irregularities
                             )
 
                             temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
@@ -638,11 +638,12 @@ try:
                         st.toggle("Estimated scale", key = 'displayScale', help = tooltips.Visualization.Scale)
 
                         if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
-                            st.warning(tooltips.Warnings.OutScale, icon = ":material/warning:")                    
+                            st.warning(tooltips.Warnings.OutScale, icon = ":material/warning:") 
 
                         # Highlighting background irregularities
                         st.toggle("Highlighting background irregularities",
                             key = 'areas',
+                            disabled = not st.session_state['param-pre-3'],
                             help = tooltips.Visualization.Irregularities
                         )
                             

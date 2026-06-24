@@ -9,7 +9,7 @@ class Detection:
     Irregularities  = "Image areas that are formed as a result of highlighting the material surface"
     
 
-class Filtarion:
+class Filtration:
     Brightness      = "Brightness in the central pixel of the nanoparticle"
     Diameter        = "Range of possible nanoparticle diameters in nanometers"
     Reliability     = "Higher values indicate better nanoparticle visibility and clearer separation from image background"
