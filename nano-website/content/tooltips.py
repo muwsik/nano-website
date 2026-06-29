@@ -87,8 +87,8 @@ class Warnings:
 
 class Options:
     TypeMicroscope  = {
-        1: 'SEM', 
-        2: 'TEM'
+        1: 'SEM-image', 
+        2: 'TEM-image'
     }
 
     NanopartSize    = {

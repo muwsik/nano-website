@@ -27,8 +27,7 @@ import utils.NanoStatistics as NanoStat
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
 
-#import utils.CustomComponents as CustComp
-from utils.imageViever.back import imageViewer
+from utils.imageViewer.back import imageViewer
 
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
@@ -234,7 +233,10 @@ try:
         imgPlaceholder = None
         
         st.subheader("Upload SEM image", anchor = False)            
-        uploadedImg = st.file_uploader("Choose an SEM image", type = ["tif", "tiff", "png", "jpg", "jpeg" ])
+        uploadedImg = st.file_uploader("Choose an SEM image",
+            label_visibility = 'collapsed',
+            type = ["tif", "tiff", "png", "jpg", "jpeg" ]
+        )
         st.session_state['uploadedImg'] = uploadedImg
 
         if uploadedImg is not None: 
@@ -295,11 +297,13 @@ try:
                             
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
-                    st.radio("Type of microscope image",
+                    st.segmented_control("Type of microscope image",
+                        required = True,
                         key = 'typeImg',
                         options = tooltips.Options.TypeMicroscope.keys(),
                         format_func = lambda option: tooltips.Options.TypeMicroscope[option],                        
-                        horizontal = True,                        
+                        #horizontal = True,  
+                        width = 'stretch',                     
                         disabled = st.session_state['settingDefault'],
                         help = tooltips.TypeMicroscopePills
                     )                    
@@ -334,7 +338,7 @@ try:
                     )
         
                     pushDetectButton = st.button("Nanoparticles detection",
-                        use_container_width = True,
+                        width = 'stretch',
                         disabled = not st.session_state['imgUpload'],
                         on_click = update_sessionState,
                         args = ("detected", True)
@@ -1013,7 +1017,7 @@ try:
                         label = "Download data chart *.csv",
                         data = file.getvalue(),
                         file_name = f"{st.session_state['statImageName']}-dist-diameters.csv",
-                        use_container_width  = True,
+                        width = 'stretch',
                         help = tooltips.Distribution.Download
                     )
 
@@ -1094,7 +1098,7 @@ try:
 
                     selectColumn = st.plotly_chart(
                         fig,
-                        use_container_width = True,
+                        width = 'stretch',
                         on_select = 'rerun' if st.session_state['selection'] else 'ignore',
                         selection_mode = 'points'
                     )
@@ -1152,7 +1156,7 @@ try:
                                 showlegend = False
                             )
 
-                            st.plotly_chart(fig, use_container_width = True)
+                            st.plotly_chart(fig, width = 'stretch',)
                         case 1: 
                             currentBLOBs = st.session_state['statBLOBs']
                             if boolIndexSelectedBLOBs is not None:         
@@ -1164,7 +1168,7 @@ try:
                                 y, x, d = BLOB; r = d/2
                                 draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
                             
-                            st.image(tempImage, use_container_width = True)
+                            st.image(tempImage, width = 'stretch',)
                         case _:
                             pass
 
@@ -1222,7 +1226,7 @@ try:
                         marker_line_width = 1
                     )
 
-                    st.plotly_chart(fig, use_container_width = True)
+                    st.plotly_chart(fig, width = 'stretch',)
 
                 # END db21
 
@@ -1254,7 +1258,7 @@ try:
                         marker_line_width = 1,  
                     )
 
-                    st.plotly_chart(fig, use_container_width = True)
+                    st.plotly_chart(fig, width = 'stretch',)
                 # END db22
 
                 # Average density of nanoparticles
@@ -1289,7 +1293,7 @@ try:
                         marker_line_width = 0.5
                     )
 
-                    st.plotly_chart(fig, use_container_width = True)
+                    st.plotly_chart(fig, width = 'stretch',)
                 # END db23
             
             with st.expander("Quality evaluation", icon = ":material/verified:"):
@@ -1432,16 +1436,6 @@ try:
                                     showlegend = False
                                 ))
 
-                                # fig.add_shape(type = "rect",
-                                #     xref = "x", yref = "y",
-                                #     x0 = roi[1], y0 = roi[0],
-                                #     x1 = roi[1] + roi[3], y1 = roi[0] + roi[2],
-                                #     line = dict(
-                                #         color = "red",
-                                #         width = 4,
-                                #         dash = "dot",
-                                #     )
-                                # )
 
                                 fig.update_coloraxes(showscale = False)
                                 fig.update_layout(
@@ -1456,162 +1450,14 @@ try:
       
                                 instruct.LegendChartQuality()
 
-                                st.plotly_chart(fig, use_container_width = True)
-            
-        with st.expander("Structured nanoparticles (experimental)", icon = ":material/pattern:"):  
-            tempFile = st.file_uploader("File with coords particles")
-            
-            if tempFile is not None:
-                currentSettings = structured.Parameters()
-
-                with st.form('structured-parameters'):
-                    l, c, r = st.columns([1, 1, 1], gap = 'large')
-                    l2, cr2 = st.columns([1, 2], gap = 'large')
-
-                    l.subheader("Parameters for prevailing directions", anchor = False)
-                    currentSettings.DENSITY_NEIGHBOUR_COUNT = l.slider("DENSITY_NEIGHBOUR_COUNT",
-                        min_value = 1, value = 3, max_value = 25)
-                    currentSettings.DENSITY_WEIGHT = l.slider("DENSITY_WEIGHT",
-                        min_value = 0.0, value = 1.5, max_value = 3.0)
-                    currentSettings.PCA_NEIGHBOUR_COUNT = l.slider("PCA_NEIGHBOUR_COUNT",
-                        min_value = 3, value = 8, max_value = 25)
-                    currentSettings.THR_QUALITY = l2.slider("THR_QUALITY",
-                        min_value = 0.0, value = 0.85, max_value = 1.0)
-            
-                    c.subheader("Parameters for lines construction by SUP", anchor = False)
-                    currentSettings.MIN_LINE_SUP_LENGTH = c.slider("MIN_LINE_SUP_LENGTH",
-                        min_value = 5, value = 10, max_value = 20)
-                    currentSettings.WEIGHT_METRIC_THR = c.slider("WEIGHT_METRIC_THR",
-                        min_value = 0.0, value = 0.03, max_value = 1.0)
-                    currentSettings.WEIGHT_COAXIS = c.slider("WEIGHT_COAXIS",
-                        min_value = 0.0, value = 1.5, max_value = 3.0)            
-                    currentSettings.COAXIS_PERIOD = cr2.slider("COAXIS_PERIOD",
-                        min_value = 1, value = 6, max_value = 12)
-
-                    r.subheader("Parameters for lines construction by MSF", anchor = False)
-                    currentSettings.MIN_LINE_MSF_LENGTH = r.slider("MIN_LINE_MSF_LENGTH",
-                        min_value = 5, value = 10, max_value = 20)
-                    currentSettings.MAX_DISTANCE = r.slider("MAX_DISTANCE",
-                        min_value = 5.0, value = 20.0, max_value = 50.0)
-                    currentSettings.NUMBER_LONGEST_LINE = r.slider("NUMBER_LONGEST_LINE",
-                        min_value = 5, value = 20, max_value = 50)
-                
-                    st.form_submit_button("Apply and recalculate", disabled = tempFile is None)
-            
-                string_data = io.StringIO(tempFile.getvalue().decode("utf-8"))
-                reader = csv.reader(string_data, delimiter = ';')
-                next(reader); next(reader)
-                BLOBs = np.array(list(reader), dtype=float)
-                BLOBs[:, 2] = BLOBs[:, 2] / 2
-                points2D = BLOBs[:, :2]
-
-
-
-                if (st.session_state['struct'] is None):
-                    st.session_state['struct'] = structured.Structured(points2D, currentSettings)
-                else:
-                    st.session_state['struct'].settings(currentSettings)
-
-                l, c, r = st.columns([1, 1, 1], gap = 'large')
-                
-                f1, f2, f3 = st.session_state['struct'].featuresPrevailingDirections
-                l.markdown(f"""
-                    <div class = 'text' style = "text-align: center;">
-                        Features prevailing directions: {f1:.2f}, {f2:.2f}, {f3:.2f} <br>
-                    </div>
-                """, unsafe_allow_html = True)
-                
-                f4, f5, f6, f7 = st.session_state['struct'].featuresLineSUP
-                c.markdown(f"""
-                    <div class = 'text' style = "text-align: center;">
-                        Features SUP-lines: {f4:d}, {f5:.2f}, {f6:.2f} {f7:.2f}<br>
-                    </div>
-                """, unsafe_allow_html = True)
-
-                mst = structured.kruskal_mst(points2D)
-                forest = structured.mst_to_forest(mst, currentSettings.MAX_DISTANCE)
-                forest_clean = structured.remove_terminal_to_highdegree_edges(forest, len(points2D))
-                segments = structured.extract_segments(forest_clean, len(points2D))
-                if (currentSettings.COAXIS_PERIOD > currentSettings.MIN_LINE_MSF_LENGTH):
-                    currentSettings.COAXIS_PERIOD = currentSettings.MIN_LINE_MSF_LENGTH
-                f8, f9 = structured.coaxis_all_segments_two_modes_threshold(points2D, segments, currentSettings.COAXIS_PERIOD, currentSettings.MIN_LINE_MSF_LENGTH)
-                f10 = structured.count_points_segments_over_threshold(segments, currentSettings.MIN_LINE_MSF_LENGTH) / points2D.shape[0]
-                f11 = structured.average_length_top_segments(segments, currentSettings.NUMBER_LONGEST_LINE)
-                r.markdown(f"""
-                    <div class = 'text' style = "text-align: center;">
-                        Features MSF-lines: {np.mean(f8):.2f}, {np.mean(f9):.2f}, {f10:.2f} {f11:.2f}<br>
-                    </div>
-                """, unsafe_allow_html = True)
-
-
-                # display prevailing directions
-                fig, ax = plt.subplots(1, 1, sharex = True, sharey = True)
-                structured.showBlobs(BLOBs, ax)
-
-                k, quality = st.session_state['struct'].prevailingDirections
-
-                for i, tempPoint in enumerate(BLOBs):
-                    x = tempPoint[1]
-                    y = tempPoint[0]
-    
-                    dx = 6 / np.sqrt(k[i]**2 + 1)
-                    dy = 6 / np.sqrt(1 + 1/k[i]**2)
-
-                    if k[i] > 0:
-                        plt.plot([x+dy, x-dy], [y-dx, y+dx], 'r', alpha = quality[i], lw=1.0)
-                    else:            
-                        plt.plot([x-dy, x+dy], [y-dx, y+dx], 'r', alpha = quality[i], lw=1.0)
-                
-                plt.gca().invert_yaxis()
-                l.pyplot(fig, clear_figure = True)
-
-                # display lines construction by SUP
-                fig, ax = plt.subplots(1, 1, sharex = True, sharey = True)
-                structured.showBlobs(BLOBs, ax)
-
-                for i, tempLine in enumerate(st.session_state['struct'].lineSUP):
-                    y, x, _ = BLOBs[tempLine.start.index]
-                    ax.add_patch(plt.Circle((x, y), 3, color = 'g', linewidth = 1.5, fill = True)) 
-
-                    plt.text(x+2, y-2, str(i), color = 'k', fontsize = 6)
-                    plt.plot(tempLine[:, 1], tempLine[:, 0], color = 'k')
-                    
-                plt.gca().invert_yaxis()
-                c.pyplot(fig, clear_figure = True)
-
-                # display lines construction by MSF
-                fig, ax = plt.subplots()
-                structured.showBlobs(BLOBs, ax)
-                structured.visualize_forest_with_long_segments(ax,
-                    BLOBs,
-                    forest_clean,
-                    segments,
-                    min_length = currentSettings.MIN_LINE_MSF_LENGTH
-                )
-                r.pyplot(fig, clear_figure = True)
-                
-                tempModel = load_SVM_model()
-                
-                tempFeatures = [[np.mean(f8), np.mean(f9), f10, f11, f2, f3, f7]]
-                Y_pred = tempModel.predict(tempFeatures)
-                Y_prob = 1 / (1 + np.power(1.5, -tempModel.decision_function(tempFeatures)))
-                
-                tempClass = 'ordered (defects)' if Y_pred > 0 else 'disordered (not defects)'
-                tempProb = (Y_prob[0] if Y_pred > 0 else (1 - Y_prob[0])) * 100
-
-                st.markdown(f"""
-                    <div class = 'text' style = "text-align: center;">
-                        Estimated сlass: <b>{tempClass}</b>.
-                        Probability of belonging to <b>{tempClass}</b> class: {tempProb:.2f}%
-                    </div>
-                """, unsafe_allow_html = True)
+                                st.plotly_chart(fig, width = 'stretch',)
 
 
     ## TAB 3
     with tabHelp:
         if st.button("If you have any difficulties with our tool, please contact us (click here)",
             key = 'button_contact',
-            use_container_width = True
+            width = 'stretch',
         ):            
             st.warning(tooltips.Warnings.ReportLimit)
             #dialog_feedback()

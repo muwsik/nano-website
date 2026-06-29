@@ -391,7 +391,7 @@ def HowCite():
 
     tempCol[1].image(r"./nano-website/content/qr-code.svg",
         caption = "Web Nanoparticles QR-code",
-        use_container_width = True
+        width = 'stretch'
     )   
 
 
