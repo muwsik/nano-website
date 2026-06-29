@@ -45,7 +45,7 @@ def imageViewer(image = None, particles = None, key = None,
         image_width = width,
         image_height = height,
         particles = dictParticles,
-        key = key,
         metadata = metadata,
+        key = key,
         default = None,
     )

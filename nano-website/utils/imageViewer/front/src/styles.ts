@@ -1,12 +1,7 @@
 export const containerStyle = {
     position: "relative" as const,
     width: "100%",
-    height: "90dvh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden" as const,
-    userSelect: "none" as const
+    height: "100%"
 }
 
 export const svgStyle = {
@@ -49,4 +44,17 @@ export const titleStyle = {
 
 export const rowStyle = {
     margin: "2px 0"
+}
+
+export const viewportStyle = {
+    position: "relative" as const,
+    width: "100%",
+    height: "90dvh",
+    overflow: "hidden" as const,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    userSelect: "none" as const,
+    overscrollBehavior: "contain" as const,
+    touchAction: "none" as const
 }

@@ -798,7 +798,7 @@ try:
                 imageViewer(
                     image = st.session_state["srcImg"],
                     particles = st.session_state['filterParticles'],
-                    key = "main-imageViewer"
+                    key = "main-imageViewer"                    
                 )
 
 

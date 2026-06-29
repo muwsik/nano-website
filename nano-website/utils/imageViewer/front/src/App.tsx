@@ -52,14 +52,13 @@ export default function App() {
         }
     }, [])
 
-
     return (
         <ImageViewer
-            image={image}
-            imageWidth={imageWidth}
-            imageHeight={imageHeight}
-            particles={particles}
-            metadata={metadata}
+            image = {image}
+            imageWidth = {imageWidth}
+            imageHeight = {imageHeight}
+            particles = {particles}
+            metadata = {metadata}
         />
     )
 }
