@@ -28,6 +28,12 @@ export default function App() {
     useEffect(() => {
         Streamlit.setComponentReady()
 
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                Streamlit.setFrameHeight()
+            })
+        })
+
         const handleRender = (event: Event) => {
             const args =
                 (event as CustomEvent).detail.args as ViewerData
