@@ -29,10 +29,10 @@
     <Compile Include="utils\API2CVAT.py" />
     <Compile Include="content\instructions.py" />
     <Compile Include="content\tooltips.py" />
-    <Compile Include="utils\CustomComponents.py" />
     <Compile Include="utils\ExponentialApproximation.py" />
     <Compile Include="nano-website.py" />
     <Compile Include="utils\ExponentialApproximation2.py" />
+    <Compile Include="utils\imageViever\back\__init__.py" />
     <Compile Include="utils\NanoStatistics.py">
       <SubType>Code</SubType>
     </Compile>
@@ -42,10 +42,12 @@
     <Compile Include="utils\autoscale.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="utils\reworkExpApp.py" />
     <Compile Include="utils\structured.py" />
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".gitignore" />
     <Content Include="content\images\detection.png" />
     <Content Include="content\images\parameters1.png" />
     <Content Include="content\images\parameters2.png" />
@@ -54,6 +56,23 @@
     <Content Include="content\qr-code.svg" />
     <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
+    <Content Include="utils\imageViever\front\.oxlintrc.json" />
+    <Content Include="utils\imageViever\front\dist\assets\index-B7jOMCEy.css" />
+    <Content Include="utils\imageViever\front\dist\assets\index-Cj44HjVB.js" />
+    <Content Include="utils\imageViever\front\dist\index.html" />
+    <Content Include="utils\imageViever\front\index.html" />
+    <Content Include="utils\imageViever\front\package-lock.json" />
+    <Content Include="utils\imageViever\front\package.json" />
+    <Content Include="utils\imageViever\front\src\App.tsx" />
+    <Content Include="utils\imageViever\front\src\ImageViewer.tsx" />
+    <Content Include="utils\imageViever\front\src\index.css" />
+    <Content Include="utils\imageViever\front\src\main.tsx" />
+    <Content Include="utils\imageViever\front\src\styles.ts" />
+    <Content Include="utils\imageViever\front\src\types.ts" />
+    <Content Include="utils\imageViever\front\tsconfig.app.json" />
+    <Content Include="utils\imageViever\front\tsconfig.json" />
+    <Content Include="utils\imageViever\front\tsconfig.node.json" />
+    <Content Include="utils\imageViever\front\vite.config.ts" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
@@ -62,6 +81,12 @@
     <Folder Include="content\" />
     <Folder Include="content\images\" />
     <Folder Include="utils\" />
+    <Folder Include="utils\imageViewer\" />
+    <Folder Include="utils\imageViever\front\" />
+    <Folder Include="utils\imageViewer\back\" />
+    <Folder Include="utils\imageViever\front\dist\" />
+    <Folder Include="utils\imageViever\front\dist\assets\" />
+    <Folder Include="utils\imageViever\front\src\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

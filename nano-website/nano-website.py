@@ -1,7 +1,6 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
-from json import tool
 import streamlit as st
 
 import io, csv
@@ -27,12 +26,16 @@ import utils.autoscale as autoscale
 import utils.NanoStatistics as NanoStat
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
-import utils.CustomComponents as CustComp
+
+#import utils.CustomComponents as CustComp
+from utils.imageViever.back import imageViewer
+
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
 import utils.accuracy as accuracy
 import utils.structured as structured
 
+import utils.reworkExpApp as rEA
 
 import traceback
 import joblib
@@ -60,6 +63,9 @@ def defaultDetectTab():
 
     st.session_state['settingDefault'] = False
             
+    st.session_state['detectParticles'] = None
+    st.session_state['filterParticles'] = None
+
     st.session_state['detected'] = False
     st.session_state['BLOBs_data'] = None
     st.session_state['BLOBs_filter'] = None
@@ -223,7 +229,6 @@ try:
         "Help"
     ])
 
-
     ## TAB 1
     with tabDetect:   
         imgPlaceholder = None
@@ -251,11 +256,6 @@ try:
         
         if (st.session_state['imgUpload']):
             colImage, colSetting = st.columns([6, 2])
-
-            with colImage:
-                with st.container(key = 'image-container'):
-                    if (st.session_state['imgPlaceholder'] is None):
-                        st.session_state['imgPlaceholder'] = st.empty()
 
             # Detection settings and results
             with colSetting: 
@@ -329,7 +329,7 @@ try:
 
                     st.toggle("Suppression of background irregularities",
                         key = 'param-pre-3',                              
-                        disabled = st.session_state['settingDefault'],                        
+                        disabled = True, #st.session_state['settingDefault'],                        
                         help = tooltips.Detection.Irregularities
                     )
         
@@ -498,10 +498,17 @@ try:
                                   
                         blobs_appr = np.array(ExpApp2.ApproximationMain(currentImage, lmblobs, params, 3, True))
 
+                        detectionParticles = rEA.blobs2Particles(blobs_appr)
+                        
                         if (st.session_state['param-pre-2'] == 0) or (st.session_state['param-pre-2'] == 1):
                             pass
                         elif st.session_state['param-pre-2'] == 2:                            
                             blobs_appr[:, :3] = blobs_appr[:, :3] * 2
+
+                            for _temp_ in detectionParticles:
+                                _temp_.x *= 2
+                                _temp_.y *= 2
+                                _temp_.diameter *= 2
                         else:
                             raise ValueError("!")
 
@@ -510,6 +517,7 @@ try:
 
                         st.session_state['detected'] = True              
                         st.session_state['BLOBs_data'] = blobs_appr
+                        st.session_state['detectParticles'] = detectionParticles
                         st.session_state['detectedParticles'] = blobs_appr.shape[0]
                         st.session_state['detectionSettings'] = [
                             st.session_state['typeImg'],
@@ -620,6 +628,15 @@ try:
                         params_filter
                     )
 
+
+                    st.session_state['filterParticles'] = rEA.filtrationParticles(
+                        st.session_state['detectParticles'],
+                        c0 = (st.session_state['param-filt-1'], None),
+                        diameter = (st.session_state['param-filt-2'][0] / divider, st.session_state['param-filt-2'][1] / divider),
+                        approxError = (None, 1 - st.session_state['param-filt-3'])
+                    )
+
+
                     if (BLOBs_data_filt.shape[0] != 0):
                         st.session_state['BLOBs_filter'] = BLOBs_data_filt[:, :3]
                         st.session_state['filteredParticles'] = st.session_state['BLOBs_filter'].shape[0]
@@ -635,7 +652,10 @@ try:
                                         
                     with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
                         # Displaying the scale
-                        st.toggle("Estimated scale", key = 'displayScale', help = tooltips.Visualization.Scale)
+                        st.toggle("Estimated scale", key = 'displayScale', 
+                            disabled = True,
+                            help = tooltips.Visualization.Scale
+                        )
 
                         if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
                             st.warning(tooltips.Warnings.OutScale, icon = ":material/warning:") 
@@ -723,7 +743,7 @@ try:
                             help = tooltips.Visualization.Download
                         )
     
-        # Display source image by st.image
+        # Display image 
         if (st.session_state['imgUpload']):
             viewImage = st.session_state['srcImg'].copy().convert('RGB')
             draw = ImageDraw.Draw(viewImage)
@@ -768,21 +788,15 @@ try:
                     )
                     viewImage = Image.fromarray(viewImage)
 
-
-            st.session_state['imgBLOB'] = viewImage
+            st.session_state['imgBLOB'] = viewImage            
             
-            if (st.session_state['comparison']):                
-                CustComp.img_box(
-                    st.session_state['srcImg'],
-                    st.session_state['imgBLOB'],                        
-                    st.session_state['imgPlaceholder']
+            with colImage:
+                imageViewer(
+                    image = st.session_state["srcImg"],
+                    particles = st.session_state['filterParticles'],
+                    key = "main-imageViewer"
                 )
-            else:
-                CustComp.img_box(
-                    st.session_state['imgBLOB'],
-                    st.session_state['imgBLOB'],                        
-                    st.session_state['imgPlaceholder']
-                )
+
 
 
     ## TAB 2 
