@@ -56,10 +56,10 @@
     <Content Include="content\qr-code.svg" />
     <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
+    <Content Include="utils\imageViewer\dist-release\assets\index-release.css" />
+    <Content Include="utils\imageViewer\dist-release\assets\index-release.js" />
+    <Content Include="utils\imageViewer\dist-release\index.html" />
     <Content Include="utils\imageViewer\front\.oxlintrc.json" />
-    <Content Include="utils\imageViewer\front\dist\assets\index-B7jOMCEy.css" />
-    <Content Include="utils\imageViewer\front\dist\assets\index-Cj44HjVB.js" />
-    <Content Include="utils\imageViewer\front\dist\index.html" />
     <Content Include="utils\imageViewer\front\index.html" />
     <Content Include="utils\imageViewer\front\package-lock.json" />
     <Content Include="utils\imageViewer\front\package.json" />
@@ -83,9 +83,9 @@
     <Folder Include="utils\" />
     <Folder Include="utils\imageViewer\" />
     <Folder Include="utils\imageViewer\back\" />
+    <Folder Include="utils\imageViewer\dist-release\" />
+    <Folder Include="utils\imageViewer\dist-release\assets\" />
     <Folder Include="utils\imageViewer\front\" />
-    <Folder Include="utils\imageViewer\front\dist\" />
-    <Folder Include="utils\imageViewer\front\dist\assets\" />
     <Folder Include="utils\imageViewer\front\src\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

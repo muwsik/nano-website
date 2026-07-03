@@ -6,10 +6,18 @@ import io
 import base64
 import numpy as np
 
+USE_STABLE = False
+
+if USE_STABLE:
+    distPath = str(Path(__file__).parent.parent / "dist-release")
+else:
+    distPath = Path(__file__).parent.parent / "front" / "dist"
+    print("Using dev version by imageViewer!")
+
 
 _component = components.declare_component(
     "imageViewer",
-    path = str(Path(__file__).parent.parent / "front" / "dist")
+    path = distPath
 )
 
 
