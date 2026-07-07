@@ -14,7 +14,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # content
 import content.style as style
@@ -27,12 +27,12 @@ import utils.NanoStatistics as NanoStat
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
 
-from utils.imageViewer.back import imageViewer
+from streamlit_image_viewer import streamlit_image_viewer as stImageViewer
 
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
 import utils.accuracy as accuracy
-import utils.structured as structured
+#import utils.structured as structured
 
 import utils.reworkExpApp as rEA
 
@@ -795,7 +795,7 @@ try:
             st.session_state['imgBLOB'] = viewImage            
             
             with colImage:
-                imageViewer(
+                stImageViewer(
                     image = st.session_state["srcImg"],
                     particles = st.session_state['filterParticles'],
                     key = "main-imageViewer"                    

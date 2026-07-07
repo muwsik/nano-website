@@ -1,0 +1,2 @@
+recursive-include streamlit_image_viewer/frontend/build *
+include pyproject.toml
