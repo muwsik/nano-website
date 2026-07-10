@@ -190,38 +190,37 @@ def LegendChartQuality():
 
 
 def Guide1():
-    st.subheader("Детектирование и фильтрация наночастиц", anchor = False)
+    st.subheader("Nanoparticle Detection and Filtering", anchor = False)  
     text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
     text_col.markdown(f"""
         <div>
-            <p class = 'text'>Все дальнейшие шаги выполняются на вкладке «Automatic detection».</p>
+            <p class='text'>All the following steps are performed on the <strong>Automatic Detection</strong> tab.</p>
             <ul>
                 <li>
-                    <p class = 'text'>
-                        Шаг 1. Загрузка исходного СЭМ-изображения (кнопка «Browse file»).
+                    <p class='text'>
+                        Step 1. Upload the original SEM image using the <strong>Browse File</strong> button.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Шаг 2. Детектирование наночастиц (кнопка «Nanoparticles detection» становится активной 
-                        после загрузки изображения). Процесс детектирования занимает некоторое время, в среднем 
-                        от нескольких секунд до одной минуты.                     
+                    <p class='text'>
+                        Step 2. Detect nanoparticles by clicking the <strong>Nanoparticles Detection</strong> button,
+                        which becomes available after the image is uploaded. The detection process takes some time,
+                        typically from a few seconds up to one minute.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Шаг 3. После успешного детектирования производится фильтрация найденных наночастиц
-                        (используются параметры по умолчанию). Отфильтрованные частицы отображаются
-                        на изображении в виде окружностей.
+                    <p class='text'>
+                        Step 3. After successful detection, the detected nanoparticles are filtered using the default
+                        parameters. The filtered nanoparticles are displayed on the image as circles.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Шаг 4. Можно вручную изменять параметры детектирования и фильтрации наночастиц
-                        (снять галочку «Use default settings»). <strong>ВАЖНО:</strong> подтверждение параметров 
-                        детектирования осуществляется повторным нажатием кнопки «Nanoparticles detection». Параметры
-                        фильтрации применяются автоматически.
+                    <p class='text'>
+                        Step 4. You can manually adjust the detection and filtering parameters by unchecking the
+                        <strong>Use Default Settings</strong> option. <strong>IMPORTANT:</strong> To apply the detection
+                        parameters, click the <strong>Nanoparticles Detection</strong> button again. The filtering
+                        parameters are applied automatically.
                     </p>
                 </li>
             </ul>
@@ -236,32 +235,33 @@ def Guide1():
 
 
 def Guide2():
-    st.subheader("Взаимодейтсвие с результатами детектирования", anchor = False)
+    st.subheader("Working with Detection Results", anchor = False)
     text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
     text_col.markdown(f"""
         <div>
-            <p class = 'text'>Указанный функционал доступен на вкладке «Automatic detection» после детектирования наночастиц.</p>
+            <p class='text'>The following features are available on the <strong>Automatic Detection</strong> tab after nanoparticle detection has been completed.</p>
             <ul>
                 <li>
-                    <p class = 'text'>
-                        Результаты детектирования можно скачать в нескольких вариантах:
-                        (1) Найденные частицы на прозрачном фоне. (2) Найденные частицы, наложенные на исходное изображение.
-                        (3) Файл с указанием координат центра и радиуса каждой частицы.
-                        Для этого нужно в выпадающем списке «What results should be saved?» выбрать нужный вариант 
-                        и нажать кнопку, расположенную правее.
+                    <p class='text'>
+                        Detection results can be downloaded in several formats:
+                        (1) Detected nanoparticles on a transparent background.
+                        (2) Detected nanoparticles overlaid on the original image.
+                        (3) A file containing the center coordinates and radius of each detected nanoparticle.
+                        To download the desired result, select the appropriate option from the
+                        <strong>What Results Should Be Saved?</strong> drop-down list and click the button on the right.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Если на изображении присутствует мерная шкала и указан её физический размер, масштаб 
-                        определяется автоматически. Визуализировать вычисленный масштаб можно с помощью 
-                        переключателя «Display scale».
+                    <p class='text'>
+                        If the image contains a scale bar and its physical length is specified, the image scale is
+                        determined automatically. The detected scale can be displayed using the
+                        <strong>Display Scale</strong> switch.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Режим сравнения в доработке!
+                    <p class='text'>
+                        The comparison mode is currently under development.
                     </p>
                 </li>
             </ul>
@@ -276,35 +276,42 @@ def Guide2():
 
 
 def Guide3():
-    st.subheader("Интеграция с CVAT", anchor = False)
+    st.subheader("CVAT Integration", anchor = False)
     text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
     text_col.markdown(f"""
-        <div>              
+        <div>
             <ul>
                 <li>
-                    <p class = 'text'>
-                        Результаты детектирования можно скачать в формате, поддерживаемом <a href=https://app.cvat.ai/>CVAT</a>.
-                        Для этого на вкладке «Automatic detection» после детектирования наночастиц
-                        нужно в выпадающем списке «What results should be saved?» выбрать
-                        пункт «CVAT task» и нажать кнопку, расположенную правее. Скачанный backup-архив можно 
-                        использовать для создания новой задачи CVAT.
+                    <p class='text'>
+                        Detection results can be downloaded in a format supported by
+                        <a href="https://app.cvat.ai/">CVAT</a>.
+                        To do this, after completing nanoparticle detection on the
+                        <strong>Automatic Detection</strong> tab, select
+                        <strong>CVAT Task</strong> from the
+                        <strong>What Results Should Be Saved?</strong> drop-down list
+                        and click the button on the right. The downloaded backup archive
+                        can then be used to create a new CVAT task.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Разметку, полученную в CVAT, можно импортировать на сайт. Для этого сначала необходимо выгрузить
-                        из CVAT backup-архив задачи с нужной разметкой. Затем на вкладке «Statistics dashboard» 
-                        в выпадающем списке «Which nanoparticles to use» нужно выбрать пункт «Import from CVAT» и 
-                        загрузить backup-архив в соответствующее поле. Если все условия выполнены, ниже автоматически 
-                        отобразятся все разделы со статистикой.
+                    <p class='text'>
+                        Annotations created in CVAT can be imported into the application.
+                        First, export the backup archive of the corresponding CVAT task.
+                        Then, on the <strong>Statistics Dashboard</strong> tab, select
+                        <strong>Import from CVAT</strong> from the
+                        <strong>Which Nanoparticles to Use</strong> drop-down list and
+                        upload the backup archive using the corresponding file upload field.
+                        If all requirements are met, all statistics sections will be
+                        displayed automatically below.
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Более подробная информация об интеграции с CVAT приведена в 
-                        <a href = "https://disk.yandex.ru/i/2U5wgJ8IjskREQ"
-                            >расширенном руководстве</a>.
+                    <p class='text'>
+                        More detailed information about CVAT integration is available in the
+                        <a href="https://disk.yandex.ru/i/2U5wgJ8IjskREQ">
+                            extended user guide
+                        </a>.
                     </p>
                 </li>
             </ul>
@@ -319,33 +326,34 @@ def Guide3():
 
 
 def Guide4():
-    st.subheader("Оценка качества детектирования", anchor = False)
+    st.subheader("Quality Evaluation", anchor = False)
     text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
 
     text_col.markdown(f"""
         <div>
-            <p class = 'text'>Все дальнейшие шаги выполняются на владке «Statistics dashboard».</p>
-            <ul>                    
+            <p class='text'>All the following steps are performed on the <strong>Statistics Dashboard</strong> tab.</p>
+            <ul>
                 <li>
-                    <p class = 'text'>
-                        В разделе «Quality evaluation» можно получить численную оценку качества детектирования наночастиц.
-                        Для этого, в первую очередь, необходим результат автоматического детектирования. Он должен быть
-                        либо на вкладке «Automatic detection», либо в виде backup-архива CVAT, который нужно загрузить 
-                        в разделе «Global dashboard settings». Далее требуется загрузить файл с экспертной разметкой, 
-                        также в формате backup-архива CVAT, в соответствующее поле раздела «Quality evaluation». Если 
-                        все условия выполнены, ниже отобразится качество в процентах. Подробно процедура оценки качества 
-                        описана в работе [2].
+                    <p class='text'>
+                        The <strong>Quality Evaluation</strong> section provides a quantitative assessment of nanoparticle
+                        detection quality. First, an automatic detection result is required. It must either be available
+                        on the <strong>Automatic Detection</strong> tab or imported as a CVAT backup archive in the
+                        <strong>Global Dashboard Settings</strong> section. Next, upload the expert annotation in the
+                        CVAT backup archive format to the corresponding field in the
+                        <strong>Quality Evaluation</strong> section. If all requirements are met, the detection quality
+                        will be displayed below as a percentage. A detailed description of the evaluation procedure
+                        can be found in publication [2].
                     </p>
                 </li>
                 <li>
-                    <p class = 'text'>
-                        Дополнительно можно визуализировать результат оценки качества детектирования. Для этого
-                        переключите тумблер «Display nanoparticles». В результате ниже появится интерактивный график,
-                        на котором будут отмечены наночастицы четырёх типов: "Синие" - это автоматически детектированные
-                        частицы, которые сопоставлены с "зелёными" наночастицами, отмеченными экспертом (TP).
-                        "Красные" — это наночастицы, которые были помечены экспертом, но не были детектированы 
-                        автоматически (FN). "Жёлтые" - это автоматически детектированные наночастицы, которые не были 
-                        подтверждены экспертом (FP).
+                    <p class='text'>
+                        You can also visualize the detection quality assessment. To do this, enable the
+                        <strong>Display Nanoparticles</strong> switch. An interactive plot will appear below,
+                        displaying four types of nanoparticles. <strong>Blue</strong> nanoparticles are automatically
+                        detected particles that match <strong>green</strong> nanoparticles annotated by the expert (TP).
+                        <strong>Red</strong> nanoparticles are annotated by the expert but were not detected automatically (FN).
+                        <strong>Yellow</strong> nanoparticles are automatically detected particles that were not confirmed
+                        by the expert (FP).
                     </p>
                 </li>
             </ul>
