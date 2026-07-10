@@ -31,6 +31,8 @@ A Python web application for automated analysis of images acquired using a scann
 1. Clone the repository:
 
 ```bash
+# Install Git and Python 3.11 (or newer) if they are not already installed.
+
 git clone https://github.com/muwsik/nano-website.git
 cd nano-website
 ```
@@ -47,6 +49,7 @@ nano-venv\Scripts\activate
 1. Install the required packages and clone the repository:
 
 ```bash
+# Install the required packages if they are not already installed.
 # sudo apt update
 # sudo apt install -y git python3 python3-venv python3-pip build-essential
 
