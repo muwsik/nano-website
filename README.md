@@ -1,100 +1,110 @@
 ﻿# Nano-Website
 
-Веб-приложение на Python для автоматизированного анализа изображений, полученных с электронного микроскопа.
+A Python web application for automated analysis of images acquired using a scanning electron microscope.
 
-**Область применения:** компьютерное зрение, анализ изображений электронной микроскопии (SEM), машинное обучение
+**Application areas:** computer vision, scanning electron microscopy (SEM) image analysis, machine learning
 
+## Features
 
-## Возможности
+* Automatic nanoparticle detection in SEM images
+* Evaluation of the spatial ordering of nanoparticles
+* Detection of defective material surface regions based on structural order analysis
+* Web-based user interface
 
-* автоматическое детектирование наночастиц на СЭМ-изображениях
-* оценка структурированности взаимного расположения наночастиц
-* выявление дефектных областей поверхности материала на основе анализа структурированности
-* работа через веб-интерфейс
+## Technologies
 
-
-## Технологии
-
-|  Основной язык  |  Веб-интерфейс  |  Компьютерное зрение  | Визуализация   |
-|:---------------:|:---------------:|:---------------------:|:--------------:|
+| Primary Language | Web Interface | Computer Vision | Visualization |
+|:----------------:|:-------------:|:---------------:|:-------------:|
 | Python 3.11 | Streamlit | EasyOCR, OpenCV, Scikit-image | Plotly |
 
+## Project Structure
 
-## Структура проекта
+* `nano-website.py` — main application entry point
+* `content/` — auxiliary resources (ML models, test images, help materials)
+* `utils/` — analysis algorithms and mathematical computations
+* `requirements.txt` — project dependencies
 
-* `nano-website.py` — основной файл запуска приложения
-* `content/` — вспомогательные материалы (ML-модели, тестовые изображения, подсказки)
-* `utils/` — алгоритмы анализа и математические расчёты
-* `requirements.txt` — зависимости проекта
+## Installation
 
+### Windows
 
-## Установка (Linux)
-
-1. Клонировать репозиторий:
+1. Clone the repository:
 
 ```bash
-# Initial packages installation for Python projects
-# sudo apt update
-# sudo apt install -y git python3 python3-venv python3-pip build-essential
 git clone https://github.com/muwsik/nano-website.git
 cd nano-website
 ```
 
-2. (Рекомендуется) создать виртуальное окружение:
+2. (Recommended) Create and activate a virtual environment:
+
+```bash
+python -m venv nano-venv
+nano-venv\Scripts\activate
+```
+
+### Linux
+
+1. Install the required packages and clone the repository:
+
+```bash
+# sudo apt update
+# sudo apt install -y git python3 python3-venv python3-pip build-essential
+
+git clone https://github.com/muwsik/nano-website.git
+cd nano-website
+```
+
+2. (Recommended) Create and activate a virtual environment:
 
 ```bash
 python3 -m venv nano-venv
 source nano-venv/bin/activate
 ```
 
-3. Установить зависимости:
+### Install Dependencies
 
 ```bash
 pip install -r nano-website/requirements.txt
 ```
 
-
-## Запуск
+## Running the Application
 
 ```bash
 streamlit run nano-website/nano-website.py
 ```
 
-После запуска приложение будет доступно в браузере!
+After launching, the application will be available in your web browser.
 
+## Usage and Documentation
 
-## Использование и документация
+### Using the Application
 
-### Работа с приложением
+1. Upload a scanning electron microscopy image through the web interface.
+2. Start the automatic analysis (typically takes up to 1 minute).
+3. Review the detected nanoparticles, their parameters, and the structural ordering assessment.
 
-1. Загрузить изображение электронной микроскопии через веб-интерфейс.  
-2. Запустить автоматический анализ (обычно до 1 минуты).  
-3. Просмотреть результаты детектирования наночастиц, их параметров и оценки структурированности.  
+A detailed interface description is available in the **Help** section of the web application.
 
-Подробное описание интерфейса доступно в разделе **Help** внутри веб-приложения.
+### Additional Materials
 
-### Дополнительные материалы:
+- 📄 Integration with CVAT and detection quality assessment (https://disk.yandex.ru/i/2U5wgJ8IjskREQ)
 
-- 📄 [Интеграция с CVAT и оценка качества детектирования](https://disk.yandex.ru/i/2U5wgJ8IjskREQ)
+### Examples
 
-
-### Примеры результатов работы
-
-#### Детектирование наночастиц
+#### Nanoparticle Detection
 ![Detection example](nano-website/content/images/detection.png)
 
-#### Анализ параметров наночастиц
+#### Nanoparticle Parameter Analysis
 ![Parameters example1](nano-website/content/images/parameters1.png)
 ![Parameters example2](nano-website/content/images/parameters2.png)
 
-#### Оценка структурированности и наличие дефектов поверхности
+#### Structural Ordering and Surface Defect Detection
 ![Structure example1](nano-website/content/images/structuredTrue.png)
 ![Structure example2](nano-website/content/images/structuredFalse.png)
 
+## Related Publications
 
-## Связанные публикации
-
-Методы, реализованные в данном проекте, основаны на результатах следующих научных работ:
+The methods implemented in this project are based on the following scientific publications:
 
 1. **Boiko D.A., Sulimova V.V., Kurbakov M.Yu. et al.**
    Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
@@ -111,8 +121,8 @@ streamlit run nano-website/nano-website.py
    *Computer Optics*, 2025, Vol. 49, No. 3, pp. 470–479.
    https://doi.org/10.18287/2412-6179-CO-1568
 
-
-## Авторы
+## Authors
 
 Kurbakov M.Yu., Sulimova V.V., Seredin O.S., Kopylov A.V., Pavlova V.S.
+
 Laboratory of Cognitive Technologies and Simulating Systems, Tula State University
