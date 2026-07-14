@@ -6,6 +6,7 @@ from scipy.spatial import distance
 import plotly.express as px
 import plotly.figure_factory as ff
 
+
 #
 def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
     fake_BLOBS = np.zeros((count, 3))
@@ -24,6 +25,7 @@ def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
 
     return fake_BLOBS
 
+
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
 def uniformity(BLOBs, sizeImage, sizeBlock):
@@ -39,6 +41,7 @@ def uniformity(BLOBs, sizeImage, sizeBlock):
 
     return counter
 
+
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
 def euclideanDistance(c_blobs):
@@ -50,6 +53,34 @@ def euclideanDistance(c_blobs):
 
     return fullEuclideanDist, minEuclideanDist
 
+
+#
+@st.cache_data(show_spinner = False, max_entries = 5)
+def localAreaFraction(c_thresholds, c_fullDist, particlesDiameter):
+
+    particleAreas = np.pi * particlesDiameter**2 / 4
+    areaFraction = np.zeros(len(c_thresholds))
+
+    for i, threshold in enumerate(c_thresholds):
+        mask = np.less(c_fullDist, threshold)
+        localAreas = np.dot(mask, particleAreas)
+        areaFraction[i] = np.mean(localAreas) / (np.pi * threshold**2)
+
+    return areaFraction
+
+
+#
+@st.cache_data(show_spinner = False, max_entries = 5)
+def averageNeighborhoods(c_thresholds, c_fullDist):
+    distanceLess = np.zeros(len(c_thresholds))
+
+    for i, threshold in enumerate(c_thresholds):
+        distanceLess[i] = np.less(c_fullDist, threshold).sum() / len(c_fullDist) - 1 
+        #  subtract one to exclude particles on diagonal
+
+    return distanceLess
+
+
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
 def averageDensityInNeighborhood(c_thresholds, c_fullDist):
@@ -57,8 +88,10 @@ def averageDensityInNeighborhood(c_thresholds, c_fullDist):
 
     for i, threshold in enumerate(c_thresholds):
         distanceLess[i] = (np.less(c_fullDist, threshold).sum() - len(c_fullDist)) / (np.pi * threshold**2)
+        #  subtract one to exclude particles on diagonal
 
-    return distanceLess
+    return distanceLess / len(c_fullDist)
+
 
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
@@ -82,6 +115,7 @@ def calculateParametersNP(diameters, density, imageSize, scale):
         "normMass": normMass,
         "imageArea": imageArea
     }
+
 
 ### main
 if __name__ == "__main__":

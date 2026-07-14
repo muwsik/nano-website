@@ -1140,7 +1140,6 @@ try:
                             fig = px.imshow(uniformityMap, aspect = "equal")
 
                             fig.update_traces(
-                                hoverinfo = "z",
                                 hovertemplate = "Particle in subarea %{z:.2}<extra></extra>"
                             )
 
@@ -1185,6 +1184,7 @@ try:
                 fullDist, minDist = NanoStat.euclideanDistance(currentBLOBs) 
 
                 db21, db22, db23 = st.columns([1, 1, 1])
+                db31, db32, db33 = st.columns([1, 1, 1])
                 
                 # Fraction of empty subareas
                 with db21.container(border = True, height = heightCol - 75):              
@@ -1219,7 +1219,6 @@ try:
                     )
 
                     fig.update_traces(
-                        hoverinfo = "x+y",
                         hovertemplate = "Size: %{x:.2} nm <br>Empty: %{y:.2}",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
@@ -1233,13 +1232,24 @@ try:
                 # Distance to nearest nanoparticle
                 with db22.container(border = True, height = heightCol - 75):                
 
-                    fig = ff.create_distplot(
-                        [minDist], [''], bin_size = 1, histnorm = 'probability',
-                        colors = ['blue'], show_curve = False, show_rug = False
-                    )
+                    start = 0
+                    end = 50
+                    step = 2
 
+                    counts, bins = np.histogram(minDist, bins = np.arange(start, end, step, dtype = float))                      
+                    distanceNearest = counts / np.sum(counts)
+
+                    fig = go.Figure()
+
+                    fig = fig.add_trace(go.Bar(
+                        x = 0.5 * (bins[:-1] + bins[1:]),
+                        y = distanceNearest,
+                        showlegend = False,
+                    ))
+                        
                     fig.update_layout(
-                        margin = marginChart,
+                        margin = marginChart,                        
+                        bargap = 0,
                         title = dict(text = "Distance to nearest nanoparticle", font = dict(size=27)),
                         xaxis_title_text = 'Distance to nearest nanoparticle, nm',
                         yaxis_title_text = 'Particle fraction',
@@ -1251,8 +1261,7 @@ try:
                     )
 
                     fig.update_traces(
-                        hoverinfo = "x",
-                        hovertemplate = "Distanse: %{x:.2} nm",
+                        hovertemplate = "Distanse: %{x:.2} nm<extra></extra>",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1,  
@@ -1261,7 +1270,7 @@ try:
                     st.plotly_chart(fig, width = 'stretch',)
                 # END db22
 
-                # Average density of nanoparticles
+                # Average number of nanoparticles per unit area
                 with db23.container(border = True, height = heightCol - 75):                
                     x = np.arange(5, 100, 1)
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
@@ -1274,9 +1283,9 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Average density of nanoparticles", font = dict(size=27)),
-                        xaxis_title_text = 'Nanoparticle neighborhood size, nm',
-                        yaxis_title_text = 'Average density of nanoparticles in neighborhood',
+                        title = dict(text = "Nanoparticles per unit area", font = dict(size=27)),
+                        xaxis_title_text = 'Neighborhood radius, nm',
+                        yaxis_title_text = 'Nanoparticles per unit area, particles/nm²',
                         showlegend = False,
                         bargap = 0
                     )
@@ -1286,16 +1295,122 @@ try:
                     )
 
                     fig.update_traces(
-                        hoverinfo = "x+y",
-                        hovertemplate = "Size: %{x:.2} nm <br>Density: %{y:.2}",
+                        hovertemplate = "Neighborhood radius: %{x:.2} nm <br>Particles/nm²: %{y:.2}",
+                        marker_color = colorRGBA_str,
+                        marker_line_color = 'blue',
+                        marker_line_width = 0.5
+                    )
+
+                    st.plotly_chart(fig, width = 'stretch')
+                # END db23
+
+                # Average coverage of neighbors
+                with db31.container(border = True, height = heightCol - 75):                
+                    x = np.arange(5, 100, 1)
+                    localArea = NanoStat.localAreaFraction(x, fullDist, currentBLOBs[:, 2]) * 100
+
+                    if (st.session_state['scale'] is not None):
+                        fig = px.bar(x = x * st.session_state['scale'], y = localArea)
+                    else:
+                        fig = px.bar(x = x , y = localArea)
+
+
+                    fig.update_layout(
+                        margin = marginChart,
+                        title = dict(text = "Average coverage of neighbors", font = dict(size=27)),
+                        xaxis_title_text = 'Neighbors area size, nm',
+                        yaxis_title_text = 'Neighbors coverage',
+                        showlegend = False,
+                        bargap = 0
+                    )
+                    
+                    fig.update_xaxes(
+                        showgrid = True,
+                    )
+
+                    fig.update_traces(
+                        hovertemplate = "Area size: %{x:.2} nm <br>Coverage: %{y:.2}%",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
                     )
 
                     st.plotly_chart(fig, width = 'stretch',)
-                # END db23
+                # END db31
+
+                # Average number of neighbors
+                with db32.container(border = True, height = heightCol - 75):                
+                    x = np.arange(5, 100, 1)
+                    averageNeighborhoods = NanoStat.averageNeighborhoods(x, fullDist)
+
+                    if (st.session_state['scale'] is not None):
+                        fig = px.bar(x = x * st.session_state['scale'], y = averageNeighborhoods)
+                    else:
+                        fig = px.bar(x = x , y = averageNeighborhoods)
+
+
+                    fig.update_layout(
+                        margin = marginChart,
+                        title = dict(text = "Average number of neighbors", font = dict(size=27)),
+                        xaxis_title_text = 'Nanoparticle neighborhood size, nm',
+                        yaxis_title_text = 'Average number of neighbors',
+                        showlegend = False,
+                        bargap = 0
+                    )
+                    
+                    fig.update_xaxes(
+                        showgrid = True,
+                    )
+
+                    fig.update_traces(
+                        hovertemplate = "Size: %{x:.2} nm <br>Neighbors: %{y:.2}",
+                        marker_color = colorRGBA_str,
+                        marker_line_color = 'blue',
+                        marker_line_width = 0.5
+                    )
+
+                    st.plotly_chart(fig, width = 'stretch',)
+                # END db32
             
+                with db33.container(border = True, height = heightCol - 75):
+                   if st.button("Write results"):
+
+                        imageID = st.session_state['statImageName']
+
+                        features = [
+                            *emptySubareas.tolist(),          # 19
+                            *distanceNearest.tolist(),        # 25
+                            *averageDensity.tolist(),         # 95
+                            *localArea.tolist(),              # 95
+                            *averageNeighborhoods.tolist()    # 95
+                        ]
+
+                        filename = "results.csv"
+
+                        # Если файл создается впервые — записать заголовок
+                        if not Path(filename).exists():
+
+                            header = (
+                                ["ImageID"] +
+                                [f"ES_{i:02d}" for i in range(19)] +
+                                [f"ND_{i:02d}" for i in range(25)] +
+                                [f"PD_{i:02d}" for i in range(95)] +
+                                [f"AC_{i:02d}" for i in range(95)] +
+                                [f"AN_{i:02d}" for i in range(95)]
+                            )
+
+                            with open(filename, "w", newline="", encoding="utf-8") as f:
+                                writer = csv.writer(f, delimiter=";")
+                                writer.writerow(header)
+
+                        # Дозаписать результаты
+                        with open(filename, "a", newline="", encoding="utf-8") as f:
+                            writer = csv.writer(f, delimiter=";")
+                            writer.writerow([imageID, *features])
+
+                        st.success("Results saved!")
+
+
             with st.expander("Quality evaluation", icon = ":material/verified:"):
                 instruct.AboutSectioQuality()
                 
