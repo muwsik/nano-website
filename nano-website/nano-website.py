@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
+#import plotly.figure_factory as ff
 
 #import matplotlib.pyplot as plt
 
@@ -1329,7 +1329,7 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Area size: %{x:.2} nm <br>Coverage: %{y:.2}%",
+                        hovertemplate = "Area size: %{x:.2} nm <br>Coverage: %{y:.3}%",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
