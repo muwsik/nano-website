@@ -27,7 +27,7 @@ import utils.NanoStatistics as NanoStat
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
 
-from streamlit_image_viewer import streamlit_image_viewer as stImageViewer
+from streamlit_image_overlay import streamlit_image_overlay
 
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
@@ -747,57 +747,63 @@ try:
                             help = tooltips.Visualization.Download
                         )
     
-        # Display image 
-        if (st.session_state['imgUpload']):
-            viewImage = st.session_state['srcImg'].copy().convert('RGB')
-            draw = ImageDraw.Draw(viewImage)
+        # if (st.session_state['imgUpload']):
+        #     viewImage = st.session_state['srcImg'].copy().convert('RGB')
+        #     draw = ImageDraw.Draw(viewImage)
 
-            if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
-                y, x, length, text_scale = st.session_state['scaleData']
-                diff_line = 5 # vertical line size
-                y = y + 10 # vertical line shift
-                x = x + 2 # horizontal line shift
+        #     if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
+        #         y, x, length, text_scale = st.session_state['scaleData']
+        #         diff_line = 5 # vertical line size
+        #         y = y + 10 # vertical line shift
+        #         x = x + 2 # horizontal line shift
 
-                # Line of metric scale
-                scaleLineCoords = [
-                    (x,         y-diff_line),
-                    (x,         y+diff_line),
-                    (x,         y),
-                    (x+length,  y),
-                    (x+length,  y+diff_line),
-                    (x+length,  y-diff_line)
-                ]
-                draw.line(scaleLineCoords, fill = colorRGB, width = 3)
+        #         # Line of metric scale
+        #         scaleLineCoords = [
+        #             (x,         y-diff_line),
+        #             (x,         y+diff_line),
+        #             (x,         y),
+        #             (x+length,  y),
+        #             (x+length,  y+diff_line),
+        #             (x+length,  y-diff_line)
+        #         ]
+        #         draw.line(scaleLineCoords, fill = colorRGB, width = 3)
                 
-                # Text of metric scale
-                draw.text(
-                    (x + int(length/8), y + 10), 
-                    f"{length}px / {text_scale}",
-                    fill = colorRGB,
-                    font = ImageFont.load_default(size = 30) 
-                )
+        #         # Text of metric scale
+        #         draw.text(
+        #             (x + int(length/8), y + 10), 
+        #             f"{length}px / {text_scale}",
+        #             fill = colorRGB,
+        #             font = ImageFont.load_default(size = 30) 
+        #         )
 
-            if ((st.session_state['filteredParticles'] > 0) and st.session_state['detected']):
-                for BLOB in st.session_state['BLOBs_filter']:                
-                    y, x, d = BLOB; r = d/2
-                    draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
+        #     if ((st.session_state['filteredParticles'] > 0) and st.session_state['detected']):
+        #         for BLOB in st.session_state['BLOBs_filter']:                
+        #             y, x, d = BLOB; r = d/2
+        #             draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
             
-            if st.session_state['areas']:
-                if st.session_state['big_contours'] is not None:
-                    viewImage = np.array(viewImage)
-                    cv2.drawContours(
-                        viewImage,
-                        st.session_state['big_contours'],
-                        thickness = -1, color = (255, 50, 50), contourIdx = -1
-                    )
-                    viewImage = Image.fromarray(viewImage)
+        #     if st.session_state['areas']:
+        #         if st.session_state['big_contours'] is not None:
+        #             viewImage = np.array(viewImage)
+        #             cv2.drawContours(
+        #                 viewImage,
+        #                 st.session_state['big_contours'],
+        #                 thickness = -1, color = (255, 50, 50), contourIdx = -1
+        #             )
+        #             viewImage = Image.fromarray(viewImage)
 
-            st.session_state['imgBLOB'] = viewImage            
+        #     st.session_state['imgBLOB'] = viewImage            
             
+            # Display image 
             with colImage:
-                stImageViewer(
+                particles = []
+                if st.session_state['filterParticles'] is not None:
+                    particles = [
+                        particle.toDict() for particle in st.session_state['filterParticles']
+                    ]          
+
+                streamlit_image_overlay(
                     image = st.session_state["srcImg"],
-                    particles = st.session_state['filterParticles'],
+                    overlays = particles,
                     key = "main-imageViewer"                    
                 )
 
