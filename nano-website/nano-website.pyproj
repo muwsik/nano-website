@@ -43,7 +43,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="utils\reworkExpApp.py" />
-    <Compile Include="utils\streamlit-image-viewer\streamlit_image_viewer\__init__.py" />
     <Compile Include="utils\structured.py" />
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
@@ -57,17 +56,6 @@
     <Content Include="content\qr-code.svg" />
     <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
-    <Content Include="utils\streamlit-image-viewer\MANIFEST.in" />
-    <Content Include="utils\streamlit-image-viewer\pyproject.toml" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\package.json" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\imageViewer.tsx" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\index.tsx" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\styles.ts" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\types.ts" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\vite-env.d.ts" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\tsconfig.json" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\vite.config.ts" />
-    <Content Include="utils\streamlit-image-viewer\streamlit_image_viewer\pyproject.toml" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.12" />
@@ -76,10 +64,6 @@
     <Folder Include="content\" />
     <Folder Include="content\images\" />
     <Folder Include="utils\" />
-    <Folder Include="utils\streamlit-image-viewer\" />
-    <Folder Include="utils\streamlit-image-viewer\streamlit_image_viewer\" />
-    <Folder Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\" />
-    <Folder Include="utils\streamlit-image-viewer\streamlit_image_viewer\frontend\src\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
