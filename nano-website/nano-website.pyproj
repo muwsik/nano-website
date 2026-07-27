@@ -43,7 +43,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="utils\reworkExpApp.py" />
-    <Compile Include="utils\structured.py" />
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
@@ -54,7 +53,6 @@
     <Content Include="content\images\structuredFalse.png" />
     <Content Include="content\images\structuredTrue.png" />
     <Content Include="content\qr-code.svg" />
-    <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>

@@ -38,18 +38,12 @@ import utils.accuracy as accuracy
 import utils.reworkExpApp as rEA
 
 import traceback
-import joblib
     
 
 ### Function ###
     
 colorRGBA_str = 'rgb(150, 150, 255)'
 colorRGB = (75, 255, 75)
-
-
-@st.cache_resource
-def load_SVM_model():
-    return joblib.load("./nano-website/content/svc_best-comb_mean2-3-new.joblib")
 
 
 def defaultDetectTab():
