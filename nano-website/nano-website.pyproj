@@ -4,7 +4,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>d064ad81-a0cc-41ad-a584-7675d6b437d4</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>utils\EMD.py</StartupFile>
+    <StartupFile>
+    </StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -29,7 +30,6 @@
     <Compile Include="utils\API2CVAT.py" />
     <Compile Include="content\instructions.py" />
     <Compile Include="content\tooltips.py" />
-    <Compile Include="utils\EMD.py" />
     <Compile Include="utils\ExponentialApproximation.py" />
     <Compile Include="nano-website.py" />
     <Compile Include="utils\ExponentialApproximation2.py" />

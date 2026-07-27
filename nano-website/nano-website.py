@@ -1,6 +1,7 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
+from json import tool
 import streamlit as st
 
 import io, csv
@@ -812,8 +813,8 @@ try:
     ## TAB 2 
     with tabStat:    
         heightCol = 550
-        marginChart = dict(l=10, r=10, t=40, b=5)
-        marginChartLess = dict(l=5, r=5, t=0, b=5)
+        marginChart = dict(l=10, r=10, t=10, b=5)
+        #marginChartLess = dict(l=5, r=5, t=10, b=5)
               
         with st.expander("Global dashboard settings",
             expanded = True,
@@ -883,84 +884,9 @@ try:
 
                 db11, db12, db13 = st.columns([4, 4, 4])            
 
-                # Nanoparticle parameters
-                with db12.container(border = True, height = heightCol):                        
-                    
-                    left, rigth = st.columns([7, 1])
-                    left.subheader("Nanoparticle parameters", anchor = False)
-
-                    with rigth.popover("", icon=":material/settings:"):
-                        selectionDensity = st.selectbox(
-                            "Particles material",
-                            index = 0,
-                            placeholder = "Select material type...",
-                            options = tooltips.Options.MaterialDensity.keys(),
-                            format_func = lambda option: tooltips.Options.MaterialDensity[option],
-                        )
-
-                        match selectionDensity:
-                            case 0: materialDensity = 12.02 * 10**-12
-                            case 1: materialDensity = 8.96 * 10**-12
-                            case 2: materialDensity = 14.10 * 10**-12
-                            case 3: materialDensity = 8.42 * 10**-12
-                            case 4: pass;
-                            case _: materialDensity = 1
-                        
-                        if selectionDensity == 4:   # User material
-                            materialDensity = st.number_input(
-                                "Particles material density on ng/nm³",
-                                min_value = 0.0,
-                                step = 1.0e-11,
-                                value = 1.0e-10,
-                                format = "%0.2e",
-                                key = "user-density"
-                            )
-                        else:
-                            instruct.MaterialDensity(materialDensity)
-                    
-                    # Additional info
-                    if st.session_state['scale'] is None:
-                        pass # TODO input scale
-                    else:                    
-                        instruct.EstimatedScale(st.session_state["scale"])
-                    
-                    if selectionDensity == 4: # User material
-                        instruct.UserMaterial(tooltips.Options.MaterialDensity[selectionDensity], materialDensity)
-                    else:
-                        instruct.DefMaterial(tooltips.Options.MaterialDensity[selectionDensity])
-                    
-                    currentDiameter = diameter_nm
-                    currentBLOBs = BLOBs_nm
-                    if boolIndexSelectedBLOBs is not None:
-                        currentDiameter = currentDiameter[boolIndexSelectedBLOBs]
-                    
-                    paramsNP = NanoStat.calculateParametersNP(
-                        currentDiameter,
-                        materialDensity,
-                        st.session_state['sizeImage'],
-                        st.session_state['scale'] # TODO add st.session_state with key 'areaImage'
-                    )
-
-                    # TODO fix boolIndexSelectedBLOBs
-                    instruct.Quantity(len(st.session_state['statBLOBs']), len(currentDiameter))
-
-                    # Primary parameters info                  
-                    instruct.PrimaryParameters(currentDiameter)
-                    
-                    # Secondary parameters info 
-                    instruct.SecondaryParameters(paramsNP)                   
-                    
-                    # Norm secondary parameters info
-                    instruct.NormSecondaryParameters(paramsNP)                           
-                # END db12
-                
-
                 # Particle size distribution
                 with db11.container(border = True, height = heightCol):
-                    left, rigth = st.columns([7, 1])
-                    left.subheader("Distribution of particle diameters", anchor = False)
-
-                    with rigth.popover("", icon=":material/settings:"):
+                    with st.popover("Distribution of particle diameters", width = 'stretch'):
                         st.toggle("Display distribution function",
                             key = 'distView',
                             help = tooltips.Distribution.Function
@@ -1069,13 +995,13 @@ try:
                         )) 
                         
                     fig.update_layout(
-                        margin = marginChartLess,
+                        margin = marginChart,
                         xaxis_title_text = name_x,
                         yaxis_title_text = name_y,                        
                         bargap = 0,
                         legend = dict(
-                            x = 1.1,
-                            y = 1.1,
+                            x = 1,
+                            y = 1,
                             xanchor = 'right',
                             yanchor = 'top',
                             bgcolor='rgba(0,0,0,0)'
@@ -1117,18 +1043,84 @@ try:
                             boolIndexSelectedBLOBs = (diameter_nm >= minDiameterInColumn) & (diameter_nm <= maxDiameterInColumn)
                 # END db11
 
-                
-                # Heatmap of particle count
-                # or
+                # Nanoparticle parameters
+                with db12.container(border = True, height = heightCol): 
+                    with st.popover("Nanoparticle parameters", width = 'stretch'):
+                        selectionMaterial = st.pills(
+                            "Particles material",
+                            default = 0,
+                            required = True,
+                            width = 400,
+                            options = tooltips.Options.MaterialName.keys(),
+                            format_func = lambda option: tooltips.Options.MaterialName[option],
+                        )
+
+                        if selectionMaterial is None:
+                            selectionMaterial = 0
+
+                        materialName = tooltips.Options.MaterialName[selectionMaterial]
+
+                        if selectionMaterial == 4:
+                            materialDensity = st.number_input(
+                                "Particles material density on ng/nm³",
+                                min_value = 0.0,
+                                step = 1.0e-11,
+                                value = 1.0e-10,
+                                format = "%0.2e",
+                                key = "user-density"
+                            )
+                        else:
+                            materialDensity = tooltips.Options.MaterialDensity[selectionMaterial]
+
+                        instruct.MaterialDensity(materialName, materialDensity)
+                    
+                    # Additional info
+                    if st.session_state['scale'] is None:
+                        pass # TODO input scale
+                    else:                    
+                        instruct.EstimatedScale(st.session_state["scale"])
+                    
+                    if selectionMaterial == 4: # User material
+                        instruct.UserMaterial(materialName, materialDensity)
+                    else:
+                        instruct.DefMaterial(materialName)
+                    
+                    currentDiameter = diameter_nm
+                    currentBLOBs = BLOBs_nm
+                    if boolIndexSelectedBLOBs is not None:
+                        currentDiameter = currentDiameter[boolIndexSelectedBLOBs]
+                    
+                    paramsNP = NanoStat.calculateParametersNP(
+                        currentDiameter,
+                        materialDensity,
+                        st.session_state['sizeImage'],
+                        st.session_state['scale'] # TODO add st.session_state with key 'areaImage'
+                    )
+
+                    # TODO fix boolIndexSelectedBLOBs
+                    instruct.Quantity(len(st.session_state['statBLOBs']), len(currentDiameter))
+
+                    # Primary parameters info                  
+                    instruct.PrimaryParameters(currentDiameter)
+                    
+                    # Secondary parameters info 
+                    instruct.SecondaryParameters(paramsNP)                   
+                    
+                    # Norm secondary parameters info
+                    instruct.NormSecondaryParameters(paramsNP)                           
+                # END db12
+
                 # Visualization particles
                 with db13.container(border = True, height = heightCol):
-                    tempSelectionChart = st.selectbox(
-                        "Type chart",
-                        index = 1,
-                        options = tooltips.Options.TypeChart.keys(),
-                        format_func = lambda option: tooltips.Options.TypeChart[option],
-                        label_visibility = 'collapsed'
-                    )
+                    with st.popover("Visualization particles", width = 'stretch'):                    
+                        tempSelectionChart = st.pills(
+                            "Type visualization",
+                            default = 1,
+                            required = True,
+                            options = tooltips.Options.TypeChart.keys(),
+                            format_func = lambda option: tooltips.Options.TypeChart[option],
+                            label_visibility = 'collapsed'
+                        )
 
                     match tempSelectionChart:
                         case 0: 
@@ -1150,7 +1142,7 @@ try:
                             )
 
                             fig.update_layout(
-                                margin = marginChartLess,
+                                margin = marginChart,
                                 xaxis_title_text = f'Width image, {stepSize}*px',
                                 yaxis_title_text = f'Height image, {stepSize}*px',
                                 coloraxis_colorbar = dict(
@@ -1174,10 +1166,12 @@ try:
                                 draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
                             
                             st.image(tempImage, width = 'stretch',)
-                        case _:
-                            pass
+                            # streamlit_image_overlay(
+                            #     image = tempImage,
+                            #     overlays = [],
+                            #     key = "bd13-imageViewer"                    
+                            # )
 
-                    
                 # END db13
 
             with st.expander("Nanoparticle spatial distribution", icon = ":material/data_thresholding:"):
@@ -1189,13 +1183,15 @@ try:
 
                 fullDist, minDist = NanoStat.euclideanDistance(currentBLOBs) 
 
+
                 db21, db22, db23 = st.columns([1, 1, 1])
-                db31, db32, db33 = st.columns([1, 1, 1])
                 
                 # Fraction of empty subareas
-                with db21.container(border = True, height = heightCol - 75):              
-                    x = np.arange(5, 100, 5)
+                with db21.container(border = True, height = heightCol):  
+                    with st.popover("Fraction of empty subareas", width = 'stretch'):
+                        pass
 
+                    x = np.arange(5, 100, 5)
                     emptySubareas = np.zeros_like(x, dtype = 'float')
 
                     for i, size in enumerate(x):
@@ -1213,7 +1209,6 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Fraction of empty subareas", font = dict(size=27)),
                         xaxis_title_text = 'Size of square subareas, nm',
                         yaxis_title_text = 'Fraction of empty subareas',
                         showlegend = False,
@@ -1232,11 +1227,12 @@ try:
                     )
 
                     st.plotly_chart(fig, width = 'stretch',)
-
                 # END db21
 
                 # Distance to nearest nanoparticle
-                with db22.container(border = True, height = heightCol - 75):                
+                with db22.container(border = True, height = heightCol):
+                    with st.popover("Distance to nearest nanoparticle", width = 'stretch'):
+                        pass
 
                     start = 0
                     end = 50
@@ -1256,7 +1252,6 @@ try:
                     fig.update_layout(
                         margin = marginChart,                        
                         bargap = 0,
-                        title = dict(text = "Distance to nearest nanoparticle", font = dict(size=27)),
                         xaxis_title_text = 'Distance to nearest nanoparticle, nm',
                         yaxis_title_text = 'Particle fraction',
                         showlegend = False
@@ -1277,7 +1272,10 @@ try:
                 # END db22
 
                 # Average number of nanoparticles per unit area
-                with db23.container(border = True, height = heightCol - 75):                
+                with db23.container(border = True, height = heightCol):
+                    with st.popover("Nanoparticles per unit area", width = 'stretch'):
+                        pass
+                    
                     x = np.arange(5, 100, 1)
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
 
@@ -1289,7 +1287,6 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Nanoparticles per unit area", font = dict(size=27)),
                         xaxis_title_text = 'Neighborhood radius, nm',
                         yaxis_title_text = 'Nanoparticles per unit area, particles/nm²',
                         showlegend = False,
@@ -1310,8 +1307,15 @@ try:
                     st.plotly_chart(fig, width = 'stretch')
                 # END db23
 
+                
+                db31, db32, db33 = st.columns([1, 1, 1])
+
                 # Average coverage of neighbors
-                with db31.container(border = True, height = heightCol - 75):                
+                with db31.container(border = True, height = heightCol): 
+                    with st.popover("Average coverage of neighbors", width = 'stretch'):
+                        pass               
+
+
                     x = np.arange(5, 100, 1)
                     localArea = NanoStat.localAreaFraction(x, fullDist, currentBLOBs[:, 2]) * 100
 
@@ -1323,7 +1327,6 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Average coverage of neighbors", font = dict(size=27)),
                         xaxis_title_text = 'Neighbors area size, nm',
                         yaxis_title_text = 'Neighbors coverage',
                         showlegend = False,
@@ -1345,7 +1348,10 @@ try:
                 # END db31
 
                 # Average number of neighbors
-                with db32.container(border = True, height = heightCol - 75):                
+                with db32.container(border = True, height = heightCol):  
+                    with st.popover("Average number of neighbors", width = 'stretch'):
+                        pass               
+                    
                     x = np.arange(5, 100, 1)
                     averageNeighborhoods = NanoStat.averageNeighborhoods(x, fullDist)
 
@@ -1357,7 +1363,6 @@ try:
 
                     fig.update_layout(
                         margin = marginChart,
-                        title = dict(text = "Average number of neighbors", font = dict(size=27)),
                         xaxis_title_text = 'Nanoparticle neighborhood size, nm',
                         yaxis_title_text = 'Average number of neighbors',
                         showlegend = False,
@@ -1378,43 +1383,8 @@ try:
                     st.plotly_chart(fig, width = 'stretch',)
                 # END db32
             
-                with db33.container(border = True, height = heightCol - 75):
-                   if st.button("Write results"):
-
-                        imageID = st.session_state['statImageName']
-
-                        features = [
-                            *emptySubareas.tolist(),          # 19
-                            *distanceNearest.tolist(),        # 25
-                            *averageDensity.tolist(),         # 95
-                            *localArea.tolist(),              # 95
-                            *averageNeighborhoods.tolist()    # 95
-                        ]
-
-                        filename = "results.csv"
-
-                        # Если файл создается впервые — записать заголовок
-                        if not Path(filename).exists():
-
-                            header = (
-                                ["ImageID"] +
-                                [f"ES_{i:02d}" for i in range(19)] +
-                                [f"ND_{i:02d}" for i in range(25)] +
-                                [f"PD_{i:02d}" for i in range(95)] +
-                                [f"AC_{i:02d}" for i in range(95)] +
-                                [f"AN_{i:02d}" for i in range(95)]
-                            )
-
-                            with open(filename, "w", newline="", encoding="utf-8") as f:
-                                writer = csv.writer(f, delimiter=";")
-                                writer.writerow(header)
-
-                        # Дозаписать результаты
-                        with open(filename, "a", newline="", encoding="utf-8") as f:
-                            writer = csv.writer(f, delimiter=";")
-                            writer.writerow([imageID, *features])
-
-                        st.success("Results saved!")
+                with db33.container(border = True, height = heightCol):
+                   pass
 
 
             with st.expander("Quality evaluation", icon = ":material/verified:"):

@@ -2,11 +2,7 @@ import streamlit as st
 
 def loadStyles(color):
     st.markdown(f"""
-        <style>          
-            ::-webkit-scrollbar {{
-                display: none;
-            }}            
-
+        <style>    
             h3 {{
                 font-size: 21px !important;
                 padding: 8px 0px 5px 0px !important;

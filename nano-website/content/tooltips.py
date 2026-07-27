@@ -1,4 +1,4 @@
-
+﻿
 DefaultToggle       = "Use the default settings recommended by the developers. The result is not always optimal"
 
 TypeMicroscopePills = "Detected automatically when the image is first loaded"
@@ -110,12 +110,19 @@ class Options:
         2: "None"
     }
 
-    MaterialDensity = {
-        0: "Palladium (Pd)",    # 12.02 * 10**-12 ng / nm^3
-        1: "Cuprum (Cu)",       #  8.96 * 10**-12 ng / nm^3
+    MaterialName = {
+        0: "Palladium (Pd)",                # 12.02 * 10**-12 ng / nm^3
+        1: "Cuprum (Cu)",                   #  8.96 * 10**-12 ng / nm^3
         2: "Alloy 30% Au + 70% Pd (AuPd)",  # 14.10 * 10**-12 ng / nm^3
         3: "Alloy 70% Cu + 30% Zn (CuZn)",  #  8.42 * 10**-12 ng / nm^3
         4: "User density"
+    }
+
+    MaterialDensity = {
+        0: 12.02 * 10**-12,  # ng / nm^3
+        1: 8.96 * 10**-12,   # ng / nm^3
+        2: 14.10 * 10**-12,  # ng / nm^3
+        3: 8.42 * 10**-12,   # ng / nm^3
     }
 
     TypeChart       = {

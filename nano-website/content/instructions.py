@@ -54,10 +54,10 @@ def AboutSectionParticleParams():
     """, unsafe_allow_html = True)
 
     
-def MaterialDensity(value):
+def MaterialDensity(name, value):
     st.markdown(f"""
         <div class = 'text' style = "font-size: 16px;">
-            Particles material density: <b>{value:.2e} ng/nm<sup>3</sup></b> 
+            <b>{name}</b> density: <b>{value:.2e} ng/nm<sup>3</sup></b> 
         </div>
     """, unsafe_allow_html = True)
 
