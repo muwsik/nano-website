@@ -1,4 +1,5 @@
-﻿
+﻿NoneInfo            = "A hint will appear soon"
+
 DefaultToggle       = "Use the default settings recommended by the developers. The result is not always optimal"
 
 TypeMicroscopePills = "Detected automatically when the image is first loaded"

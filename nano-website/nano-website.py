@@ -1,15 +1,15 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
-from json import tool
 import streamlit as st
 
 import io, csv
 import cv2, skimage, scipy
 import numpy as np
+import pandas as pd
 import time
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageOps
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -27,15 +27,13 @@ import utils.autoscale as autoscale
 import utils.NanoStatistics as NanoStat
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
-
-from streamlit_image_overlay import streamlit_image_overlay
-
 import utils.WebsiteBot as webBot
 import utils.API2CVAT as API2CVAT
 import utils.accuracy as accuracy
-#import utils.structured as structured
 
+# dev utils
 import utils.reworkExpApp as rEA
+from streamlit_image_overlay import streamlit_image_overlay
 
 import traceback
     
@@ -88,7 +86,6 @@ def defaultStatTab():
     st.session_state['selection'] = False
     st.session_state['step'] = 0.5
 
-    st.session_state['struct'] = None
 
 
 def loadDefault_sessionState(_dispToast = False):
@@ -103,6 +100,21 @@ def loadDefault_sessionState(_dispToast = False):
 
     defaultDetectTab()
     defaultStatTab()
+
+    st.session_state["lastAggregatedImage"] = None
+
+    st.session_state["analysisBuffer"] = pd.DataFrame(columns = [
+        "Image",
+        "Number of particles",
+        "Material type",
+        "Mean particle diameter, nm",
+        "Particle surface density, mg/m²",
+        "Mean distance to neighbour, nm",
+        "Most probable distance to neighbour, nm",
+        "Distance threshold, nm",
+        "Fraction below distance threshold",
+        "Clark-Evans index (R)",
+    ])
 
 
 def sessionState2str(closedKey = ["imgPlaceholder", ]):
@@ -741,52 +753,7 @@ try:
                             disabled = button_download_disabled,
                             help = tooltips.Visualization.Download
                         )
-    
-        # if (st.session_state['imgUpload']):
-        #     viewImage = st.session_state['srcImg'].copy().convert('RGB')
-        #     draw = ImageDraw.Draw(viewImage)
-
-        #     if (st.session_state['displayScale'] and (st.session_state['scaleData'] is not None)):
-        #         y, x, length, text_scale = st.session_state['scaleData']
-        #         diff_line = 5 # vertical line size
-        #         y = y + 10 # vertical line shift
-        #         x = x + 2 # horizontal line shift
-
-        #         # Line of metric scale
-        #         scaleLineCoords = [
-        #             (x,         y-diff_line),
-        #             (x,         y+diff_line),
-        #             (x,         y),
-        #             (x+length,  y),
-        #             (x+length,  y+diff_line),
-        #             (x+length,  y-diff_line)
-        #         ]
-        #         draw.line(scaleLineCoords, fill = colorRGB, width = 3)
-                
-        #         # Text of metric scale
-        #         draw.text(
-        #             (x + int(length/8), y + 10), 
-        #             f"{length}px / {text_scale}",
-        #             fill = colorRGB,
-        #             font = ImageFont.load_default(size = 30) 
-        #         )
-
-        #     if ((st.session_state['filteredParticles'] > 0) and st.session_state['detected']):
-        #         for BLOB in st.session_state['BLOBs_filter']:                
-        #             y, x, d = BLOB; r = d/2
-        #             draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
-            
-        #     if st.session_state['areas']:
-        #         if st.session_state['big_contours'] is not None:
-        #             viewImage = np.array(viewImage)
-        #             cv2.drawContours(
-        #                 viewImage,
-        #                 st.session_state['big_contours'],
-        #                 thickness = -1, color = (255, 50, 50), contourIdx = -1
-        #             )
-        #             viewImage = Image.fromarray(viewImage)
-
-        #     st.session_state['imgBLOB'] = viewImage            
+         
             
             # Display image 
             with colImage:
@@ -908,11 +875,7 @@ try:
 
                         # Saving data for distribution NP diams chart
                         buttonDataChartPlaceholder = st.empty()
-
-                        # Saving chart distribution of NP diams 
-                        buttonChartPlaceholder = st.empty()
-                          
-                    
+                                                                      
                     step = st.session_state['step']
                     start = np.floor(diameter_nm.min()) - step
                     end = np.ceil(diameter_nm.max()) + step
@@ -1168,7 +1131,7 @@ try:
 
                 # END db13
 
-            with st.expander("Nanoparticle spatial distribution", icon = ":material/data_thresholding:"):
+            with st.expander("Nanoparticle spatial distribution", expanded = True, icon = ":material/data_thresholding:"):
                 instruct.AboutSectionSpatialDistribution()
 
                 currentBLOBs = np.copy(st.session_state['statBLOBs'])
@@ -1183,23 +1146,48 @@ try:
                 # Fraction of empty subareas
                 with db21.container(border = True, height = heightCol):  
                     with st.popover("Fraction of empty subareas", width = 'stretch'):
-                        pass
+                        # Saving raw data db21
+                        db21_buttonPlaceholder = st.empty()
 
-                    x = np.arange(5, 100, 5)
-                    emptySubareas = np.zeros_like(x, dtype = 'float')
+                    x = np.arange(5, 105, 5)
+                    emptySubareas = np.zeros_like(x, dtype = float)
+                    emptyCount = np.zeros_like(x, dtype = int)
+                    totalCount = np.zeros_like(x, dtype = int)
 
                     for i, size in enumerate(x):
                         temp = NanoStat.uniformity(
-                            st.session_state['statBLOBs'],
-                            st.session_state['sizeImage'],
+                            st.session_state["statBLOBs"],
+                            st.session_state["sizeImage"],
                             size
                         )
-                        emptySubareas[i] = np.sum(temp == 0) / (len(temp) * len(temp[0]))
+                        emptyCount[i] = np.sum(temp == 0)
+                        totalCount[i] = temp.size
+
+                        emptySubareas[i] = emptyCount[i] / totalCount[i]
                     
                     if (st.session_state['scale'] is not None):
                         fig = px.bar(x = x * st.session_state['scale'], y = emptySubareas)
                     else:
                         fig = px.bar(x = x, y = emptySubareas)
+
+
+                    df = pd.DataFrame({
+                        "Block size (px)": x,
+                        "Block size (nm)": x if (st.session_state["scale"] is None) else (x * st.session_state["scale"]),
+                        "Empty subareas": emptyCount,
+                        "Total subareas": totalCount,
+                        "Empty fraction": emptySubareas,
+                    })
+
+                    db21_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = df.to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-empty-subareas.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
+
 
                     fig.update_layout(
                         margin = marginChart,
@@ -1225,8 +1213,9 @@ try:
 
                 # Distance to nearest nanoparticle
                 with db22.container(border = True, height = heightCol):
-                    with st.popover("Distance to nearest nanoparticle", width = 'stretch'):
-                        pass
+                    with st.popover("Distance to nearest nanoparticle", width = 'stretch'):                        
+                        # Saving raw data db22
+                        db22_buttonPlaceholder = st.empty()
 
                     start = 0
                     end = 50
@@ -1234,6 +1223,20 @@ try:
 
                     counts, bins = np.histogram(minDist, bins = np.arange(start, end, step, dtype = float))                      
                     distanceNearest = counts / np.sum(counts)
+
+                    df = pd.DataFrame({
+                        "Distance (px)": minDist if (st.session_state["scale"] is None) else (minDist / st.session_state["scale"]),
+                        "Distance (nm)": minDist,
+                    })
+
+                    db22_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = df.to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-distance-nearest-nanoparticle.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
 
                     fig = go.Figure()
 
@@ -1268,16 +1271,53 @@ try:
                 # Average number of nanoparticles per unit area
                 with db23.container(border = True, height = heightCol):
                     with st.popover("Nanoparticles per unit area", width = 'stretch'):
-                        pass
+                         # Saving raw data db23
+                        db23_buttonPlaceholder = st.empty()
                     
-                    x = np.arange(5, 100, 1)
+                    x_px = np.arange(5, 105, 1)
+                    if st.session_state["scale"] is not None:
+                        x = x_px * st.session_state["scale"]
+                    else:
+                        x = x_px 
+
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
 
-                    if (st.session_state['scale'] is not None):
-                        fig = px.bar(x = x * st.session_state['scale'], y = averageDensity)
-                    else:
-                        fig = px.bar(x = x , y = averageDensity)
+                    numberLess = np.rint(
+                        averageDensity
+                        * np.pi
+                        * x**2
+                        * len(fullDist)
+                    ).astype(int)
 
+                    averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
+
+                    if st.session_state["scale"] is not None:
+                        df = pd.DataFrame({
+                            "Neighborhood radius (px)": x_px,
+                            "Neighborhood radius (nm)": x,
+                            "Number of particles": len(fullDist),
+                            "Number of neighbors": numberLess,
+                            "Average density (particles/nm^2)": averageDensity,
+                        })
+                    else:
+                        df = pd.DataFrame({
+                            "Neighborhood radius (px)": x_px,
+                            "Number of particles": len(fullDist),
+                            "Number of neighbors": numberLess,
+                            "Average density (particles/px^2)": averageDensity,
+                        })
+
+                    db23_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = df.to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-nanoparticles-unit-area.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
+
+                                        
+                    fig = px.bar(x = x , y = averageDensity / (1 if (st.session_state["scale"] is None) else st.session_state["scale"]**2))
 
                     fig.update_layout(
                         margin = marginChart,
@@ -1377,9 +1417,87 @@ try:
                     st.plotly_chart(fig, width = 'stretch',)
                 # END db32
             
+                # Statistics aggregator
                 with db33.container(border = True, height = heightCol):
-                   pass
+                    st.subheader("Aggregate statistics", width = 'stretch') 
 
+                    if st.session_state["statImageName"] != st.session_state["lastAggregatedImage"]:
+
+                        st.session_state["lastAggregatedImage"] = (
+                            st.session_state["statImageName"]
+                        )
+
+                        if len(minDist) < 3:
+                            mp_nearest = np.mean(minDist)
+                        elif np.std(minDist) == 0:
+                            mp_nearest = minDist[0]
+                        else:
+                            kde = scipy.stats.gaussian_kde(minDist)
+                            kde_x = np.linspace(
+                                minDist.min(),
+                                minDist.max(),
+                                1000
+                            )
+                            density = kde(kde_x)
+                            mp_nearest = kde_x[np.argmax(density)]
+                        
+                        mean_nearest = np.mean(minDist)
+
+                        threshold_nm = round(np.mean(currentBLOBs[:, 2]))
+
+                        area_nm2 = np.prod(st.session_state["sizeImage"]) * (st.session_state['scale']**2 if st.session_state['scale'] is not None else 1)
+
+                        cl_ev = 2 * mean_nearest * np.sqrt(len(currentBLOBs) / area_nm2)
+
+                        newRow = {
+                            "Image": st.session_state["statImageName"],
+                            "Number of particles": len(currentBLOBs),
+                            "Material type": materialName,
+                            "Mean particle diameter, nm": np.mean(currentBLOBs[:, 2]),
+                            "Particle surface density, mg/m²": 
+                                np.sum((1/6 * np.pi * currentBLOBs[:, 2]**3) * materialDensity * 10**+12) / area_nm2,
+                            "Mean distance to neighbour, nm": mean_nearest,
+                            "Most probable distance to neighbour, nm": mp_nearest,
+                            "Distance threshold, nm": threshold_nm,
+                            "Fraction below distance threshold": np.sum(minDist < threshold_nm) / len(currentBLOBs),
+                            "Clark-Evans index (R)": cl_ev,
+                        }
+                        
+                        st.session_state["analysisBuffer"] = pd.concat(
+                            [ st.session_state["analysisBuffer"], pd.DataFrame([newRow]) ],
+                            ignore_index = True
+                        )
+                   
+                    buffer = st.session_state["analysisBuffer"].copy()
+                    buffer.insert(0, "Delete", False)
+
+                    editedBuffer = st.data_editor(
+                        buffer,
+                        width = "stretch",
+                        num_rows = "fixed",
+                        hide_index = True,
+                        disabled = [
+                            col for col in buffer.columns
+                            if col != "Delete"
+                        ],
+                        column_config = {
+                            "Delete": st.column_config.CheckboxColumn(
+                                "Delete",
+                                width = "small",
+                            ),
+                        },
+                    )
+
+                    deleteMask = editedBuffer["Delete"].astype(bool)
+
+                    if deleteMask.any():
+                        st.session_state["analysisBuffer"] = (
+                            editedBuffer.loc[~deleteMask]
+                                .drop(columns = "Delete")
+                                .reset_index(drop = True)
+                        )
+                        st.rerun()  # !!!
+                # END db33
 
             with st.expander("Quality evaluation", icon = ":material/verified:"):
                 instruct.AboutSectioQuality()

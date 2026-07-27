@@ -4,8 +4,6 @@ import numpy as np
 from scipy.spatial import distance
 
 import plotly.express as px
-import plotly.figure_factory as ff
-
 
 #
 def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
@@ -76,7 +74,7 @@ def averageNeighborhoods(c_thresholds, c_fullDist):
 
     for i, threshold in enumerate(c_thresholds):
         distanceLess[i] = np.less(c_fullDist, threshold).sum() / len(c_fullDist) - 1 
-        #  subtract one to exclude particles on diagonal
+        #  subtract '1' to exclude particles on diagonal
 
     return distanceLess
 
@@ -88,7 +86,7 @@ def averageDensityInNeighborhood(c_thresholds, c_fullDist):
 
     for i, threshold in enumerate(c_thresholds):
         distanceLess[i] = (np.less(c_fullDist, threshold).sum() - len(c_fullDist)) / (np.pi * threshold**2)
-        #  subtract one to exclude particles on diagonal
+        #  subtract 'len(c_fullDist)' to exclude particles on diagonal
 
     return distanceLess / len(c_fullDist)
 
