@@ -87,7 +87,6 @@ def defaultStatTab():
     st.session_state['step'] = 0.5
 
 
-
 def loadDefault_sessionState(_dispToast = False):
     if _dispToast:
         st.toast('Default configuration loaded!')
@@ -96,12 +95,10 @@ def loadDefault_sessionState(_dispToast = False):
     
     st.session_state['sizeImage'] = None
     st.session_state['scale'] = None
-    st.session_state['scaleData'] = None
+    st.session_state['scaleInfo'] = None
 
     defaultDetectTab()
     defaultStatTab()
-
-    st.session_state["lastAggregatedImage"] = None
 
     st.session_state["analysisBuffer"] = pd.DataFrame(columns = [
         "Image",
@@ -208,6 +205,11 @@ def dialog_feedback():
 def update_sessionState(key, value):
     st.session_state[key] = value
 
+    
+@st.cache_data(show_spinner = False, max_entries = 5)
+def analyzeScaleRegion(p_image):
+    return autoscale.analyzeScaleRegion(p_image)
+
 
 
 ### Main app ###
@@ -269,20 +271,11 @@ try:
             # Detection settings and results
             with colSetting: 
                 # Preprocessing image
-                with st.spinner("Preprocessing image...", show_time = True):  
-                    st.toggle("Use default settings",
-                        disabled = not st.session_state['imgUpload'],
-                        key = 'settingDefault',
-                        help = tooltips.DefaultToggle
-                    )                         
-                    
-                    tempArrImg = np.array(srcImage, dtype = 'uint8')
-
-                    st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(
-                        tempArrImg
-                    )
-
-                    lowerBound = autoscale.findBorder(tempArrImg)                    
+                with st.spinner("Preprocessing image...", show_time = True):                    
+                    # defining the scale and related information
+                    scale, lowerBound, st.session_state['scaleInfo'] = analyzeScaleRegion(srcImage)
+                    st.session_state['scale'] = autoscale.Scale(scale)
+                  
                     if (lowerBound is not None):
                         srcImage = srcImage.crop((0, 0, srcImage.size[0], lowerBound))
                         
@@ -301,15 +294,20 @@ try:
                                     st.session_state['typeImg'] = 1     # SEM
                                 else: st.session_state['typeImg'] = 2   # TEM
                                 break
-                            
+                                              
+                st.toggle("Use default settings",
+                    disabled = not st.session_state['imgUpload'],
+                    key = 'settingDefault',
+                    help = tooltips.DefaultToggle
+                )                         
+
                 # Detection settings       
                 with st.expander("Detection settings", expanded = not st.session_state['detected'], icon = ":material/tune:"):
                     st.segmented_control("Type of microscope image",
                         required = True,
                         key = 'typeImg',
                         options = tooltips.Options.TypeMicroscope.keys(),
-                        format_func = lambda option: tooltips.Options.TypeMicroscope[option],                        
-                        #horizontal = True,  
+                        format_func = lambda option: tooltips.Options.TypeMicroscope[option],  
                         width = 'stretch',                     
                         disabled = st.session_state['settingDefault'],
                         help = tooltips.TypeMicroscopePills
@@ -335,14 +333,16 @@ try:
                         help = tooltips.Detection.Diameter
                     )
 
-                    if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-pre-3'] = False
+                    
+                    ### [Deprecated]
+                    # if ('param-pre-3' not in st.session_state) or st.session_state['settingDefault']:
+                    #         st.session_state['param-pre-3'] = False
 
-                    st.toggle("Suppression of background irregularities",
-                        key = 'param-pre-3',                              
-                        disabled = True, #st.session_state['settingDefault'],                        
-                        help = tooltips.Detection.Irregularities
-                    )
+                    # st.toggle("Suppression of background irregularities",
+                    #     key = 'param-pre-3',                              
+                    #     disabled = True, #st.session_state['settingDefault'],                        
+                    #     help = tooltips.Detection.Irregularities
+                    # )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         width = 'stretch',
@@ -356,7 +356,7 @@ try:
                         st.session_state['typeImg'],
                         st.session_state['param-pre-1'],
                         st.session_state['param-pre-2'],
-                        st.session_state['param-pre-3']
+                        #st.session_state['param-pre-3']
                     ]
                     if (st.session_state['detectionSettings'] is not None) and st.session_state['detected']:
                         if (st.session_state['detectionSettings'] != tempSettings):
@@ -405,7 +405,7 @@ try:
                                 # число параметров аппроксимации
                                 "npar": 2,
                                 # удаление сложных засветов
-                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                #"deleteBorderLines": st.session_state['param-pre-3'], 
                                 # порог бинаризации для обнаружения сложных засветов
                                 "threshLines": 100,
                                 # потенциальное количество наночастиц
@@ -439,7 +439,7 @@ try:
                                 # число параметров аппроксимации
                                 "npar": 2,
                                 # удаление сложных засветов
-                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                #"deleteBorderLines": st.session_state['param-pre-3'], 
                                 # порог бинаризации для обнаружения сложных засветов
                                 "threshLines": 100,
                                 # потенциальное количество наночастиц
@@ -477,7 +477,7 @@ try:
                                 # число параметров аппроксимации
                                 "npar": 2,
                                 # удаление сложных засветов
-                                "deleteBorderLines": st.session_state['param-pre-3'], 
+                                #"deleteBorderLines": st.session_state['param-pre-3'], 
                                 # порог бинаризации для обнаружения сложных засветов
                                 "threshLines": 100,
                                 # потенциальное количество наночастиц
@@ -534,7 +534,7 @@ try:
                             st.session_state['typeImg'],
                             st.session_state['param-pre-1'],
                             st.session_state['param-pre-2'],
-                            st.session_state['param-pre-3']
+                            #st.session_state['param-pre-3']
                         ]
         
                     st.session_state['timeDetection'] = int(np.ceil(time.time() - timeStart))
@@ -560,34 +560,29 @@ try:
                             help = tooltips.Filtration.Brightness
                         )
 
-                        temp_max_r_nm = 10.0
-                        temp_min_r_nm = 1.0
-                        temp_r_step = 0.1
-                        if (st.session_state['BLOBs_data'] is not None) and (st.session_state['scale'] is not None):
-                            temp_max_r_nm = np.max(st.session_state['BLOBs_data'][:, 2]) * st.session_state['scale']
-                            temp_min_r_nm = np.min(st.session_state['BLOBs_data'][:, 2]) * st.session_state['scale']
-                            temp_r_step = (temp_max_r_nm - temp_min_r_nm) / 100
-                            if temp_r_step < 0.2:
-                                temp_r_step = 0.1
-                            elif temp_r_step < 0.5:
-                                temp_r_step = 0.5                                
-                            else:
-                               temp_r_step = 1.0
+                        # Settings slider with diameters
+                        tmp_diameters = st.session_state['scale'].apply(st.session_state['BLOBs_data'][:, 2])
+                        min_d = np.min(tmp_diameters)
+                        max_d = np.percentile(tmp_diameters, 98)
 
-                        temp_max = np.ceil(temp_max_r_nm+1)
-                        temp_min = max(np.floor(temp_min_r_nm-1), 1.0)
+                        slider_min = np.floor(min_d / 10) * 10
+                        slider_max = np.ceil(max_d / 10) * 10
+
+                        if slider_max <= slider_min:
+                            slider_max = slider_min + 10
 
                         if ('param-filt-2' not in st.session_state) or st.session_state['settingDefault']:
-                            st.session_state['param-filt-2'] = (temp_min, temp_max)
+                            st.session_state['param-filt-2'] = (min_d, max_d)
 
-                        st.slider("Nanoparticle diameter, nm",
+                        st.slider(f"Nanoparticles diameter, {st.session_state['scale'].unit}",
                             key = 'param-filt-2',                         
-                            min_value = temp_min,
-                            step = temp_r_step,
-                            max_value = temp_max,
+                            min_value = slider_min,
+                            step = 0.1,
+                            max_value = slider_max,
                             format = "%0.1f",
                             disabled = st.session_state['settingDefault'],
-                            help = tooltips.Filtration.Diameter
+                            help = tooltips.Filtration.Diameter 
+                                   + f". {np.sum(tmp_diameters > max_d)} particles exceed the 98th percentile with a diameter greater than {slider_max}"
                         )
 
                         if ('param-filt-3' not in st.session_state) or st.session_state['settingDefault']:
@@ -602,48 +597,45 @@ try:
                             help = tooltips.Filtration.Reliability
                         )
                         
+                        ### [Deprecated]
+                        # if st.session_state['param-pre-3']:
+                        #     if ('param-filt-4' not in st.session_state) or st.session_state['settingDefault']:
+                        #         st.session_state['param-filt-4'] = 2500
 
-                        if st.session_state['param-pre-3']:
-                            if ('param-filt-4' not in st.session_state) or st.session_state['settingDefault']:
-                                st.session_state['param-filt-4'] = 2500
+                        #     st.slider("Area of background irregularities",
+                        #         key = 'param-filt-4',
+                        #         min_value = 0,
+                        #         step = 25,
+                        #         max_value = 5000,
+                        #         disabled = st.session_state['settingDefault'],
+                        #         help = tooltips.Filtration.Irregularities
+                        #     )
 
-                            st.slider("Area of background irregularities",
-                                key = 'param-filt-4',
-                                min_value = 0,
-                                step = 25,
-                                max_value = 5000,
-                                disabled = st.session_state['settingDefault'],
-                                help = tooltips.Filtration.Irregularities
-                            )
+                        #     temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
+                        #     temp_img = ExpApp.PreprocessingTopHat(temp_img, 9)   
 
-                            temp_img = ExpApp.PreprocessingMedian(st.session_state['srcImg'].copy(), 3)
-                            temp_img = ExpApp.PreprocessingTopHat(temp_img, 9)   
-
-                            _, img_contours, st.session_state['big_contours'] = ExpApp2.FindAreasToDelete(temp_img, 85, st.session_state['param-filt-4'])
-                            temp_BLOBs_data = ExpApp2.DeleteBorderPointsM(st.session_state['BLOBs_data'], img_contours, 255)
-                         
-                    divider = 1
-                    if st.session_state['scale'] is not None:
-                        divider = st.session_state['scale']
-
-                    params_filter = {
-                        "thr_c0": st.session_state['param-filt-1'],
-                        "min_thr_d": st.session_state['param-filt-2'][0] / divider,   
-                        "max_thr_d": st.session_state['param-filt-2'][1] / divider, 
-                        "thr_error": 1 - st.session_state['param-filt-3'], 
-                    }
+                        #     _, img_contours, st.session_state['big_contours'] = ExpApp2.FindAreasToDelete(temp_img, 85, st.session_state['param-filt-4'])
+                        #     temp_BLOBs_data = ExpApp2.DeleteBorderPointsM(st.session_state['BLOBs_data'], img_contours, 255)
+                     
             
                     # Filtering
                     BLOBs_data_filt = ExpApp.my_FilterBlobs_change(
-                        st.session_state['BLOBs_data'] if not st.session_state['param-pre-3'] else temp_BLOBs_data,
-                        params_filter
+                        st.session_state['BLOBs_data'], # if not st.session_state['param-pre-3'] else temp_BLOBs_data,
+                        {
+                            "thr_c0": st.session_state['param-filt-1'],
+                            "min_thr_d": st.session_state['param-filt-2'][0] * st.session_state['scale'].divider,   
+                            "max_thr_d": st.session_state['param-filt-2'][1] * st.session_state['scale'].divider, 
+                            "thr_error": 1 - st.session_state['param-filt-3'], 
+                        }
                     )
-
 
                     st.session_state['filterParticles'] = rEA.filtrationParticles(
                         st.session_state['detectParticles'],
                         c0 = (st.session_state['param-filt-1'], None),
-                        diameter = (st.session_state['param-filt-2'][0] / divider, st.session_state['param-filt-2'][1] / divider),
+                        diameter = (
+                            st.session_state['param-filt-2'][0] * st.session_state['scale'].divider,
+                            st.session_state['param-filt-2'][1] * st.session_state['scale'].divider
+                        ),
                         approxError = (None, 1 - st.session_state['param-filt-3'])
                     )
 
@@ -663,20 +655,22 @@ try:
                                         
                     with st.expander("Visualization and saving results", expanded = False, icon = ":material/display_settings:"):
                         # Displaying the scale
-                        st.toggle("Estimated scale", key = 'displayScale', 
+                        st.toggle("Estimated scale",
+                            key = 'displayScale', 
                             disabled = True,
                             help = tooltips.Visualization.Scale
                         )
-
-                        if (st.session_state['displayScale'] and st.session_state['scaleData'] is None):
+                        
+                        if (st.session_state['displayScale'] and st.session_state['scaleInfo'] is None):
                             st.warning(tooltips.Warnings.OutScale, icon = ":material/warning:") 
 
+                        ### [Deprecated]
                         # Highlighting background irregularities
-                        st.toggle("Highlighting background irregularities",
-                            key = 'areas',
-                            disabled = not st.session_state['param-pre-3'],
-                            help = tooltips.Visualization.Irregularities
-                        )
+                        # st.toggle("Highlighting background irregularities",
+                        #     key = 'areas',
+                        #     disabled = not st.session_state['param-pre-3'],
+                        #     help = tooltips.Visualization.Irregularities
+                        # )
                             
                         # Saving
                         selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
@@ -690,7 +684,7 @@ try:
                         )
 
                         fileResult = io.BytesIO()
-                        fileResultName = 'None'
+                        fileResultName = Path(uploadedImg.name).stem
                         button_download_disabled = False
 
                         match selectionSave:
@@ -702,7 +696,7 @@ try:
                                     draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
                                 temp.save(fileResult, format = 'png')
-                                fileResultName = f"particls-{Path(uploadedImg.name).stem}.tif"
+                                fileResultName += f"_particles.tif"
 
                             case 1:
                                 imgBLOB = st.session_state['srcImg'].convert("RGB")
@@ -712,35 +706,24 @@ try:
                                     draw.ellipse((x-r, y-r, x+r, y+r), outline = colorRGB)
 
                                 imgBLOB.save(fileResult, format = 'png')
-                                fileResultName = f"particls+image-{Path(uploadedImg.name).stem}.tif"
+                                fileResultName += f"_particls+image.tif"
 
                             case 2:
                                 fileResult = io.StringIO()
-
                                 temp_writer = csv.writer(fileResult, delimiter = ';')
-                                if st.session_state['scale'] is not None: 
-                                    temp_writer.writerow(["Scalse:", f"{st.session_state['scale']:.3}", "nm/px"])
-                                else:
-                                    temp_writer.writerow([f"Using default scale:", "1.0", "nm/px"])
-                    
+                                temp_writer.writerow([f"Scale: {st.session_state['scale'].multiplier:.3} ({st.session_state['scale'].unit}/px)"])
                                 temp_writer.writerow(['coord y, px', 'coord x, px', 'diameters, px'])
                                 temp_writer.writerows(st.session_state['BLOBs_filter'])
-
-                                fileResultName = f"particls_info-{Path(uploadedImg.name).stem}.csv"
+                                fileResultName += f"_parameters.csv"
                             case 3:
-
-                                st.write()
-
                                 imageData= {
                                     'name': Path(uploadedImg.name).stem,
                                     'width': st.session_state['srcImg'].size[0],
                                     'height': st.session_state['srcImg'].size[1],
                                     'buffer': uploadedImg.getvalue()
                                 }
-
                                 fileResult = API2CVAT.ExportToCVAT(imageData, st.session_state['BLOBs_filter'])
-
-                                fileResultName = f"{Path(uploadedImg.name).stem}-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
+                                fileResultName += f"_{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
                             case _:
                                 button_download_disabled = True
 
@@ -817,15 +800,19 @@ try:
                         
                         st.session_state['statImage'] = Image.open(imageCVAT).convert('RGB')
 
-                        #TO DO: fix 
+                        #TO DO: fix resize
                         st.session_state['statImage'] =  st.session_state['statImage'].resize((1280, 960))
 
-                        st.session_state['scale'], st.session_state['scaleData'] = autoscale.estimateScale(st.session_state['statImage'].convert("L"))
-                        
-                        if st.session_state['scale'] is not None:
-                            st.session_state['sizeImage'] = (st.session_state['statImage'].size[0], st.session_state['scaleData'][0])
-                        else:
-                            st.session_state['sizeImage'] = st.session_state['statImage'].size
+                        #TO DO: The global scale is used to automatically detect and download the CVAT.
+                        #  It's working now because the first layout is always executed and the image scale
+                        #  is always used there. and here it works because the scale is used from a backup.
+                        #  It is better to reduce these scales.
+                        tmp_scale, lowerBound, st.session_state['scaleInfo'] = analyzeScaleRegion(st.session_state['statImage'].convert("L"))
+                        st.session_state['scale'] = autoscale.Scale(tmp_scale)
+
+                        st.session_state['sizeImage'] = list(st.session_state['statImage'].size)
+                        if lowerBound is not None:
+                            st.session_state['sizeImage'][1] = lowerBound
                 case _:
                     st.session_state['calcStatictic'] = False
 
@@ -837,11 +824,8 @@ try:
                                 
                 boolIndexSelectedBLOBs = None   
 
-                diameter_nm = st.session_state['statBLOBs'][:, 2]
-                BLOBs_nm = st.session_state['statBLOBs']
-                if st.session_state['scale'] is not None:
-                    diameter_nm = diameter_nm * st.session_state['scale']
-                    BLOBs_nm = BLOBs_nm * st.session_state['scale']
+                diameter_nm = st.session_state['scale'].apply(st.session_state['statBLOBs'][:, 2])
+                BLOBs_nm = st.session_state['scale'].apply(st.session_state['statBLOBs'])
 
                 db11, db12, db13 = st.columns([4, 4, 4])            
 
@@ -882,7 +866,7 @@ try:
 
                     counts, bins = np.histogram(diameter_nm, bins = np.arange(start, end, step, dtype = float))
                                         
-                    name_x = "Diameters, nm"
+                    name_x = f"Diameters, {st.session_state["scale"].unit}"
                     temp = [[float(i), float(i+step)] for i in bins]
                     fraction = counts / np.sum(counts) * 100
                     if st.session_state['normalize']:
@@ -918,7 +902,7 @@ try:
                         customdata = customDataChart,
                         showlegend = False,
                         hovertemplate = (
-                            "Diameter: [%{customdata[0]:.1f}, %{customdata[1]:.1f}) nm<br>"
+                            f"Diameter: [%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}}) {st.session_state["scale"].unit}<br>"
                             "Particls: " + hover_y +
                             "<extra></extra>"
                         )
@@ -1031,11 +1015,8 @@ try:
 
                         instruct.MaterialDensity(materialName, materialDensity)
                     
-                    # Additional info
-                    if st.session_state['scale'] is None:
-                        pass # TODO input scale
-                    else:                    
-                        instruct.EstimatedScale(st.session_state["scale"])
+                    # Additional info                                     
+                    instruct.EstimatedScale(st.session_state["scale"]) # TODO input scale
                     
                     if selectionMaterial == 4: # User material
                         instruct.UserMaterial(materialName, materialDensity)
@@ -1051,7 +1032,7 @@ try:
                         currentDiameter,
                         materialDensity,
                         st.session_state['sizeImage'],
-                        st.session_state['scale'] # TODO add st.session_state with key 'areaImage'
+                        st.session_state['scale'].multiplier # TODO add st.session_state with key 'areaImage'
                     )
 
                     # TODO fix boolIndexSelectedBLOBs
@@ -1134,12 +1115,8 @@ try:
             with st.expander("Nanoparticle spatial distribution", expanded = True, icon = ":material/data_thresholding:"):
                 instruct.AboutSectionSpatialDistribution()
 
-                currentBLOBs = np.copy(st.session_state['statBLOBs'])
-                if st.session_state['scale'] is not None:         
-                    currentBLOBs = currentBLOBs * st.session_state['scale']
-
+                currentBLOBs = st.session_state['scale'].apply(np.copy(st.session_state['statBLOBs']))
                 fullDist, minDist = NanoStat.euclideanDistance(currentBLOBs) 
-
 
                 db21, db22, db23 = st.columns([1, 1, 1])
                 
@@ -1163,36 +1140,14 @@ try:
                         emptyCount[i] = np.sum(temp == 0)
                         totalCount[i] = temp.size
 
-                        emptySubareas[i] = emptyCount[i] / totalCount[i]
+                        emptySubareas[i] = emptyCount[i] / totalCount[i]                    
                     
-                    if (st.session_state['scale'] is not None):
-                        fig = px.bar(x = x * st.session_state['scale'], y = emptySubareas)
-                    else:
-                        fig = px.bar(x = x, y = emptySubareas)
-
-
-                    df = pd.DataFrame({
-                        "Block size (px)": x,
-                        "Block size (nm)": x if (st.session_state["scale"] is None) else (x * st.session_state["scale"]),
-                        "Empty subareas": emptyCount,
-                        "Total subareas": totalCount,
-                        "Empty fraction": emptySubareas,
-                    })
-
-                    db21_buttonPlaceholder.download_button(
-                        label = "Download raw data chart *.csv",
-                        data = df.to_csv(index = False).encode("utf-8"),
-                        file_name = f"{st.session_state['statImageName']}-empty-subareas.csv",
-                        width = 'stretch', 
-                        icon = ":material/download:",
-                        help = tooltips.NoneInfo
-                    )
-
+                    fig = px.bar(x = st.session_state['scale'].apply(x), y = emptySubareas)
 
                     fig.update_layout(
                         margin = marginChart,
-                        xaxis_title_text = 'Size of square subareas, nm',
-                        yaxis_title_text = 'Fraction of empty subareas',
+                        xaxis_title_text = f'Size of square subareas, {st.session_state["scale"].unit}',
+                        yaxis_title_text = 'Empty subareas fraction',
                         showlegend = False,
                         bargap = 0
                     )
@@ -1202,13 +1157,28 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Size: %{x:.2} nm <br>Empty: %{y:.2}",
+                        hovertemplate = f"Size: %{{x:.2}} {st.session_state["scale"].unit} <br>Empty: %{{y:.2}}",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1
                     )
 
                     st.plotly_chart(fig, width = 'stretch',)
+
+                    # Saving db21 
+                    db21_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = pd.DataFrame({
+                            f"Block size ({st.session_state['scale'].unit})": st.session_state['scale'].apply(x),
+                            "Empty subareas": emptyCount,
+                            "Total subareas": totalCount,
+                            "Empty fraction": emptySubareas,
+                        }).to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-empty-subareas.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
                 # END db21
 
                 # Distance to nearest nanoparticle
@@ -1217,26 +1187,8 @@ try:
                         # Saving raw data db22
                         db22_buttonPlaceholder = st.empty()
 
-                    start = 0
-                    end = 50
-                    step = 2
-
-                    counts, bins = np.histogram(minDist, bins = np.arange(start, end, step, dtype = float))                      
+                    counts, bins = np.histogram(minDist, bins = np.arange(0, 50, 2, dtype = float))                      
                     distanceNearest = counts / np.sum(counts)
-
-                    df = pd.DataFrame({
-                        "Distance (px)": minDist if (st.session_state["scale"] is None) else (minDist / st.session_state["scale"]),
-                        "Distance (nm)": minDist,
-                    })
-
-                    db22_buttonPlaceholder.download_button(
-                        label = "Download raw data chart *.csv",
-                        data = df.to_csv(index = False).encode("utf-8"),
-                        file_name = f"{st.session_state['statImageName']}-distance-nearest-nanoparticle.csv",
-                        width = 'stretch', 
-                        icon = ":material/download:",
-                        help = tooltips.NoneInfo
-                    )
 
                     fig = go.Figure()
 
@@ -1249,7 +1201,7 @@ try:
                     fig.update_layout(
                         margin = marginChart,                        
                         bargap = 0,
-                        xaxis_title_text = 'Distance to nearest nanoparticle, nm',
+                        xaxis_title_text = f'Distance to nearest nanoparticle, {st.session_state["scale"].unit}',
                         yaxis_title_text = 'Particle fraction',
                         showlegend = False
                     )
@@ -1259,13 +1211,25 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Distanse: %{x:.2} nm<extra></extra>",
+                        hovertemplate = f"Distanse: %{{x:.2}} {st.session_state["scale"].unit} <br>Fraction: %{{y:.2}}<extra></extra>",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 1,  
                     )
 
                     st.plotly_chart(fig, width = 'stretch',)
+                                        
+                    # Saving db22
+                    db22_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = pd.DataFrame({
+                            f"Distance ({st.session_state["scale"].unit})": minDist,
+                        }).to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-distance-nearest-nanoparticle.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
                 # END db22
 
                 # Average number of nanoparticles per unit area
@@ -1274,55 +1238,18 @@ try:
                          # Saving raw data db23
                         db23_buttonPlaceholder = st.empty()
                     
-                    x_px = np.arange(5, 105, 1)
-                    if st.session_state["scale"] is not None:
-                        x = x_px * st.session_state["scale"]
-                    else:
-                        x = x_px 
+                    # TODO: what the scale of 'x'?
+                    x = st.session_state["scale"].apply(np.arange(5, 105, 1))
 
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
-
-                    numberLess = np.rint(
-                        averageDensity
-                        * np.pi
-                        * x**2
-                        * len(fullDist)
-                    ).astype(int)
-
-                    averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
-
-                    if st.session_state["scale"] is not None:
-                        df = pd.DataFrame({
-                            "Neighborhood radius (px)": x_px,
-                            "Neighborhood radius (nm)": x,
-                            "Number of particles": len(fullDist),
-                            "Number of neighbors": numberLess,
-                            "Average density (particles/nm^2)": averageDensity,
-                        })
-                    else:
-                        df = pd.DataFrame({
-                            "Neighborhood radius (px)": x_px,
-                            "Number of particles": len(fullDist),
-                            "Number of neighbors": numberLess,
-                            "Average density (particles/px^2)": averageDensity,
-                        })
-
-                    db23_buttonPlaceholder.download_button(
-                        label = "Download raw data chart *.csv",
-                        data = df.to_csv(index = False).encode("utf-8"),
-                        file_name = f"{st.session_state['statImageName']}-nanoparticles-unit-area.csv",
-                        width = 'stretch', 
-                        icon = ":material/download:",
-                        help = tooltips.NoneInfo
-                    )
-
-                                        
-                    fig = px.bar(x = x , y = averageDensity / (1 if (st.session_state["scale"] is None) else st.session_state["scale"]**2))
+                    numberLess = np.rint(averageDensity * np.pi * x**2 * len(fullDist)).astype(int)
+                                                            
+                    fig = px.bar(x = x , y = averageDensity)
 
                     fig.update_layout(
                         margin = marginChart,
-                        xaxis_title_text = 'Neighborhood radius, nm',
-                        yaxis_title_text = 'Nanoparticles per unit area, particles/nm²',
+                        xaxis_title_text = f'Neighborhood radius, {st.session_state["scale"].unit}',
+                        yaxis_title_text = f'Nanoparticles per unit area, particles/{st.session_state["scale"].unit}²',
                         showlegend = False,
                         bargap = 0
                     )
@@ -1332,13 +1259,28 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Neighborhood radius: %{x:.2} nm <br>Particles/nm²: %{y:.2}",
+                        hovertemplate = f"Neighborhood radius: %{{x:.2}} {st.session_state["scale"].unit} <br>Particles/{st.session_state["scale"].unit}²: %{{y:.1e}}",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
                     )
 
                     st.plotly_chart(fig, width = 'stretch')
+                    
+                    # Saving db23
+                    db23_buttonPlaceholder.download_button(
+                        label = "Download raw data chart *.csv",
+                        data = pd.DataFrame({
+                            f"Neighborhood radius ({st.session_state["scale"].unit})": x,
+                            "Number of particles": len(fullDist),
+                            "Number of neighbors": numberLess,
+                            f"Average density (particles/{st.session_state["scale"].unit}^2)": averageDensity,
+                        }).to_csv(index = False).encode("utf-8"),
+                        file_name = f"{st.session_state['statImageName']}-nanoparticles-unit-area.csv",
+                        width = 'stretch', 
+                        icon = ":material/download:",
+                        help = tooltips.NoneInfo
+                    )
                 # END db23
 
                 
@@ -1347,22 +1289,17 @@ try:
                 # Average coverage of neighbors
                 with db31.container(border = True, height = heightCol): 
                     with st.popover("Average coverage of neighbors", width = 'stretch'):
-                        pass               
+                        pass   
 
-
-                    x = np.arange(5, 100, 1)
+                    x = st.session_state["scale"].apply(np.arange(10, 105, 1))
                     localArea = NanoStat.localAreaFraction(x, fullDist, currentBLOBs[:, 2]) * 100
-
-                    if (st.session_state['scale'] is not None):
-                        fig = px.bar(x = x * st.session_state['scale'], y = localArea)
-                    else:
-                        fig = px.bar(x = x , y = localArea)
-
+                    
+                    fig = px.bar(x = x, y = localArea)
 
                     fig.update_layout(
                         margin = marginChart,
-                        xaxis_title_text = 'Neighbors area size, nm',
-                        yaxis_title_text = 'Neighbors coverage',
+                        xaxis_title_text = f'Neighbors area size, {st.session_state["scale"].unit}',
+                        yaxis_title_text = 'Neighbors coverage, %',
                         showlegend = False,
                         bargap = 0
                     )
@@ -1372,7 +1309,7 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Area size: %{x:.2} nm <br>Coverage: %{y:.3}%",
+                        hovertemplate = f"Area size: %{{x:.2}} {st.session_state["scale"].unit} <br>Coverage: %{{y:.3}}%",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
@@ -1386,18 +1323,14 @@ try:
                     with st.popover("Average number of neighbors", width = 'stretch'):
                         pass               
                     
-                    x = np.arange(5, 100, 1)
+                    x = st.session_state["scale"].apply(np.arange(10, 105, 1))
                     averageNeighborhoods = NanoStat.averageNeighborhoods(x, fullDist)
-
-                    if (st.session_state['scale'] is not None):
-                        fig = px.bar(x = x * st.session_state['scale'], y = averageNeighborhoods)
-                    else:
-                        fig = px.bar(x = x , y = averageNeighborhoods)
-
+                    
+                    fig = px.bar(x = x, y = averageNeighborhoods)
 
                     fig.update_layout(
                         margin = marginChart,
-                        xaxis_title_text = 'Nanoparticle neighborhood size, nm',
+                        xaxis_title_text = f'Nanoparticle neighborhood size, {st.session_state["scale"].unit}',
                         yaxis_title_text = 'Average number of neighbors',
                         showlegend = False,
                         bargap = 0
@@ -1408,7 +1341,7 @@ try:
                     )
 
                     fig.update_traces(
-                        hovertemplate = "Size: %{x:.2} nm <br>Neighbors: %{y:.2}",
+                        hovertemplate = f"Size: %{{x:.2}} {st.session_state["scale"].unit} <br>Neighbors: %{{y:.2}}",
                         marker_color = colorRGBA_str,
                         marker_line_color = 'blue',
                         marker_line_width = 0.5
@@ -1418,55 +1351,51 @@ try:
                 # END db32
             
                 # Statistics aggregator
+                # TODO: make it readable
                 with db33.container(border = True, height = heightCol):
                     st.subheader("Aggregate statistics", width = 'stretch') 
 
-                    if st.session_state["statImageName"] != st.session_state["lastAggregatedImage"]:
+                    # check the presence of this image in table
+                    if st.session_state["statImageName"] != st.session_state.get("previousImage"):
+                        st.session_state["previousImage"] = st.session_state["statImageName"] 
+                        if not st.session_state["analysisBuffer"]["Image"].eq(st.session_state["statImageName"]).any():
+                            if len(minDist) < 3:
+                                mp_nearest = np.mean(minDist)
+                            elif np.std(minDist) == 0:
+                                mp_nearest = minDist[0]
+                            else:
+                                kde = scipy.stats.gaussian_kde(minDist)
+                                kde_x = np.linspace(
+                                    minDist.min(),
+                                    minDist.max(),
+                                    1000
+                                )
+                                density = kde(kde_x)
+                                mp_nearest = kde_x[np.argmax(density)]
+                        
+                            mean_nearest = np.mean(minDist)
+                            threshold_nm = round(np.mean(currentBLOBs[:, 2]))
+                            area_nm2 = np.prod(st.session_state["sizeImage"]) * st.session_state['scale'].multiplier**2
+                            cl_ev = 2 * mean_nearest * np.sqrt(len(currentBLOBs) / area_nm2)
 
-                        st.session_state["lastAggregatedImage"] = (
-                            st.session_state["statImageName"]
-                        )
-
-                        if len(minDist) < 3:
-                            mp_nearest = np.mean(minDist)
-                        elif np.std(minDist) == 0:
-                            mp_nearest = minDist[0]
-                        else:
-                            kde = scipy.stats.gaussian_kde(minDist)
-                            kde_x = np.linspace(
-                                minDist.min(),
-                                minDist.max(),
-                                1000
+                            newRow = {
+                                "Image": st.session_state["statImageName"],
+                                "Number of particles": len(currentBLOBs),
+                                "Material type": materialName,
+                                "Mean particle diameter, nm": np.mean(currentBLOBs[:, 2]),
+                                "Particle surface density, mg/m²": 
+                                    np.sum((1/6 * np.pi * currentBLOBs[:, 2]**3) * materialDensity * 10**+12) / area_nm2,
+                                "Mean distance to neighbour, nm": mean_nearest,
+                                "Most probable distance to neighbour, nm": mp_nearest,
+                                "Distance threshold, nm": threshold_nm,
+                                "Fraction below distance threshold": np.sum(minDist < threshold_nm) / len(currentBLOBs),
+                                "Clark-Evans index (R)": cl_ev,
+                            }
+                        
+                            st.session_state["analysisBuffer"] = pd.concat(
+                                [ st.session_state["analysisBuffer"], pd.DataFrame([newRow]) ],
+                                ignore_index = True
                             )
-                            density = kde(kde_x)
-                            mp_nearest = kde_x[np.argmax(density)]
-                        
-                        mean_nearest = np.mean(minDist)
-
-                        threshold_nm = round(np.mean(currentBLOBs[:, 2]))
-
-                        area_nm2 = np.prod(st.session_state["sizeImage"]) * (st.session_state['scale']**2 if st.session_state['scale'] is not None else 1)
-
-                        cl_ev = 2 * mean_nearest * np.sqrt(len(currentBLOBs) / area_nm2)
-
-                        newRow = {
-                            "Image": st.session_state["statImageName"],
-                            "Number of particles": len(currentBLOBs),
-                            "Material type": materialName,
-                            "Mean particle diameter, nm": np.mean(currentBLOBs[:, 2]),
-                            "Particle surface density, mg/m²": 
-                                np.sum((1/6 * np.pi * currentBLOBs[:, 2]**3) * materialDensity * 10**+12) / area_nm2,
-                            "Mean distance to neighbour, nm": mean_nearest,
-                            "Most probable distance to neighbour, nm": mp_nearest,
-                            "Distance threshold, nm": threshold_nm,
-                            "Fraction below distance threshold": np.sum(minDist < threshold_nm) / len(currentBLOBs),
-                            "Clark-Evans index (R)": cl_ev,
-                        }
-                        
-                        st.session_state["analysisBuffer"] = pd.concat(
-                            [ st.session_state["analysisBuffer"], pd.DataFrame([newRow]) ],
-                            ignore_index = True
-                        )
                    
                     buffer = st.session_state["analysisBuffer"].copy()
                     buffer.insert(0, "Delete", False)
@@ -1609,7 +1538,7 @@ try:
                                 fig.update_layout(shapes = shapes_list, height = 600)
 
 
-                                temp_gt_blobs = gt_blobs[:, 2] * st.session_state['scale']
+                                temp_gt_blobs = st.session_state["scale"].apply(gt_blobs[:, 2])
                                 fig.add_trace(go.Scatter(
                                     x = gt_blobs[:, 1],
                                     y = gt_blobs[:, 0],
@@ -1624,7 +1553,7 @@ try:
                                     showlegend = False
                                 ))
 
-                                temp_ALL = ALL[:, 2] * st.session_state['scale']
+                                temp_ALL = st.session_state["scale"].apply(ALL[:, 2])
                                 fig.add_trace(go.Scatter(
                                     x = ALL[:, 1],
                                     y = ALL[:, 0],

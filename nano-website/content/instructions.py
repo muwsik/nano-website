@@ -65,7 +65,7 @@ def MaterialDensity(name, value):
 def EstimatedScale(scale):
     st.markdown(f"""
         <div class = 'text'>
-            Estimated scale: <b>{scale:.3f} nm/px</b> 
+            Estimated scale: <b>{scale.multiplier:.3f} {scale.unit}/px</b> 
         </div>
     """, unsafe_allow_html = True)
 

@@ -12,7 +12,7 @@ class Detection:
 
 class Filtration:
     Brightness      = "Brightness in the central pixel of the nanoparticle"
-    Diameter        = "Range of possible nanoparticle diameters in nanometers"
+    Diameter        = "Range of possible nanoparticle diameters"
     Reliability     = "Higher values indicate better nanoparticle visibility and clearer separation from image background"
     Irregularities  = "The minimum area of the bright zone identified as an artifact of the background"
 
@@ -101,7 +101,7 @@ class Options:
     Saving          = {
         0: "Particles on clear background (*.tif)",
         1: "Particles on EM-image (*.tif)",
-        2: "Particles characteristics (*.csv)",
+        2: "Particles parameters (*.csv)",
         3: "CVAT task (*.zip)"
     }
 

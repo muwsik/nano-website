@@ -3,8 +3,6 @@ import numpy as np
 import easyocr
 import re
 
-import streamlit as st
-
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -61,9 +59,8 @@ def scale(c_text):
 
     return _scale, matchesScale
 
-@st.cache_data(show_spinner = False)
-def estimateScale(c_image):
 
+def analyzeScaleRegion(c_image):
     if isinstance(c_image, np.ndarray):
         pass
     elif isinstance(c_image, Image.Image):
@@ -78,12 +75,62 @@ def estimateScale(c_image):
         scaleLengthVal, startPixelScale = scaleLength(c_image[lowerBound])
 
         if (scaleVal is not None) and (scaleLengthVal is not None):
-            return scaleVal / scaleLengthVal, [lowerBound, startPixelScale, scaleLengthVal, scaleText]
+            return scaleVal / scaleLengthVal, lowerBound, [startPixelScale, scaleLengthVal, scaleText]
+     
+    return None, lowerBound, None
+
+
+class Scale:
+    def __init__(self, multiplier = None):
+
+        if (multiplier is None):
+            self._mode = 'PIXELS'
+            self._multiplier = 1.0
+        else:            
+            self.setScale(multiplier)
+                
+
+    def setScale(self, multiplier):
+        if multiplier <= 0:
+            raise ValueError("Scale must be positive.")
+
+        self._mode = 'METRIC'
+        self._multiplier = multiplier    
         
-    return None, None
+
+    def apply(self, value):
+        return value * self._multiplier
+
+
+    @property
+    def unit(self):
+         return "nm" if self._mode == 'METRIC' else "px"    
+     
+    @property
+    def multiplier(self):
+        return self._multiplier
+
+    @property
+    def divider(self):
+        return 1 / self._multiplier
+     
+
 
 ### main
-if __name__ == "__main__":    
+if __name__ == "__main__":  
+    img_path = r"C:\Users\Muwa\Desktop\2-S1-no_area-100k-ordered (6).tif"
+
+    img = Image.open(img_path).convert('L')
+    img = img.resize((1280, 960))
+    grayImage = np.array(img, dtype='uint8')
+
+    tmp = Scale(grayImage)
+
+    print(tmp.__dict__)
+
+
+### main
+if __name__ == "__main1__":    
 
     img_path = r"D:\Cloud\Mycroscopy\Mass\статья\2026-03-02-Kashin\SE\100k\ED-779-A2_Pd_7_0003.tif"
 
