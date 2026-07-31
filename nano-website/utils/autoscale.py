@@ -99,7 +99,7 @@ class Scale:
         
 
     def apply(self, value):
-        return value * self._multiplier
+        return np.asarray(value) * self._multiplier
 
 
     @property

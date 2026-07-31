@@ -10,7 +10,7 @@ import io
 
 
 @st.cache_data(show_spinner = False, max_entries = 5)
-def ExportToCVAT(imageData, BLOBs): 
+def ExportToCVAT(imageData, particles): 
     manifest_jsonl_file = f'''{{"version":"1.1"}}\n{{"type":"images"}}\n{{"name":"{imageData['name']}","extension":".tif","width":{imageData['width']},"height":{imageData['height']},"meta":{{"related_images":[]}}}}'''
     
     # not changed
@@ -49,8 +49,8 @@ def ExportToCVAT(imageData, BLOBs):
     """ 
 
     shapes = ""
-    for i, blob in enumerate(BLOBs):
-        y, x, d = blob
+    for i, _particle in enumerate(particles):
+        y = _particle.y; x = _particle.x; r = _particle.diameter/2 
 
         shape_element = f"""{{
             "type":"polyline",
@@ -58,7 +58,7 @@ def ExportToCVAT(imageData, BLOBs):
             "outside":false,
             "z_order":0,
             "rotation":0.0,
-            "points":[{x},{y - d/2},{x},{y + d/2}],
+            "points":[{x},{y - r},{x},{y + r}],
             "frame":0,
             "group":0,
             "source":"manual",
@@ -68,7 +68,7 @@ def ExportToCVAT(imageData, BLOBs):
         }}""" 
 
         shapes += shape_element
-        if i < (len(BLOBs) - 1):
+        if i < (len(particles) - 1):
             shapes += ",\n"
 
     annotations_json_file = f"""[{{
@@ -122,6 +122,7 @@ def ImportJobFromCVAT(jobCVAT):
 
             BLOBs.append([y, x, d])
 
+            # old format
     return np.array(BLOBs), imgName, [imgWidth, imgHeight]
 
 
