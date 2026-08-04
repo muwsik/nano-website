@@ -25,6 +25,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="content\examples\gallery.py" />
     <Compile Include="utils\accuracy.py" />
     <Compile Include="utils\API2CVAT.py" />
     <Compile Include="content\instructions.py" />
@@ -60,6 +61,7 @@
   <ItemGroup>
     <Folder Include="content\" />
     <Folder Include="content\images\" />
+    <Folder Include="content\examples\" />
     <Folder Include="utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />

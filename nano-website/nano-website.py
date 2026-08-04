@@ -1,13 +1,11 @@
 # Run application
 # streamlit run .\nano-website\nano-website.py
 
-from ast import Dict
 import streamlit as st
 
-import io, csv, scipy
+import io, csv, time
 import numpy as np
 import pandas as pd
-import time
 from pathlib import Path
 from PIL import Image
 from types import SimpleNamespace
@@ -29,6 +27,8 @@ import utils.accuracy as accuracy
 
 # dev utils
 import utils.reworkExpApp as rEA
+
+# UI
 from streamlit_image_overlay import streamlit_image_overlay
 
 import traceback
@@ -47,17 +47,27 @@ def resetDetectionTab():
         source = None,
         preprocessed = None,
     )
-    st.session_state['Image.type'] = None
 
     st.session_state['Particles'] = SimpleNamespace(
         detect = False,  
         p_detected = None,
         p_filtered = [],
         settings = None,
-        time = None
+        time = None,
     )
 
-    st.session_state['default'] = False
+    st.session_state['Default'] = SimpleNamespace(
+        imageType       = None,             # auto estimate
+        d_brightness    = 5,
+        d_diameter      = 2,                # type, not value 
+        f_brightness    = 7,
+        f_diameter      = (None, None),     # nm scale
+        f_reliability   = 0.75,
+    )
+
+    # widgets
+    st.session_state['Image.type'] = None
+    st.session_state['Default.use'] = False
     st.session_state['displayScale'] = False
 
 
@@ -268,7 +278,7 @@ try:
                             (0, 0, st.session_state['Image'].source.size[0], lowerBound)
                         )                        
 
-                    if (st.session_state['Image.type'] is None) or st.session_state['default']:
+                    if (st.session_state['Image.type'] is None) or st.session_state['Default.use']:
                         data = np.array(st.session_state['Image'].preprocessed, dtype = 'uint8').flatten()
                         counts, _ = np.histogram(data, bins = np.arange(0, 255, 1))
                         counts = counts / np.sum(counts)
@@ -284,7 +294,7 @@ try:
                                               
                 st.toggle("Use default settings",
                     disabled = not st.session_state['Image'].upload,
-                    key = 'default',
+                    key = 'Default.use',
                     help = tooltips.DefaultToggle
                 )                         
 
@@ -298,27 +308,27 @@ try:
                         options = tooltips.Options.TypeMicroscope.keys(),
                         format_func = lambda option: tooltips.Options.TypeMicroscope[option],  
                         width = 'stretch',                     
-                        disabled = st.session_state['default'],
+                        disabled = st.session_state['Default.use'],
                         help = tooltips.TypeMicroscopePills
                     )                    
                     
-                    if ('param-pre-1' not in st.session_state) or st.session_state['default']:
-                        st.session_state['param-pre-1'] = 5
+                    if ('param-pre-1' not in st.session_state) or st.session_state['Default.use']:
+                        st.session_state['param-pre-1'] = st.session_state['Default'].d_brightness
                         
                     st.slider("Minimal nanoparticle brightness",
                         key = 'param-pre-1',
-                        disabled = st.session_state['default'],
+                        disabled = st.session_state['Default.use'],
                         help = tooltips.Detection.Brightness
                     )
 
-                    if ('param-pre-2' not in st.session_state) or st.session_state['default']:
-                            st.session_state['param-pre-2'] = 2
+                    if ('param-pre-2' not in st.session_state) or st.session_state['Default.use']:
+                            st.session_state['param-pre-2'] = st.session_state['Default'].d_diameter
 
                     st.selectbox("Hypothetical nanoparticles diameter",
                         key = 'param-pre-2',
                         options = tooltips.Options.NanopartSize.keys(),
                         format_func = lambda option: tooltips.Options.NanopartSize[option],
-                        disabled = st.session_state['default'],
+                        disabled = st.session_state['Default.use'],
                         help = tooltips.Detection.Diameter
                     )
         
@@ -377,12 +387,12 @@ try:
                 else:
                     # Filtration settings
                     with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
-                        if ('param-filt-1' not in st.session_state) or st.session_state['default']:
-                            st.session_state['param-filt-1'] = 7
+                        if ('param-filt-1' not in st.session_state) or st.session_state['Default.use']:
+                            st.session_state['param-filt-1'] = st.session_state['Default'].f_brightness
                                                     
                         st.slider("Nanoparticle center brightness",
                             key = 'param-filt-1',
-                            disabled = st.session_state['default'],
+                            disabled = st.session_state['Default.use'],
                             help = tooltips.Filtration.Brightness
                         )
 
@@ -400,7 +410,7 @@ try:
                         if slider_max <= slider_min:
                             slider_max = slider_min + 10
 
-                        if ('param-filt-2' not in st.session_state) or st.session_state['default']:
+                        if ('param-filt-2' not in st.session_state) or st.session_state['Default.use']:
                             st.session_state['param-filt-2'] = (min_d, max_d)
 
                         st.slider(f"Nanoparticles diameter, {st.session_state['scale'].unit}",
@@ -409,22 +419,22 @@ try:
                             step = 0.1,
                             max_value = slider_max,
                             format = "%0.1f",
-                            disabled = st.session_state['default'],
+                            disabled = st.session_state['Default.use'],
                             help = tooltips.Filtration.Diameter +
                                 f"""**{np.sum(_tempDiameters > max_d)}** particles exceed the 97th percentile 
                                 with a diameter greater than {max_d:.1f} {st.session_state['scale'].unit}"""                             
                         )
 
 
-                        if ('param-filt-3' not in st.session_state) or st.session_state['default']:
-                            st.session_state['param-filt-3'] = 0.75
+                        if ('param-filt-3' not in st.session_state) or st.session_state['Default.use']:
+                            st.session_state['param-filt-3'] = st.session_state['Default'].f_reliability
 
                         st.slider("Nanoparticle reliability",
                             key = 'param-filt-3',
                             min_value = 0.0,
                             step = 0.01,
                             max_value = 1.0,
-                            disabled = st.session_state['default'],
+                            disabled = st.session_state['Default.use'],
                             help = tooltips.Filtration.Reliability
                         )
                         
