@@ -29,7 +29,7 @@ import utils.accuracy as accuracy
 import utils.reworkExpApp as rEA
 
 # UI
-from streamlit_image_overlay import streamlit_image_overlay
+from streamlit_image_overlay import streamlit_image_overlay as overlay
 
 import traceback
     
@@ -534,16 +534,53 @@ try:
             
             # Display image 
             with colImage:
-                particles = [
-                    particle.convert(st.session_state['scale'].multiplier).toDict() 
-                        for particle in st.session_state['Particles'].p_filtered
-                ]          
+                particles = []
+                if st.session_state["Particles"].p_filtered is not None:
+                    particles = [
+                        {
+                            "id": str(i),
+                            "type": "circle",
+                            "class": "default",
+                            "data": {
+                                "x": particle.x,
+                                "y": particle.y,
+                                "radius": particle.diameter / 2,
+                            },
+                            "tooltip": (
+                                f"ID: {i}\n"
+                                f"Diameter: {particle.diameter * st.session_state["scale"].multiplier:.1f} {st.session_state['scale'].unit}\n"
+                                f"Area: {particle.projectionArea * st.session_state["scale"].multiplier**2:.1f} {st.session_state['scale'].unit}²\n"
+                                f"Volume: {particle.volume * st.session_state["scale"].multiplier**3:.1f} {st.session_state['scale'].unit}³\n"
+                                f"Brightness: {particle.c0:.0f}\n"
+                                f"Reliability: {1 - particle.approxError:.2f}"
+                            ),
+                        }
+                        for i, particle in enumerate(st.session_state["Particles"].p_filtered)
+                    ]         
 
-                streamlit_image_overlay(
+                overlay(
                     image = st.session_state["Image"].source,
                     overlays = particles,
-                    metadata = {
-                        'unit': st.session_state['scale'].unit
+                    styles = {
+                        "viewport": {
+                            "height": "85vh",                 
+                            "border": "1px sold #fff",
+                            "border-radius": "5px",
+                        },
+                        "tooltip": {
+                            "background-color": "black",
+                            "color": "white",
+                            "border-radius": "5px",
+                            "padding": "10px",
+                            "font-size": "15px",
+                            "white-space": "pre-line"
+                        },
+                        "circle": {
+                            "default": {
+                                "stroke": colorRGBA_str,
+                                "stroke-width": 1,
+                            }
+                        }
                     },
                     key = "main-imageViewer"                    
                 )
