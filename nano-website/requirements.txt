@@ -1,10 +1,11 @@
-numpy==1.26.4
+numpy==2.*
 easyocr==1.7.2
-scikit-image==0.25.2
+scikit-image
 opencv-python-headless
 pillow
 joblib
 plotly
 scipy
 matplotlib
-streamlit==1.45.1
+streamlit==1.56.0
+streamlit-image-overlay

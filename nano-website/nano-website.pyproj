@@ -25,11 +25,11 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="content\examples\gallery.py" />
     <Compile Include="utils\accuracy.py" />
     <Compile Include="utils\API2CVAT.py" />
     <Compile Include="content\instructions.py" />
     <Compile Include="content\tooltips.py" />
-    <Compile Include="utils\CustomComponents.py" />
     <Compile Include="utils\ExponentialApproximation.py" />
     <Compile Include="nano-website.py" />
     <Compile Include="utils\ExponentialApproximation2.py" />
@@ -42,17 +42,17 @@
     <Compile Include="utils\autoscale.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="utils\structured.py" />
+    <Compile Include="utils\reworkExpApp.py" />
     <Compile Include="utils\WebsiteBot.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".gitignore" />
     <Content Include="content\images\detection.png" />
     <Content Include="content\images\parameters1.png" />
     <Content Include="content\images\parameters2.png" />
     <Content Include="content\images\structuredFalse.png" />
     <Content Include="content\images\structuredTrue.png" />
     <Content Include="content\qr-code.svg" />
-    <Content Include="content\svc_best-comb_mean2-3-new.joblib" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -61,6 +61,7 @@
   <ItemGroup>
     <Folder Include="content\" />
     <Folder Include="content\images\" />
+    <Folder Include="content\examples\" />
     <Folder Include="utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
