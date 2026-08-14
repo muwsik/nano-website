@@ -35,8 +35,7 @@ class Distribution:
     Download        = "Uploading chart data for self-charting"
 
 
-ExpertFileUploader  = """
-    If file is *.CSV, then each line format 'y, x, r' is a nanoparticle.  
+ExpertFileUploader  = """ 
     If file is *.ZIP, it must match the form CVAT for image 1.1.
 """
 
@@ -66,6 +65,10 @@ class Warnings:
 
     NoResultsCVAT   = """
         There are no labeled data that could be interpreted as nanoparticles.
+    """
+
+    BadFileFormat   = """
+        The data format in the file does not match 'CVAT for image 1.1'
     """
 
     SmallResults    = """

@@ -189,9 +189,18 @@ def AboutSectionSpatialDistribution():
 def AboutSectionQuality():
     st.markdown(f"""
         <p class = 'text center'>
-            Quality evaluation of the automatically detected nanoparticles 
+            Quality estimation of the automatically detected nanoparticles 
             based on the Jacquard measure and the expert's manual marking.
             A detailed description is provided in the work on the [2] link below.
+        </p>
+    """, unsafe_allow_html = True)
+
+
+def Quality(FN, FP, TP):    
+    st.markdown(f"""
+        <p class = 'text center'>
+            Accuracy: {TP / (TP + FN + FP) * 100:.2f}%
+            (TP {TP}; FN {FN}; FP {FP})
         </p>
     """, unsafe_allow_html = True)
 

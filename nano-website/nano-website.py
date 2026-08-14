@@ -206,11 +206,14 @@ def analyzeScaleRegion(p_image):
     return autoscale.analyzeScaleRegion(p_image)
 
 
-@st.cache_data(show_spinner = False, max_entries = 5)
-def getAccuracy(gt_blobs, est_blobs, roi):
-    return  accuracy.accur_estimationDiametr(gt_blobs, est_blobs, roi, 0.25) 
+@st.cache_data(show_spinner = False, max_entries = 15)
+def qualityEstimation(thres, gt_blobs, est_blobs):
+    return accuracy.qualityEstimation(gt_blobs, est_blobs, thres) 
 
-
+def addIoU2Overlays(overlays, iou):
+    for overlay, value in zip(overlays, iou):
+        overlay["tooltip"] += f"IoU: {value:.3f}\n"
+    return overlays
 
 ### Main app ###
 try:
@@ -234,7 +237,7 @@ try:
     tabDetect, tabStat, tabAccuracy, tabHelp = st.tabs([
         "Automatic detection",
         "Statistics dashboard",
-        "Quality evaluation",
+        "Quality estimation",
         "Help"
     ])
 
@@ -546,7 +549,7 @@ try:
                     image = st.session_state["Image"].source,
                     overlays = [] if st.session_state["Particles"].data is None 
                         else st.session_state["Particles"].data.toOverlays(
-                            st.session_state["scale"].unit
+                            unit = st.session_state["scale"].unit
                         ),
                     styles = {
                         "viewport": {
@@ -615,7 +618,11 @@ try:
                     )
 
                     if uploadedFileCVAT is not None:
-                        _blobs, _fileName, _imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT) 
+                        try:
+                            _blobs, _fileName, _imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT)
+                        except:
+                            st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:") 
+                            _blobs = []
 
                         if len(_blobs) == 0:
                             st.warning(tooltips.Warnings.NoResultsCVAT, icon = ":material/warning:")
@@ -1280,30 +1287,19 @@ try:
 
 
     ## TAB 3    
-    # TODO!: adapt the section function to the new data storage format
     with tabAccuracy:
         instruct.AboutSectionQuality()
 
-        uploadedFileGT = st.file_uploader("Expert markup file", type = ["csv", "zip"],
+        uploadedFileGT = st.file_uploader("Expert markup file", type = ["zip"],
             help = tooltips.ExpertFileUploader
         )
                     
         if uploadedFileGT is not None:
-            if uploadedFileGT.type == 'text/csv':
-                string_data = io.StringIO(uploadedFileGT.getvalue().decode("utf-8"))
-                reader = csv.reader(string_data, delimiter = ',')
-                gt_blobs = np.array(list(reader), dtype = float) 
-
-                # to format 'x y diameter'
-                gt_blobs[:, 0], gt_blobs[:, 1] = gt_blobs[:, 1], gt_blobs[:, 0]
-                gt_blobs[:, 2] = gt_blobs[:, 2] * 2
-            elif (
-                uploadedFileGT.type == 'application/zip' 
-                or uploadedFileGT.type == 'application/x-zip-compressed'
-            ):                                    
+            try:
                 gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedFileGT) 
-            else:
-                raise ValueError(f"Unsupported file type: {uploadedFileGT.type}")
+            except:
+                st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:")
+                gt_blobs = []
 
             if len(gt_blobs) == 0:
                 st.warning(tooltips.Warnings.NoResultsCVAT, icon = ":material/warning:")
@@ -1311,98 +1307,75 @@ try:
                 st.warning(tooltips.Warnings.NoResults, icon = ":material/warning:")
             else:                
                 st.session_state['sizeImage'] = st.session_state['Image'].preprocessed.size
-                roi = accuracy.blobs2roi(
-                    gt_blobs,
-                    st.session_state['sizeImage'][0],
-                    st.session_state['sizeImage'][1]
-                )
-
+               
                 est_blobs = np.column_stack([
                     st.session_state['Particles'].data.get('x_px'),
                     st.session_state['Particles'].data.get('y_px'),
                     st.session_state['Particles'].data.get('diameter_px'),
                 ])
 
-                match, no_match, fake, FN, FP, TP, _ = (
-                    getAccuracy(gt_blobs, est_blobs, roi) 
-                )
+                l, r = st.columns([3, 7])
 
-                st.markdown(f"""
-                    <p class = 'text center'>
-                        Accuracy: {match / (match + no_match + fake) * 100 :.2f}%
-                        (TP {match}; FN {no_match}; FP {fake})
-                    </p>
-                """, unsafe_allow_html = True)
-
-                if st.toggle("Display nanoparticles", value = False):                            
-                    fig = go.Figure().add_trace(go.Heatmap(
-                        z = np.array(st.session_state['Image'].source),
-                        colorscale = 'gray',
-                        hoverinfo = 'skip',  
-                        showscale = False,   
-                    ))
+                with l:                    
+                    _thres = st.slider("Jacquard measure threshold",
+                        min_value = 0.05,
+                        step = 0.01,
+                        max_value = 0.95,
+                        value = 0.25,
+                        help = tooltips.NoneInfo                      
+                    )
                     
-                    ALL, _ = accuracy.blobs_in_roi(est_blobs, roi)
+                    FN, FP, TP, TD, TD_IoU = qualityEstimation(_thres, gt_blobs, est_blobs)
 
-                    color_list = ['blue', 'green', 'red', 'yellow']
-                    BLOBs_list = [ALL, TP, FN, FP]
-                    shapes_list = [
-                        {
-                            'type': 'circle',
-                            'x0': x-d/2, 'y0': y-d/2, 'x1': x+d/2, 'y1': y+d/2,
-                            'line': {'width': 1.0, 'color': temp_color}
-                        }
-                        for temp_BLOBs, temp_color in zip(BLOBs_list, color_list)
-                        for x,y,d in zip(*temp_BLOBs.T)
-                    ]
-                    fig.update_layout(shapes = shapes_list)
-
-
-                    temp_gt_blobs = st.session_state["scale"].apply(gt_blobs[:, 2])
-                    fig.add_trace(go.Scatter(
-                        x = gt_blobs[:, 1],
-                        y = gt_blobs[:, 0],
-                        mode = 'markers',
-                        marker = dict(size = 15, opacity = 0),  
-                        hovertemplate = ("labeled <br>"
-                            "x: %{x:.1f} px<br>" +
-                            "y: %{y:.1f} px<br>" +
-                            "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
-                        ),
-                        customdata = list(zip(gt_blobs[:, 2], temp_gt_blobs)),
-                        showlegend = False
-                    ))
-
-                    temp_ALL = st.session_state["scale"].apply(ALL[:, 2])
-                    fig.add_trace(go.Scatter(
-                        x = ALL[:, 0],
-                        y = ALL[:, 1],
-                        mode = 'markers',
-                        marker = dict(size = 15, opacity = 0),  
-                        hovertemplate = ("detected <br>"
-                            "x: %{x:.1f} px<br>" +
-                            "y: %{y:.1f} px<br>" +
-                            "d: %{customdata[0]:.2f} px (%{customdata[1]:.2f} nm)<extra></extra>"
-                        ),
-                        customdata = list(zip(ALL[:, 2], temp_ALL)),
-                        showlegend = False
-                    ))
-
-
-                    fig.update_coloraxes(showscale = False)
-                    fig.update_layout(
-                        margin = marginChart,
-                        hovermode = 'closest',
-                        xaxis_title = None,
-                        yaxis_title = None,
-                        xaxis = dict(showticklabels = False),
-                        yaxis = dict(showticklabels = False))
-                    fig.update_xaxes(range = [roi[1], roi[1] + roi[3]], constrain='domain', scaleanchor = "y", scaleratio = 1)
-                    fig.update_yaxes(range = [roi[0] + roi[2], roi[0]], constrain='domain')
-
+                    instruct.Quality(len(FN), len(FP), len(TP))
                     instruct.LegendChartQuality()
 
-                    st.plotly_chart(fig, width = 'stretch',)
+                with r:
+                    overlay(
+                        key = 'accuracy',
+                        image = st.session_state['Image'].source,
+                        overlays = 
+                            addIoU2Overlays(
+                                rEA.ParticleSet(TD).toOverlays(classes = 'detect', info = "None"),
+                                TD_IoU
+                            )
+                            +                     
+                            rEA.ParticleSet(TP).toOverlays(classes = 'TP', info = "None")
+                            +                        
+                            rEA.ParticleSet(FP).toOverlays(classes = 'FP', info = "None")
+                            +                        
+                            rEA.ParticleSet(FN).toOverlays(classes = 'FN', info = "None")
+                            ,
+                        styles = {     
+                            "viewport": {
+                            },
+                            "tooltip": {
+                                "background-color": "black",
+                                "color": "white",
+                                "white-space": "pre-line"
+                            },
+                            "circle": {
+                                "class": {
+                                    "detect": {
+                                        "stroke": "blue",
+                                        "stroke-width": 1,
+                                    },                            
+                                    "TP": {
+                                        "stroke": "green",
+                                        "stroke-width": 1,
+                                    },                            
+                                    "FN": {
+                                        "stroke": "red",
+                                        "stroke-width": 1,
+                                    },                            
+                                    "FP": {
+                                        "stroke": "yellow",
+                                        "stroke-width": 1,
+                                    },
+                                }
+                            }                        
+                        }
+                    )
 
     ## TAB 4
     with tabHelp:

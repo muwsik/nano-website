@@ -1,85 +1,104 @@
 import numpy as np
 
+def qualityEstimation(blobs_gt, blobs_est, thres = 0.25):
+    # [x, y, d] -> [y, x, r]
+    temp_blobs_gt = blobs_gt[:, [1, 0, 2]].copy()
+    temp_blobs_est = blobs_est[:, [1, 0, 2]].copy()
 
-def accur_estimationDiametr(blobs_gt, blobs_est, roi, thres = 0.25):
-    temp_blobs_gt = blobs_gt.copy()
-    temp_blobs_est = blobs_est.copy()
-    
-    temp_blobs_gt[:, 2] = temp_blobs_gt[:, 2] / 2
-    temp_blobs_est[:, 2] = temp_blobs_est[:, 2] / 2
+    temp_blobs_gt[:, 2] /= 2
+    temp_blobs_est[:, 2] /= 2
 
-    temp = accur_estimation2(temp_blobs_gt, temp_blobs_est, roi, thres)
-    match, no_match, fake, FN, FP, TP, _ = temp
+    # ROI is determined only by GT blobs
+    y_min = np.min(temp_blobs_gt[:, 0] - temp_blobs_gt[:, 2])
+    x_min = np.min(temp_blobs_gt[:, 1] - temp_blobs_gt[:, 2])
+    y_max = np.max(temp_blobs_gt[:, 0] + temp_blobs_gt[:, 2])
+    x_max = np.max(temp_blobs_gt[:, 1] + temp_blobs_gt[:, 2])
 
-    FN[:, 2] = FN[:, 2] * 2
-    FP[:, 2] = FP[:, 2] * 2
-    TP[:, 2] = TP[:, 2] * 2
+    roi = np.array([
+        y_min,
+        x_min,
+        y_max - y_min,
+        x_max - x_min
+    ])
 
-    return match, no_match, fake, FN, FP, TP, _
+    # Keep indices of blobs relative to the original arrays
+    temp_blobs_gt, gt_roi_indexes = blobs_in_roi(
+        temp_blobs_gt,
+        roi
+    )
+    temp_blobs_est, est_roi_indexes = blobs_in_roi(
+        temp_blobs_est,
+        roi
+    )
 
+    length_gt = temp_blobs_gt.shape[0]
+    length_est = temp_blobs_est.shape[0]
 
-def accur_estimation2(blobs_gt, blobs_est, roi, thres = 0.25):
-    
-    blobs_gt, _ = blobs_in_roi(blobs_gt, roi)
-    blobs_est, _ = blobs_in_roi(blobs_est, roi)  
-
-    length_gt = blobs_gt.shape[0]
-    length_est = blobs_est.shape[0]
-        
+    # IoU matrix
     iou = np.zeros((length_gt, length_est))
     for i in range(length_gt):
         for j in range(length_est):
-            iou[i,j] = findIOU4circle(blobs_gt[i], blobs_est[j])
-    
-    match = 0
-    no_match = 0
-    fake = 0
-    no_match_index = np.zeros(length_gt,dtype = 'bool')
-    match_index = np.zeros(length_gt, dtype='bool')
-    
-    match_matr = np.zeros((length_gt, length_est), dtype = int)
+            iou[i, j] = findIOU4circle(
+                temp_blobs_gt[i],
+                temp_blobs_est[j]
+            )
 
-    match_IOU = 0
-    all_IOU = 0
+    # Matching matrix
+    match_matr = np.zeros(
+        (length_gt, length_est),
+        dtype = int
+    )
+
     for i in range(length_gt):
-        if max(iou[i]) >= thres:
+        if length_est > 0 and np.max(iou[i]) >= thres:
             imax = np.argmax(iou[i])
-            match_matr[i,imax] = 1
-            match_IOU = match_IOU + max(iou[i])
+            match_matr[i, imax] = 1
 
-        all_IOU = all_IOU + max(iou[i])
-            
-    no_match_gt_blobs =  blobs_gt[no_match_index]    
-    
-    fake_index = np.zeros(length_est,dtype = 'bool')
-    truedetected_blobs_index = np.zeros(length_est,dtype = 'bool')
+    # Resolve cases where several GT blobs
+    # are matched to the same estimated blob
+    fake_index = np.zeros(length_est, dtype = bool)
+    truedetected_blobs_index = np.zeros(
+        length_est,
+        dtype = bool
+    )
+
     for j in range(length_est):
-        if sum(match_matr[:,j])>1: 
-            imax = np.argmax(iou[:,j])
-            match_matr[:, j] = np.zeros(length_gt, dtype = int)
-            match_matr[imax, j] = 1 
-        if sum(match_matr[:,j]) == 0:
-            fake+=1
+        if np.sum(match_matr[:, j]) > 1:
+            imax = np.argmax(iou[:, j])
+            match_matr[:, j] = 0
+            match_matr[imax, j] = 1
+
+        if np.sum(match_matr[:, j]) == 0:
             fake_index[j] = True
         else:
             truedetected_blobs_index[j] = True
-    fake_blobs = blobs_est[fake_index]
-        
-    for i in range(length_gt): 
-        if sum(match_matr[i,:]) == 0: 
+
+    # Determine FN / TP
+    no_match_index = np.zeros(length_gt, dtype = bool)
+    match_index = np.zeros(length_gt, dtype = bool)
+    for i in range(length_gt):
+        if np.sum(match_matr[i, :]) == 0:
             no_match_index[i] = True
-        elif sum(match_matr[i,:]) == 1:
+        elif np.sum(match_matr[i, :]) == 1:
             match_index[i] = True
         else:
-            raise;
+            raise RuntimeError("GT blob has more than one match.")
 
-    no_match = sum(no_match_index)
-    match = sum(sum(match_matr))        
-    no_match_gt_blobs =  blobs_gt[no_match_index]
-    match_blobs = blobs_gt[match_index]
-    truedetected_blobs = blobs_est[truedetected_blobs_index]
-    
-    return match, no_match, fake, no_match_gt_blobs, fake_blobs, match_blobs, truedetected_blobs
+    # Convert ROI-relative indices back to indices
+    # of the original blobs_gt / blobs_est arrays    
+    # Return original blobs in [x, y, d] format
+    FN = blobs_gt[np.flatnonzero(gt_roi_indexes)[no_match_index]]
+    FP = blobs_est[np.flatnonzero(est_roi_indexes)[fake_index]]
+    TP = blobs_gt[np.flatnonzero(gt_roi_indexes)[match_index]]
+    # True Detected estimated blobs
+    TD = blobs_est[np.flatnonzero(est_roi_indexes)[truedetected_blobs_index]]
+
+    TD_iou = np.array([
+        iou[np.where(match_matr[:, j] == 1)[0][0], j]
+        for j in np.flatnonzero(truedetected_blobs_index)
+    ])
+
+    return FN, FP, TP, TD, TD_iou 
 
 
 def blobs2roi(_blobs, _heightImg, _widthImg):

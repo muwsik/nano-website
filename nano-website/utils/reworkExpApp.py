@@ -42,7 +42,7 @@ class ParticleSet:
         elif blobs.shape[1] == 3:
             self._data = np.column_stack([
                 blobs,
-                np.full((len(blobs), 2), -1.0),
+                np.full((len(blobs), 2), np.inf),
             ])
         elif blobs.shape[1] == 5:
             self._data = blobs.astype(float, copy = False)
@@ -125,28 +125,39 @@ class ParticleSet:
         return image
 
 
-    def toOverlays(self, _unit = "px", _class = "default"):
-        return [
-            {
-                "id": str(i) + _class,
+    def toOverlays(self, unit = "px", classes = "default", info = "full"):
+        if self.scale_multiplier == -1.0:
+            self.applyScale(1)
+            unit = "px" 
+
+        overlays = []
+        for i, index in enumerate(np.flatnonzero(self._mask)):
+            tempTooltip = ""
+            if info == "full":
+                tempTooltip += (
+                    f"Area: {self._cache['area'][index]:.1f} {unit}²\n" 
+                    f"Volume: {self._cache['volume'][index]:.1f} {unit}³\n"
+                    f"Brightness: {self._data[index, 3]:.0f}\n"
+                    f"Reliability: {1 - self._data[index, 4]:.2f}\n"
+                )
+
+            overlays.append({
+                "id": str(i) + classes,
                 "type": "circle",
-                "class": _class,
+                "class": classes,
                 "data": {
                     "x": self._data[index, 0],
                     "y": self._data[index, 1],
                     "radius": self._data[index, 2] / 2,
                 },
                 "tooltip": (
-                    f"ID: {i}. Class: {_class}\n"
-                    f"Diameter: {self._cache['diameter'][index]:.1f} {_unit}\n"
-                    f"Area: {self._cache['area'][index]:.1f} {_unit}²\n"
-                    f"Volume: {self._cache['volume'][index]:.1f} {_unit}³\n"
-                    f"Brightness: {self._data[index, 3]:.0f}\n"
-                    f"Reliability: {1 - self._data[index, 4]:.2f}"
+                    f"ID: {i}. Class: {classes}\n"
+                    f"Diameter: {self._cache['diameter'][index]:.1f} {unit}\n"
+                    f"{tempTooltip}"
                 ),
-            }
-            for i, index in enumerate(np.flatnonzero(self._mask))
-        ]
+            })
+
+        return overlays
 
 
     

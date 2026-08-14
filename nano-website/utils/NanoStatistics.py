@@ -86,25 +86,6 @@ def averageDensityInNeighborhood(c_thresholds, c_fullDist):
     return distanceLess / len(c_fullDist)
 
 
-#
-@st.cache_data(show_spinner = False, max_entries = 5)
-def calculateParametersNP(diameters, density, imageArea):
-    volume = (np.pi * diameters**3) / 6
-    area =  np.sum((np.pi * diameters**2) / 4)
-    mass = np.sum(volume * density)
-    normArea = 100 * area/imageArea
-    normMass = mass / imageArea
-
-    return {
-        "volume": np.sum(volume),
-        "area": area,
-        "mass": mass,
-        "normArea": normArea,
-        "normMass": normMass,
-        "imageArea": imageArea
-    }
-
-
 @st.cache_data(show_spinner = False, max_entries = 5)
 def aggregateStatistics(
     statisticDiameters,
