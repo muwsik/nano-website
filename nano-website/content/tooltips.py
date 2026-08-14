@@ -64,15 +64,14 @@ class Warnings:
         Please go to "Automatic detection" tab.
     """
 
+    NoResultsCVAT   = """
+        There are no labeled data that could be interpreted as nanoparticles.
+    """
+
     SmallResults    = """
         Nanoparticles after detection and filtration are less than 10! 
         Please go to the "Automatic detection" tab and change the detection,
         filtering settings or upload another EM image!
-    """
-
-    NowUsingCVAT    = """
-        This section is designed for evaluating automated nanoparticle detection algorithms. 
-        Currently using data imported from CVAT - please verify data accuracy before proceeding.
     """
 
     ReportLimit     = """
@@ -111,7 +110,7 @@ class Options:
         1: "Cuprum (Cu)",                   #  8.96 * 10**-12 ng / nm^3
         2: "Alloy 30% Au + 70% Pd (AuPd)",  # 14.10 * 10**-12 ng / nm^3
         3: "Alloy 70% Cu + 30% Zn (CuZn)",  #  8.42 * 10**-12 ng / nm^3
-        4: "User density"
+        4: "Custom"
     }
 
     MaterialDensity = {

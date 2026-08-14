@@ -1,79 +1,157 @@
 import streamlit as st
 
 from PIL import Image, ImageDraw
-import warnings
 import numpy as np
 import scipy, skimage
+
+from dataclasses import dataclass
     
 import utils.ExponentialApproximation as ExpApp
 import utils.ExponentialApproximation2 as ExpApp2
 
+
+# Representation of a single detected particle
+@dataclass(slots = True)
 class Particle:
-    def __init__(self, centerCoords, diameter, c0 = None, approxError = None):
-        self.x = centerCoords[0]
-        self.y = centerCoords[1]
+    x: float
+    y: float
+    diameter: float
+    c0: float 
+    approx_error: float 
 
-        if (diameter > 0):
-            self.diameter = diameter
+
+# Collection of detected particles.
+# Raw particle parameters are stored as NumPy arrays in pixels.
+# Scale-dependent parameters are calculated once for the current
+# scale and cached.
+class ParticleSet:
+    def __init__(self,
+        blobs, # BLOBs format: [x, y, diameter, c0, approx_error]
+        multiplier = None,
+    ):
+        self._columns = {
+            "x_px": 0,
+            "y_px": 1,
+            "diameter_px": 2,
+            "c0": 3,
+            "approx_error": 4,
+        }
+        
+        if blobs.size == 0:
+            self._data = np.empty((0, 5), dtype = float)
+        elif blobs.shape[1] == 3:
+            self._data = np.column_stack([
+                blobs,
+                np.full((len(blobs), 2), -1.0),
+            ])
+        elif blobs.shape[1] == 5:
+            self._data = blobs.astype(float, copy = False)
         else:
-            warnings.warn("The particle diameter is less than zero!")            
-            self.diameter = 0
+            raise ValueError("Expected particle data with 3 or 5 columns.")
 
-        self.projectionArea = 1 / 4 * np.pi * self.diameter**2 
+        self._mask = np.ones(len(self._data), dtype = bool)
+        self.scale_multiplier = -1.0
+        self._cache = {}
+        
+        if multiplier is not None:
+            self.applyScale(multiplier)
 
-        self.volume = 2 / 3 * self.projectionArea * self.diameter
 
-        # detection features 
-        self.c0 = c0
-        self.approxError = approxError
+    def get(self, name, apply_mask = True):
+        if name in self._cache:
+            data = self._cache[name]
+        elif name in self._columns:
+            data = self._data[:, self._columns[name]]
+        else:
+            raise KeyError(f"Unknown particle parameter: {name}")
+
+        if apply_mask:
+            return data[self._mask]
+
+        return data
+
+
+    @property
+    def count(self):
+        return np.sum(self._mask)
     
-    # Converts the calculated values according to the multiplier scale
-    def convert(self, multiplier):
-        return Particle(
-            (self.x * multiplier, self.y * multiplier),
-            self.diameter * multiplier,
-            self.c0,
-            self.approxError
-        )
+    @property
+    def detectedCount(self):
+        return len(self._data)
 
 
-    def toList(self):
+    def applyScale(self, multiplier):
+        if (np.isclose(multiplier, self.scale_multiplier)):
+            return
+
+        self.scale_multiplier = multiplier
+        self._cache["x"] = (self._data[:, 0] * multiplier)        
+        self._cache["y"] = (self._data[:, 1] * multiplier)
+        self._cache["diameter"] = (self._data[:, 2] * multiplier)
+        self._cache["area"] = (np.pi * self._cache["diameter"]**2 / 4)
+        self._cache["volume"] = (np.pi * self._cache["diameter"]**3 / 6)
+
+
+    def setfilter(self,
+        c0 = (None, None),
+        diameter = (None, None),
+        approxError = (None, None),
+    ):
+        mask = np.ones(len(self._data), dtype = bool)
+
+        if c0[0] is not None:
+            mask &= self._data[:, 3] >= c0[0]
+        if c0[1] is not None:
+            mask &= self._data[:, 3] <= c0[1]
+        if diameter[0] is not None:
+            mask &= self._cache["diameter"] >= diameter[0]
+        if diameter[1] is not None:
+            mask &= self._cache["diameter"] <= diameter[1]
+        if approxError[0] is not None:
+            mask &= self._data[:, 4] >= approxError[0]
+        if approxError[1] is not None:
+            mask &= self._data[:, 4] <= approxError[1]
+
+        self._mask = mask
+        return self
+    
+
+    def paint(self, image, color):
+        draw = ImageDraw.Draw(image)
+        for x, y, d in self._data[self._mask, :3]:
+            r = d / 2
+            draw.ellipse((x - r, y - r, x + r, y + r), outline = color,)
+
+        return image
+
+
+    def toOverlays(self, _unit = "px", _class = "default"):
         return [
-            self.x,
-            self.y,
-            self.diameter,
-            self.c0,
-            self.approxError,
-            self.projectionArea,
-            self.volume,
+            {
+                "id": str(i) + _class,
+                "type": "circle",
+                "class": _class,
+                "data": {
+                    "x": self._data[index, 0],
+                    "y": self._data[index, 1],
+                    "radius": self._data[index, 2] / 2,
+                },
+                "tooltip": (
+                    f"ID: {i}. Class: {_class}\n"
+                    f"Diameter: {self._cache['diameter'][index]:.1f} {_unit}\n"
+                    f"Area: {self._cache['area'][index]:.1f} {_unit}²\n"
+                    f"Volume: {self._cache['volume'][index]:.1f} {_unit}³\n"
+                    f"Brightness: {self._data[index, 3]:.0f}\n"
+                    f"Reliability: {1 - self._data[index, 4]:.2f}"
+                ),
+            }
+            for i, index in enumerate(np.flatnonzero(self._mask))
         ]
 
 
-    def toDict(self):
-        return self.__dict__.copy()
+    
 
-
-    @staticmethod
-    def fromArray(BLOBs):
-        if len(BLOBs) < 1:
-            return np.array([])
-
-        return np.array([
-             #           x,     y,      d
-            Particle((_i[1], _i[0]), _i[2]) for _i in BLOBs
-        ])
-
-    @staticmethod
-    def toArray(particles):
-        if len(particles) < 1:
-            return None
-
-        return np.array([
-            [_i.y, _i.x, _i.diameter] for _i in particles
-        ])
-
-
-
+#TO DO: rework detection
 @st.cache_data(show_spinner = False, max_entries = 5)
 def detectingParticles(image, settings):
 
@@ -156,59 +234,21 @@ def detectingParticles(image, settings):
     blobs_appr = np.array(ExpApp2.ApproximationMain(image, lmblobs, params, 3, True))
                 
     if len(blobs_appr) < 1:
-        return np.array([])
+        return ParticleSet(np.array([]))
 
     if settings[2] == 2:
-        blobs_appr[:,:3] *= 2
+        blobs_appr[:, :3] *= 2
     elif settings[2] == 1 or settings[2] == 0:
         pass
     else:
         raise ValueError("!")
 
-    result = []
-    for temp in blobs_appr:
-        new = Particle((temp[1], temp[0]), temp[2]*2, temp[3], temp[5])
-        result.append(new)
-
-    return np.array(result)
-
-
-@st.cache_data(show_spinner = False, max_entries = 5)
-def paintParticles(image, particles, color):
-    draw = ImageDraw.Draw(image)
-    for _temp in particles:                
-        y = _temp.y; x = _temp.x; r = _temp.diameter/2        
-        draw.ellipse((x-r, y-r, x+r, y+r), outline = color)
-
-    return image
-
-
-@st.cache_data(show_spinner = False, max_entries = 5)
-def filtrationParticles(particles, 
-    c0 = (None, None), 
-    diameter = (None, None), 
-    approxError = (None, None)
-):
-    def inRange(value, limits):
-        min_val, max_val = limits
-        if min_val is not None and value < min_val:
-            return False
-        if max_val is not None and value > max_val:
-            return False
-        return True
-
-    filteredParticles = []
-    for _particle in particles:       
-
-        if not inRange(_particle.diameter, diameter):
-            continue
-
-        if not inRange(_particle.c0, c0):
-            continue
-
-        if not inRange(_particle.approxError, approxError):
-            continue
-    
-        filteredParticles.append(_particle)
-
-    return np.array(filteredParticles)
+    return ParticleSet(
+        np.column_stack([
+            blobs_appr[:, 1],
+            blobs_appr[:, 0],
+            blobs_appr[:, 2] * 2,
+            blobs_appr[:, 3],
+            blobs_appr[:, 5],
+        ])
+    )

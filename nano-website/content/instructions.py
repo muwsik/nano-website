@@ -54,12 +54,20 @@ def AboutSectionParticleParams():
     """, unsafe_allow_html = True)
 
     
-def MaterialDensity(name, value):
-    st.markdown(f"""
-        <div class = 'text' style = "font-size: 16px;">
-            <b>{name}</b> density: <b>{value:.2e} ng/nm<sup>3</sup></b> 
-        </div>
-    """, unsafe_allow_html = True)
+def MaterialDensity(typeMaterial = None, density = None):
+    if typeMaterial is not None:
+        st.markdown(f"""
+            <div class = 'text'>
+                Material: <b>{typeMaterial}</b> 
+            </div>
+        """, unsafe_allow_html = True)
+
+    if density is not None:
+        st.markdown(f"""
+            <div class = 'text'>
+                Density: <b>{density:.2e} ng/nm<sup>3</sup></b> 
+            </div>
+        """, unsafe_allow_html = True)
 
 
 def EstimatedScale(scale):
@@ -77,53 +85,42 @@ def EstimatedScale(scale):
         """, unsafe_allow_html = True)
 
 
-def DefMaterial(typeMaterial):
-    st.markdown(f"""
-        <div class = 'text'>
-            Material: <b>{typeMaterial}</b> 
-        </div>
-    """, unsafe_allow_html = True)
-
-    
-def UserMaterial(typeMaterial, density):
-    st.markdown(f"""
-        <div class = 'text'>
-            Material: <b>{typeMaterial} ({density:.2e} ng/nm<sup>3</sup>)</b> 
-        </div>
-    """, unsafe_allow_html = True)
-
-
 def Quantity(p_count):
     st.markdown(f"""
         <div class = 'text'>
-            Quantity: <b>{p_count}</b>
+            Quantity: <b>{p_count}</b> particles
         </div>
     """, unsafe_allow_html = True)
 
 
-def PrimaryParameters(diameters, unit):
+def AboutPrimaryParameters():
     st.subheader("Primary parameters", anchor = False)
 
-    st.markdown(f"""
-        <div class = 'text'>
-            Average diameter: <b>{np.mean(diameters):.2f} {unit}</b> 
-        </div>
-    """, unsafe_allow_html = True)
 
+def MeanDiameter(mu, unit):
     st.markdown(f"""
         <div class = 'text'>
-            Standart deviation diameters: <b>{np.std(diameters):.2f} {unit}</b> 
+            Average diameter: <b>{mu:.2f} {unit}</b> 
         </div>
     """, unsafe_allow_html = True)
 
 
-def SecondaryParameters(paramsNP, unit):    
+def StdDiameter(std, unit):
+    st.markdown(f"""
+        <div class = 'text'>
+            Standart deviation diameters: <b>{std:.2f} {unit}</b> 
+        </div>
+    """, unsafe_allow_html = True)
+
+
+def AboutSecondaryParameters():    
     st.subheader("Secondary parameters", anchor = False) 
 
-    if unit != 'px':
+def Mass(mass = None):
+    if mass is not None:
         st.markdown(f"""
             <div class = 'text'>
-                Mass: <b>{paramsNP["mass"]:0.2e} ng</b> 
+                Mass: <b>{mass:0.2e} ng</b> 
             </div>
         """, unsafe_allow_html = True)   
     else:
@@ -133,41 +130,49 @@ def SecondaryParameters(paramsNP, unit):
             </div>
         """, unsafe_allow_html = True)
 
+
+def Volume(volume, unit):
     st.markdown(f"""
         <div class = 'text'>
-            Volume: <b>{paramsNP["volume"]:0.2e} {unit}<sup>3</sup></b> 
+            Volume: <b>{volume:0.2e} {unit}<sup>3</sup></b> 
         </div>
     """, unsafe_allow_html = True) 
 
+
+def Area(area, unit):
     st.markdown(f"""
         <div class = 'text'>
-            Area: <b>{paramsNP["area"]:0.2e} {unit}<sup>2</sup></b> 
+            Area: <b>{area:0.2e} {unit}<sup>2</sup></b> 
         </div>
     """, unsafe_allow_html = True)
 
 
-def NormSecondaryParameters(paramsNP, unit):
+def AboutNormSecondaryParameters(imageArea, unit):
     st.subheader("Secondary parameters (norm)",
-        help = f"Values relative to the surface area is {paramsNP["imageArea"]:.2e} {unit}²",
+        help = f"Values relative to the surface area is {imageArea:.1e} {unit}²",
         anchor = False
     )                    
-               
-    if unit == 'px':        
+
+
+def NormArea(nArea):
+    st.markdown(f"""
+        <div class = 'text'>
+            Norm area: <b>{nArea:0.2f}</b> %
+        </div>
+    """, unsafe_allow_html = True)
+
+
+def NormMass(mass = None): 
+    if mass is None:        
         st.markdown(f"""
             <div class = 'text'>
                 Cannot be calculated (scale is unknown)
             </div>
         """, unsafe_allow_html = True)    
-    else:
+    else:     
         st.markdown(f"""
             <div class = 'text'>
-                Norm area: <b>{paramsNP["normArea"]:0.2f}</b> %
-            </div>
-        """, unsafe_allow_html = True)
-
-        st.markdown(f"""
-            <div class = 'text'>
-                Norm mass: <b>{paramsNP["normMass"]:0.2e} ng/{unit}<sup>2</sup></b> 
+                Norm mass: <b>{mass:0.2e} ng/nm<sup>2</sup></b> 
             </div>
         """, unsafe_allow_html = True)
 
@@ -181,7 +186,7 @@ def AboutSectionSpatialDistribution():
     """, unsafe_allow_html = True)
 
 
-def AboutSectioQuality():
+def AboutSectionQuality():
     st.markdown(f"""
         <p class = 'text center'>
             Quality evaluation of the automatically detected nanoparticles 

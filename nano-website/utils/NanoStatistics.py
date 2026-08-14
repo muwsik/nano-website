@@ -26,27 +26,23 @@ def randon_BLOBS(count = 250, type = 'uniform', x_max = 1280, y_max = 890):
 
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
-def uniformity(particles, sizeImage, sizeBlock):
-    heightBlocks = int(np.ceil(sizeImage[1] / sizeBlock))
-    widthBlocks = int(np.ceil(sizeImage[0] / sizeBlock))
-    
-    counter = np.zeros((heightBlocks, widthBlocks), dtype = int)        
-    for _p in particles:
-        x = _p.x; y = _p.y;
-        i = np.ceil(y / sizeBlock) - 1
-        j = np.ceil(x / sizeBlock) - 1
-        counter[int(i), int(j)] += 1
+def uniformity(x, y, blockShape, oneBlockSize):
+    counter = np.zeros(blockShape, dtype = int)        
+    for _x, _y in zip(x, y):
+        counter[int(_y // oneBlockSize), int(_x // oneBlockSize)] += 1
 
     return counter
 
 
 #
 @st.cache_data(show_spinner = False, max_entries = 5)
-def euclideanDistance(points):
+def euclideanDistance(x, y):
+    points = np.column_stack((x, y))
+
     fullEuclideanDist = scipy.spatial.distance.cdist(points, points, 'euclidean')
 
-    nblobs = np.shape(points)[0]
-    minEuclideanDist = np.min(fullEuclideanDist + np.eye(nblobs, nblobs) * 10**6, axis = 0)
+    size = len(x)
+    minEuclideanDist = np.min(fullEuclideanDist + np.eye(size) * 10**6, axis = 0)
 
     return fullEuclideanDist, minEuclideanDist
 

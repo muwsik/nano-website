@@ -10,7 +10,7 @@ import io
 
 
 @st.cache_data(show_spinner = False, max_entries = 5)
-def ExportToCVAT(imageData, particles): 
+def ExportToCVAT(imageData, x, y, diameter): 
     manifest_jsonl_file = f'''{{"version":"1.1"}}\n{{"type":"images"}}\n{{"name":"{imageData['name']}","extension":".tif","width":{imageData['width']},"height":{imageData['height']},"meta":{{"related_images":[]}}}}'''
     
     # not changed
@@ -48,28 +48,24 @@ def ExportToCVAT(imageData, particles):
         }
     """ 
 
-    shapes = ""
-    for i, _particle in enumerate(particles):
-        y = _particle.y; x = _particle.x; r = _particle.diameter/2 
-
-        shape_element = f"""{{
+    shapes = []
+    for _x, _y, _d in zip(x, y, diameter):
+        shapes.append(f"""{{
             "type":"polyline",
             "occluded":false,
             "outside":false,
             "z_order":0,
             "rotation":0.0,
-            "points":[{x},{y - r},{x},{y + r}],
+            "points":[{_x},{_y - _d/2},{_x},{_y + _d/2}],
             "frame":0,
             "group":0,
             "source":"manual",
             "attributes":[],
             "elements":[],
             "label":"Nanoparticle"
-        }}""" 
+        }}""") 
 
-        shapes += shape_element
-        if i < (len(particles) - 1):
-            shapes += ",\n"
+    shapes = ",\n".join(shapes)
 
     annotations_json_file = f"""[{{
         "version":0,
@@ -97,37 +93,8 @@ def ExportToCVAT(imageData, particles):
     return zipBuffer
 
 
-@st.cache_data(show_spinner = False, max_entries = 5)
-def ImportJobFromCVAT(jobCVAT):
-    with zipfile.ZipFile(jobCVAT, 'r') as tempZipFile:
-        annotations = tempZipFile.read('annotations.xml')
-        annotations = annotations.decode('utf-8')
-
-    BLOBs = []
-
-    root = ET.fromstring(annotations)
-    for image in root.findall('image'):
-        imgName = image.get('name')        
-        imgWidth = int(image.get('width'))
-        imgHeight = int(image.get('height'))
-        for polyline in image.findall('polyline'):
-            points = polyline.get('points')
-        
-            pairs = points.split(";")
-            coordinates = [tuple(map(float, pair.split(","))) for pair in pairs]
-
-            d = math.dist(coordinates[0], coordinates[1])
-            x = (coordinates[0][0] + coordinates[1][0]) / 2
-            y = (coordinates[0][1] + coordinates[1][1]) / 2
-
-            BLOBs.append([y, x, d])
-
-            # old format
-    return np.array(BLOBs), imgName, [imgWidth, imgHeight]
-
-
-@st.cache_data(show_spinner = False, max_entries = 5)
 # taskCVAT: path to zip file CVAT with labeled particles
+@st.cache_data(show_spinner = False, max_entries = 5)
 def ImportTaskFromCVAT(taskCVAT):
     with zipfile.ZipFile(taskCVAT, 'r') as tempZipFile:
         annotations = tempZipFile.read('annotations.json')
@@ -139,7 +106,7 @@ def ImportTaskFromCVAT(taskCVAT):
         imgFileName = temp['name'] + temp['extension']        
         imageBytes = tempZipFile.read(f'data/{imgFileName}')
     
-    BLOBs = []
+    particles = []
 
     annotations = json.loads(annotations)
     for shape in annotations[0]['shapes']:
@@ -151,20 +118,20 @@ def ImportTaskFromCVAT(taskCVAT):
         x = (coordinates[0][0] + coordinates[1][0]) / 2
         y = (coordinates[0][1] + coordinates[1][1]) / 2
         
-        BLOBs.append([y, x, d]) #! particle diameters !
+        particles.append([x, y, d])
 
-    return np.array(BLOBs), imgFileName, io.BytesIO(imageBytes)
+    return np.array(particles), imgFileName, io.BytesIO(imageBytes)
 
 
 if __name__ == "__main__": 
     
     from PIL import Image
-    taskFile = r"D:\Загрузки\task_nano labeling_backup_2025_09_11_10_57_41.zip"
+    taskFile = r"D:\пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\task_nano labeling_backup_2025_09_11_10_57_41.zip"
 
     temp = ImportTaskFromCVAT(taskFile)
     print(1)
 
-    # jobFile = r"D:\Загрузки\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
+    # jobFile = r"D:\пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
     
     # BLOBs, imgName, size = ImportJobFromCVAT(jobFile)
     # print(size, imgName, BLOBs)
