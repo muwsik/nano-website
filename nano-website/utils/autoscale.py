@@ -3,6 +3,7 @@ import numpy as np
 import easyocr
 import re
 
+
 def findBorder(c_fullImage, thr = 0.5):    
     row_sum = np.sum(c_fullImage, axis = 1, dtype = np.int64)
 
@@ -11,6 +12,7 @@ def findBorder(c_fullImage, thr = 0.5):
             return i + 1
     
     return None
+
 
 def scaleLength(borderLine, threshBin = 128):
     binLine = (borderLine > threshBin).astype(np.uint8)
@@ -24,23 +26,16 @@ def scaleLength(borderLine, threshBin = 128):
 
     return None, None
 
+
 def findText(c_footnoteImage):
     reader = easyocr.Reader(["en"], gpu = False, verbose = False)
     result = reader.readtext(c_footnoteImage, detail = 0, blocklist = 'SOo')
     return ' '.join(result).lower()  
 
-def increase(c_text):
-    try:
-        matchesIncrease = re.findall(r'[x][0-9]*\.?[0-9]+[k]', c_text)[0]
-        _increase = float(matchesIncrease[1:-1])
-    except Exception:
-        _increase = None
-
-    return _increase
 
 def scale(c_text):
     try:
-        matchesScale = re.findall(r"[0-9]*\.?[0-9]+(?:nm|um|pm|pum)", c_text)[0]
+        matchesScale = re.findall(r"\b\d+(?:\.\d+)?(?:nm|um|pm|pum)\b", c_text)[0]
         if matchesScale[-2] == 'n':
             _scale = float(matchesScale[:-2])
         elif matchesScale[-2] == 'u' or matchesScale[-2] == 'p':
@@ -55,52 +50,62 @@ def scale(c_text):
     return _scale, matchesScale
 
 
-def analyzeScaleRegion(c_image):
-    if isinstance(c_image, np.ndarray):
-        pass
-    elif isinstance(c_image, Image.Image):
-        c_image = np.array(c_image, dtype = 'uint8')
-    else:
-        raise ValueError("!")
+def detectScale(image):
+    if isinstance(image, Image.Image):
+        image = np.array(image, dtype = np.uint8)
+    elif not isinstance(image, np.ndarray):
+        raise ValueError("Image must be a NumPy array or PIL Image.")
 
-    lowerBound = findBorder(c_image)
-    if (lowerBound is not None):      
-        text = findText(c_image[lowerBound:, :])
-        scaleVal, scaleText = scale(text)
-        scaleLengthVal, startPixelScale = scaleLength(c_image[lowerBound])
+    horizontalBound = findBorder(image)
 
-        if (scaleVal is not None) and (scaleLengthVal is not None):
-            return scaleVal / scaleLengthVal, lowerBound, [startPixelScale, scaleLengthVal, scaleText]
-     
-    return None, lowerBound, None
+    if horizontalBound is None:
+        return Scale()
+
+    fullText = findText(image[horizontalBound:, :])
+
+    scaleBarVal, scaleBarText = scale(fullText)
+
+    scaleBarLength, scaleBarX = scaleLength(image[horizontalBound])
+
+    if scaleBarVal is None or scaleBarLength is None:
+        return Scale()
+
+    return Scale(
+        multiplier = scaleBarVal / scaleBarLength,
+        info = [
+            horizontalBound,
+            scaleBarX,
+            scaleBarLength,
+            scaleBarText
+        ]
+    )
 
 
 class Scale:
-    def __init__(self, multiplier = None):
-
-        if (multiplier is None):
-            self._mode = 'PIXELS'
+    def __init__(self, multiplier = None, info = None):
+        if multiplier is None:
+            self._mode = "PIXELS"
             self._multiplier = 1.0
-        else:            
+        else:
             self.setScale(multiplier)
-                
 
-    def setScale(self, multiplier):
+        self._info = info
+
+    def setScale(self, multiplier, info = None):
         if multiplier <= 0:
             raise ValueError("Scale must be positive.")
 
-        self._mode = 'METRIC'
-        self._multiplier = multiplier    
-        
+        self._mode = "METRIC"
+        self._multiplier = multiplier
+        self._info = info
 
     def apply(self, value):
         return np.asarray(value) * self._multiplier
 
-
     @property
     def unit(self):
-         return "nm" if self._mode == 'METRIC' else "px"    
-     
+        return "nm" if self._mode == "METRIC" else "px"
+
     @property
     def multiplier(self):
         return self._multiplier
@@ -108,21 +113,26 @@ class Scale:
     @property
     def divider(self):
         return 1 / self._multiplier
+
+    @property
+    def info(self):
+        return self._info
+
+    @property
+    def horizontalBound(self):
+        return self._info[0] if self._info is not None else None
      
 
 
 ### main
 if __name__ == "__main__":  
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
 
-    img_path = r"C:\Users\Muwa\Desktop\2-S1-no_area-100k-ordered (6).tif"
+    img_path = r"C:\Users\Victory\Downloads\fMaIVQuFjZcJ1_OC-7l0q4YstN3SSGwjMOr9EdOl0G74L66EMNPJbnflPmVsPcLsNj56NQEQ5-pUvKW6dpvy_0dQ.jpg"
 
     img = Image.open(img_path).convert('L')
     img = img.resize((1280, 960))
     grayImage = np.array(img, dtype='uint8')
 
-    tmp = Scale(grayImage)
+    tmp = detectScale(grayImage)
 
     print(tmp.__dict__)

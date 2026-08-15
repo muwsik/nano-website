@@ -16,7 +16,7 @@ class Filtration:
 
 
 class Visualization:
-    Scale           = "Show the estimated scale in image.  \n"
+    Scale           = "Show the estimated scale on image.  \n"
     Irregularities  = "The areas with background irregularities are colored red.  \n"
     Download        = "Click here to download the detection result in the specified format.  \n"
 
@@ -75,6 +75,10 @@ class Warnings:
         Nanoparticles after detection and filtration are less than 10! 
         Please go to the "Automatic detection" tab and change the detection,
         filtering settings or upload another EM image!
+    """
+
+    IncompleteStats = """
+        In this case, the statistics are incomplete due to the absence of a scale!
     """
 
     ReportLimit     = """

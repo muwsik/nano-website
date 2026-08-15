@@ -9,7 +9,9 @@ import pandas as pd
 from pathlib import Path
 from PIL import Image
 from types import SimpleNamespace
+import traceback
 
+# charts
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -31,15 +33,10 @@ import utils.reworkExpApp as rEA
 # UI
 from streamlit_image_overlay import streamlit_image_overlay as overlay
 
-import traceback
     
 
 ### Function ###
     
-colorRGBA_str = 'rgb(150, 150, 255)'
-colorRGB = (75, 255, 75)
-
-
 def resetDetectionTab():
     st.session_state['Image'] = SimpleNamespace(
         upload = False,
@@ -67,7 +64,8 @@ def resetDetectionTab():
     # widgets
     st.session_state['Image.type'] = None
     st.session_state['Default.use'] = False
-    st.session_state['displayScale'] = False
+    st.session_state['Default.color'] = 'rgb(150, 150, 255)'
+    st.session_state['Scale.display'] = False
 
 
 def resetStatisticTab():    
@@ -92,8 +90,7 @@ def resetStates(_dispToast = False):
     
     st.session_state['rerun'] = False
     
-    st.session_state['scale'] = None
-    st.session_state['scaleInfo'] = None
+    st.session_state['Scale'] = None
 
     resetDetectionTab()
     resetStatisticTab()
@@ -202,30 +199,43 @@ def dialog_feedback():
 
     
 @st.cache_data(show_spinner = False, max_entries = 5)
-def analyzeScaleRegion(p_image):
-    return autoscale.analyzeScaleRegion(p_image)
+def detectScale(image):
+    return autoscale.detectScale(image)
 
 
 @st.cache_data(show_spinner = False, max_entries = 15)
 def qualityEstimation(thres, gt_blobs, est_blobs):
     return accuracy.qualityEstimation(gt_blobs, est_blobs, thres) 
 
+
+@st.cache_data(show_spinner = False, max_entries = 5)
+def importTaskFromCVAT(taskCVAT):
+    API2CVAT.importTaskFromCVAT(taskCVAT)
+
+
+@st.cache_data(show_spinner = False, max_entries = 5)
+def exportToCVAT(imageData, x, y, diameter):
+    API2CVAT.exportToCVAT(imageData, x, y, diameter)
+
+
 def addIoU2Overlays(overlays, iou):
     for overlay, value in zip(overlays, iou):
         overlay["tooltip"] += f"IoU: {value:.3f}\n"
     return overlays
 
+
+
 ### Main app ###
-try:
-    # Loading CSS styles
-    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide")
-    style.loadStyles(colorRGBA_str)
-    
+try:    
     # Initial loading of session states
     if 'rerun' not in st.session_state:
         resetStates()
     elif st.session_state['rerun']:
         resetStates(True)
+
+    # Loading CSS styles
+    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide")
+    style.loadStyles(st.session_state['Default.color'])
     
     ## Header
     instruct.Header()
@@ -273,16 +283,18 @@ try:
                 # Preprocessing image
                 with st.spinner("Preprocessing image...", show_time = True):                    
                     # defining the scale and related information
-                    scale, lowerBound, st.session_state['scaleInfo'] = analyzeScaleRegion(
-                        st.session_state['Image'].source
-                    )
-                    st.session_state['scale'] = autoscale.Scale(scale)
+                    st.session_state['Scale'] = detectScale(st.session_state['Image'].source)
                            
                     st.session_state['Image'].preprocessed = st.session_state['Image'].source
-                    if lowerBound is not None: 
+                    if (st.session_state['Scale'].horizontalBound is not None): 
                         # Information bar crop
                         st.session_state['Image'].preprocessed = st.session_state['Image'].source.crop(
-                            (0, 0, st.session_state['Image'].source.size[0], lowerBound)
+                            (
+                                0,
+                                0,
+                                st.session_state['Image'].source.size[0], 
+                                st.session_state['Scale'].horizontalBound
+                            )
                         )                        
 
                     if (st.session_state['Image.type'] is None) or st.session_state['Default.use']:
@@ -376,7 +388,7 @@ try:
                             st.session_state['Image'].preprocessed,
                             st.session_state['Particles'].settings
                         )
-                        st.session_state['Particles'].data.applyScale(st.session_state['scale'].multiplier)   
+                        st.session_state['Particles'].data.applyScale(st.session_state['Scale'].multiplier)   
 
                     st.session_state['Particles'].time = int(np.ceil(time.time() - timeStart))
 
@@ -418,7 +430,7 @@ try:
                         if ('param-filt-2' not in st.session_state) or st.session_state['Default.use']:
                             st.session_state['param-filt-2'] = (min_d, max_d)
 
-                        st.slider(f"Nanoparticles diameter, {st.session_state['scale'].unit}",
+                        st.slider(f"Nanoparticles diameter, {st.session_state['Scale'].unit}",
                             key = 'param-filt-2',                         
                             min_value = slider_min,
                             step = 0.1,
@@ -428,7 +440,7 @@ try:
                             help = tooltips.Filtration.Diameter +
                                 f"""**{np.sum(_diameters > max_d)}** 
                                     particles exceed the 97th with a diameter greater 
-                                    than {max_d:.1f} {st.session_state['scale'].unit}"""                             
+                                    than {max_d:.1f} {st.session_state['Scale'].unit}"""                             
                         )
 
 
@@ -466,10 +478,10 @@ try:
                     ):
                         # Displaying the scale
                         st.toggle("Estimated scale",
-                            key = 'displayScale', 
-                            disabled = st.session_state['scaleInfo'] is None,
+                            key = 'Scale.display', 
+                            disabled = st.session_state['Scale'].info is None,
                             help = tooltips.Visualization.Scale +
-                                tooltips.Warnings.OutScale if st.session_state['scaleInfo'] is None else ""
+                                (tooltips.Warnings.OutScale if st.session_state['Scale'].info is None else "")
                         )
                             
                         # Saving
@@ -492,14 +504,14 @@ try:
                             case 0:
                                 _temp = st.session_state['Particles'].data.paint(
                                     Image.new(mode = "RGBA", size = st.session_state['Image'].preprocessed.size),
-                                    colorRGB
+                                    st.session_state['Default.color']
                                 )
                                 _temp.save(fileResult, format = 'png')
                                 fileResultName += f"_particles.tif"
                             case 1:
                                 _temp = st.session_state['Particles'].data.paint(
                                     st.session_state['Image'].source.convert("RGB"),
-                                    colorRGB
+                                    st.session_state['Default.color']
                                 )
                                 _temp.save(fileResult, format = 'png')
                                 fileResultName += f"_particls+image.tif"
@@ -507,7 +519,7 @@ try:
                             case 2:
                                 fileResult = io.StringIO()
                                 _tempWriter = csv.writer(fileResult, delimiter = ';')
-                                _tempWriter.writerow([f"Scale: {st.session_state['scale'].multiplier:.3} ({st.session_state['scale'].unit}/px)"])
+                                _tempWriter.writerow([f"Scale: {st.session_state['Scale'].multiplier:.3} ({st.session_state['Scale'].unit}/px)"])
                                 _tempWriter.writerow(['coord x, px', 'coord y, px', 'diameter, px'])
                                 _tempWriter.writerows(zip(
                                     st.session_state["Particles"].data.get('x_px'),
@@ -523,7 +535,7 @@ try:
                                     'height': tempHeight,
                                     'buffer': st.session_state['Image'].uploadedFile.getvalue()
                                 }
-                                fileResult = API2CVAT.ExportToCVAT(
+                                fileResult = exportToCVAT(
                                     imageData, 
                                     st.session_state["Particles"].data.get('x_px'),
                                     st.session_state["Particles"].data.get('y_px'),
@@ -545,12 +557,40 @@ try:
             
             # Display image 
             with colImage:
+                _overlays = []
+                if st.session_state['Scale.display']:
+                    y, x, length, text = st.session_state['Scale'].info
+                    x += 2 
+                    tick = 5
+                    _overlays += [
+                        {
+                        "id": "scale",
+                        "type": "path",
+                        "data": {
+                            "d": (
+                                f"M {x} {y - tick} "
+                                f"L {x} {y + tick} "
+                                f"M {x} {y} "
+                                f"L {x + length} {y} "
+                                f"M {x + length} {y - tick} "
+                                f"L {x + length} {y + tick}"
+                            ),
+                        },
+                        "tooltip": (
+                            f"Estimated scale: {st.session_state["Scale"].multiplier:.4f} nm/px\n"
+                            f"Recognition text: {text}\n"
+                        ),
+                    }                        
+                    ]
+
+                if st.session_state["Particles"].data is not None:
+                    _overlays += st.session_state["Particles"].data.toOverlays(
+                            unit = st.session_state["Scale"].unit
+                        )
+
                 overlay(
                     image = st.session_state["Image"].source,
-                    overlays = [] if st.session_state["Particles"].data is None 
-                        else st.session_state["Particles"].data.toOverlays(
-                            unit = st.session_state["scale"].unit
-                        ),
+                    overlays = _overlays,
                     styles = {
                         "viewport": {
                             "height": "85vh",                 
@@ -567,8 +607,14 @@ try:
                         },
                         "circle": {
                             "default": {
-                                "stroke": colorRGBA_str,
-                                "stroke-width": 1,
+                                "stroke": st.session_state['Default.color'],
+                                "strokeWidth": 1,
+                            }
+                        },
+                        "path": {
+                            "default": {
+                                "stroke": st.session_state['Default.color'],
+                                "strokeWidth": 2,
                             }
                         }
                     },
@@ -635,18 +681,17 @@ try:
                             #  It's working now because the first layout is always executed and the image scale
                             #  is always used there. and here it works because the scale is used from a backup.
                             #  It is better to reduce these scales.
-                            scale, lowerBound, st.session_state['scaleInfo'] = analyzeScaleRegion(st.session_state['Statistic'].image)
-                            st.session_state['scale'] = autoscale.Scale(scale)
+                            st.session_state['Scale'] = detectScale(st.session_state['Statistic'].image)
 
-                            st.session_state['Statistic'].data = rEA.ParticleSet(
-                                _blobs,
-                                st.session_state['scale'].multiplier
-                            )
-                            
                             #TODO: remove  st.session_state['sizeImage']
                             st.session_state['sizeImage'] = list(st.session_state['Statistic'].image.size)
-                            if lowerBound is not None:
-                                st.session_state['sizeImage'][1] = lowerBound
+                            if (st.session_state['Scale'].horizontalBound is not None): 
+                                st.session_state['sizeImage'][1] = st.session_state['Scale'].horizontalBound
+                                
+                            st.session_state['Statistic'].data = rEA.ParticleSet(
+                                _blobs,
+                                st.session_state['Scale'].multiplier
+                            )
                 case _:
                     pass
 
@@ -694,7 +739,7 @@ try:
 
                     counts, bins = np.histogram(statistic_d, bins = np.arange(start, end, step, dtype = float))
                                         
-                    name_x = f"Diameters, {st.session_state["scale"].unit}"
+                    name_x = f"Diameters, {st.session_state["Scale"].unit}"
                     temp = [[float(i), float(i+step)] for i in bins]
                     fraction = counts / np.sum(counts) * 100
                     if st.session_state['normalize']:
@@ -716,12 +761,12 @@ try:
                         customdata = customDataChart,
                         showlegend = False,
                         hovertemplate = (
-                            f"Diameter: [%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}}) {st.session_state["scale"].unit}<br>"
+                            f"Diameter: [%{{customdata[0]:.1f}}, %{{customdata[1]:.1f}}) {st.session_state["Scale"].unit}<br>"
                             "Particls: " + hover_y +
                             "<extra></extra>"
                         ),
                         marker = dict(
-                            color = colorRGBA_str,
+                            color = st.session_state['Default.color'],
                             line_color = 'blue',
                             line_width = 1  
                         ),
@@ -750,8 +795,8 @@ try:
                             line = dict(width = 0),    
                             showlegend = True,
                             name = f"Particles: {st.session_state['Statistic'].data.count}<br>"
-                                + f"Avg. diameter: {mu:0.1f} {st.session_state["scale"].unit}<br>"
-                                + f"Std. dev. diameter: {sigma:0.1f} {st.session_state["scale"].unit}" 
+                                + f"Avg. diameter: {mu:0.1f} {st.session_state["Scale"].unit}<br>"
+                                + f"Std. dev. diameter: {sigma:0.1f} {st.session_state["Scale"].unit}" 
                         )) 
                         
                     fig.update_layout(
@@ -831,7 +876,7 @@ try:
                         instruct.MaterialDensity(None, materialDensity)
                     
                     # Additional info                                     
-                    instruct.EstimatedScale(st.session_state["scale"]) # TODO input scale
+                    instruct.EstimatedScale(st.session_state["Scale"]) # TODO input scale
                     
                     if _selectedMaterial == 4: # User material
                         instruct.MaterialDensity(materialName, materialDensity)
@@ -844,12 +889,12 @@ try:
 
                     instruct.MeanDiameter(
                         np.mean(statistic_d),
-                        st.session_state['scale'].unit
+                        st.session_state['Scale'].unit
                     )
 
                     instruct.StdDiameter(
                         np.std(statistic_d),
-                        st.session_state['scale'].unit
+                        st.session_state['Scale'].unit
                     )
 
                     instruct.AboutSecondaryParameters()
@@ -857,28 +902,28 @@ try:
                     _area = np.sum(st.session_state['Statistic'].data.get('area'))
                     instruct.Area(
                         _area,
-                        st.session_state['scale'].unit
+                        st.session_state['Scale'].unit
                     )
 
                     _volume = np.sum(st.session_state['Statistic'].data.get('volume'))
                     instruct.Volume(
                         _volume,
-                        st.session_state['scale'].unit
+                        st.session_state['Scale'].unit
                     )     
 
                     _mass = _volume * materialDensity
-                    instruct.Mass(None if st.session_state['scale'].unit == 'px' else _mass)
+                    instruct.Mass(None if st.session_state['Scale'].unit == 'px' else _mass)
 
-                    _imageArea = np.prod(st.session_state['scale'].apply(st.session_state['sizeImage']))
+                    _imageArea = np.prod(st.session_state['Scale'].apply(st.session_state['sizeImage']))
                     instruct.AboutNormSecondaryParameters(
                         _imageArea,
-                        st.session_state['scale'].unit
+                        st.session_state['Scale'].unit
                     )
 
                     instruct.NormArea(_area / _imageArea * 100)
                 
                     instruct.NormMass(
-                        None if st.session_state['scale'].unit == 'px' else (_mass / _imageArea)
+                        None if st.session_state['Scale'].unit == 'px' else (_mass / _imageArea)
                     )                         
                 # END db12
 
@@ -940,7 +985,7 @@ try:
                             st.image(
                                 st.session_state['Statistic'].data.paint(
                                     st.session_state['Statistic'].image.convert("RGB"),
-                                    colorRGB
+                                    st.session_state['Default.color']
                                 ),
                                 width = 'stretch'
                             )
@@ -984,13 +1029,13 @@ try:
                         emptySubareas[i] = emptyCount[i] / totalCount[i]                    
                     
                     fig = go.Figure().add_trace(go.Bar(
-                        x = st.session_state['scale'].apply(x),
+                        x = st.session_state['Scale'].apply(x),
                         y = emptySubareas,                                 
                         hovertemplate = (
-                            f"Size: %{{x:.2}} {st.session_state["scale"].unit}"
+                            f"Size: %{{x:.2}} {st.session_state['Scale'].unit}"
                             f"<br>Empty: %{{y:.2}}<extra></extra>"
                         ),
-                        marker_color = colorRGBA_str,
+                        marker_color = st.session_state['Default.color'],
                         marker_line_color = 'blue',
                         marker_line_width = 1,
                     ))
@@ -998,7 +1043,7 @@ try:
                     fig.update_layout(
                         margin = marginChart,
                         xaxis = dict(
-                            title = "Size of square subareas, " + st.session_state["scale"].unit,
+                            title = "Size of square subareas, " + st.session_state['Scale'].unit,
                             showgrid = True,
                         ),
                         yaxis = dict(
@@ -1014,7 +1059,7 @@ try:
                     db21_buttonPlaceholder.download_button(
                         label = "Download raw data chart *.csv",
                         data = pd.DataFrame({
-                            f"Block size ({st.session_state['scale'].unit})": st.session_state['scale'].apply(x),
+                            f"Block size ({st.session_state['Scale'].unit})": st.session_state['Scale'].apply(x),
                             "Empty subareas": emptyCount,
                             "Total subareas": totalCount,
                             "Empty fraction": emptySubareas,
@@ -1041,11 +1086,11 @@ try:
                         y = distanceNearest[:-1],
                         showlegend = False,
                         hovertemplate = (
-                            f"Distanse: %{{x:.2}} {st.session_state["scale"].unit}"
+                            f"Distanse: %{{x:.2}} {st.session_state['Scale'].unit}"
                             f"<br>Fraction: %{{y:.2}}<extra></extra>"
                         ),
                         marker = dict(
-                            color = colorRGBA_str,
+                            color = st.session_state['Default.color'],
                             line_color = 'blue',
                             line_width = 1, 
                         )
@@ -1055,12 +1100,12 @@ try:
                         x = [51],
                         y = [distanceNearest[-1]],
                         hovertemplate = (
-                            f"Distanse >50 {st.session_state["scale"].unit}"
+                            f"Distanse >50 {st.session_state['Scale'].unit}"
                             f"<br>Fraction: %{{y:.2}}<extra></extra>"
                         ),
                         showlegend = False,
                         marker = dict(
-                            color = colorRGBA_str,
+                            color = st.session_state['Default.color'],
                             line_color = 'blue',
                             line_width = 1, 
                         )
@@ -1070,7 +1115,7 @@ try:
                         margin = marginChart,                        
                         bargap = 0,
                         xaxis = dict(
-                            title =  f'Distance to nearest nanoparticle, {st.session_state["scale"].unit}',
+                            title =  f'Distance to nearest nanoparticle, {st.session_state["Scale"].unit}',
                             showgrid = True,
                         ),
                         yaxis_title_text = 'Particle fraction',
@@ -1083,7 +1128,7 @@ try:
                     db22_buttonPlaceholder.download_button(
                         label = "Download raw data chart *.csv",
                         data = pd.DataFrame({
-                            f"Distance ({st.session_state["scale"].unit})": minDist,
+                            f"Distance ({st.session_state["Scale"].unit})": minDist,
                         }).to_csv(index = False).encode("utf-8"),
                         file_name = f"{st.session_state['Statistic'].fileName}_distance-nearest-nanoparticle.csv",
                         width = 'stretch', 
@@ -1099,7 +1144,7 @@ try:
                         db23_buttonPlaceholder = st.empty()
                     
                     # TODO: what the scale of 'x'?
-                    x = st.session_state["scale"].apply(np.arange(5, 105, 1))
+                    x = st.session_state["Scale"].apply(np.arange(5, 105, 1))
 
                     averageDensity = NanoStat.averageDensityInNeighborhood(x, fullDist)
                     numberLess = np.rint(averageDensity * np.pi * x**2 * len(fullDist)).astype(int)
@@ -1108,11 +1153,11 @@ try:
                         x = x,
                         y = averageDensity,                        
                         hovertemplate = (
-                            f"Neighborhood radius: %{{x:.2}} {st.session_state["scale"].unit}"
-                            f"<br>Particles/{st.session_state["scale"].unit}²: %{{y:.1e}}<extra></extra>"
+                            f"Neighborhood radius: %{{x:.2}} {st.session_state["Scale"].unit}"
+                            f"<br>Particles/{st.session_state["Scale"].unit}²: %{{y:.1e}}<extra></extra>"
                         ),
                         marker = dict(
-                            color = colorRGBA_str,
+                            color = st.session_state['Default.color'],
                             line_color = 'blue',
                             line_width = 0.5
                         ),
@@ -1121,11 +1166,11 @@ try:
                     fig.update_layout(
                         margin = marginChart,
                         xaxis = dict(
-                            title = f'Neighborhood radius, {st.session_state["scale"].unit}',                                
+                            title = f'Neighborhood radius, {st.session_state["Scale"].unit}',                                
                             showgrid = True,
                         ),
                         yaxis_title_text = 
-                            f'Nanoparticles per unit area, particles/{st.session_state["scale"].unit}²',
+                            f'Nanoparticles per unit area, particles/{st.session_state["Scale"].unit}²',
                         showlegend = False,
                         bargap = 0
                     )
@@ -1136,10 +1181,10 @@ try:
                     db23_buttonPlaceholder.download_button(
                         label = "Download raw data chart *.csv",
                         data = pd.DataFrame({
-                            f"Neighborhood radius ({st.session_state["scale"].unit})": x,
+                            f"Neighborhood radius ({st.session_state["Scale"].unit})": x,
                             "Number of particles": len(fullDist),
                             "Number of neighbors": numberLess,
-                            f"Average density (particles/{st.session_state["scale"].unit}^2)": averageDensity,
+                            f"Average density (particles/{st.session_state["Scale"].unit}^2)": averageDensity,
                         }).to_csv(index = False).encode("utf-8"),
                         file_name = f"{st.session_state['Statistic'].fileName}_nanoparticles-unit-area.csv",
                         width = 'stretch', 
@@ -1156,18 +1201,18 @@ try:
                     with st.popover("Average coverage of neighbors", width = 'stretch'):
                         pass   
 
-                    x = st.session_state["scale"].apply(np.arange(10, 105, 1))
+                    x = st.session_state["Scale"].apply(np.arange(10, 105, 1))
                     localArea = NanoStat.localAreaFraction(x, fullDist, statistic_d)
                     
                     fig = go.Figure().add_trace(go.Bar(
                         x = x,
                         y = localArea,                        
                         hovertemplate = (
-                            f"Area size: %{{x:.2}} {st.session_state["scale"].unit}"
+                            f"Area size: %{{x:.2}} {st.session_state["Scale"].unit}"
                             f"<br>Coverage: %{{y:.1%}}<extra></extra>"
                         ),
                         marker = dict( 
-                            color = colorRGBA_str,
+                            color = st.session_state['Default.color'],
                             line_color = 'blue',
                             line_width = 0.5
                         ),
@@ -1176,7 +1221,7 @@ try:
                     fig.update_layout(
                         margin = marginChart,
                         xaxis = dict(
-                            title = f'Neighbors area size, {st.session_state["scale"].unit}',
+                            title = f'Neighbors area size, {st.session_state["Scale"].unit}',
                             showgrid = True,
                         ),
                         yaxis_title_text = 'Neighbors coverage, %',
@@ -1192,18 +1237,18 @@ try:
                     with st.popover("Average number of neighbors", width = 'stretch'):
                         pass               
                     
-                    x = st.session_state["scale"].apply(np.arange(10, 105, 1))
+                    x = st.session_state["Scale"].apply(np.arange(10, 105, 1))
                     averageNeighborhoods = NanoStat.averageNeighborhoods(x, fullDist)
                     
                     fig = go.Figure().add_trace(go.Bar(
                         x = x,
                         y = averageNeighborhoods,                        
                         hovertemplate = (
-                            f"Size: %{{x:.2}} {st.session_state["scale"].unit}"
+                            f"Size: %{{x:.2}} {st.session_state["Scale"].unit}"
                             f"<br>Neighbors: %{{y:.3}}<extra></extra>"
                         ),
                         marker = dict(
-                           color = colorRGBA_str,
+                           color = st.session_state['Default.color'],
                             line_color = 'blue',                        
                             line_width = 0.5,
                         ),
@@ -1212,7 +1257,7 @@ try:
                     fig.update_layout(
                         margin = marginChart,
                         xaxis = dict(
-                            title = f'Nanoparticle neighborhood size, {st.session_state["scale"].unit}',                            
+                            title = f'Nanoparticle neighborhood size, {st.session_state["Scale"].unit}',                            
                             showgrid = True,
                         ),
                         yaxis_title_text = 'Average number of neighbors',
@@ -1239,9 +1284,9 @@ try:
                                     minDist,
                                     materialDensity = materialDensity,
                                     imageArea = np.prod(
-                                        st.session_state["scale"].apply(st.session_state["sizeImage"])
+                                        st.session_state["Scale"].apply(st.session_state["sizeImage"])
                                     ),
-                                    scaleUnit = st.session_state["scale"].unit,
+                                    scaleUnit = st.session_state["Scale"].unit,
                                 ),
                             }
                         
@@ -1274,6 +1319,9 @@ try:
                         },
                     )
 
+                    if st.session_state['Scale'].unit == 'px':
+                        st.warning(tooltips.Warnings.IncompleteStats, icon = ":material/warning:")
+
                     deleteMask = editedBuffer["Delete"].astype(bool)
 
                     if deleteMask.any():
@@ -1296,7 +1344,7 @@ try:
                     
         if uploadedFileGT is not None:
             try:
-                gt_blobs, _, _ = API2CVAT.ImportTaskFromCVAT(uploadedFileGT) 
+                gt_blobs, _, _ = importTaskFromCVAT(uploadedFileGT) 
             except:
                 st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:")
                 gt_blobs = []
@@ -1324,7 +1372,8 @@ try:
                         value = 0.25,
                         help = tooltips.NoneInfo                      
                     )
-                    
+
+                    #TODO: added IoU for all particles
                     FN, FP, TP, TD, TD_IoU = qualityEstimation(_thres, gt_blobs, est_blobs)
 
                     instruct.Quality(len(FN), len(FP), len(TP))
@@ -1376,6 +1425,7 @@ try:
                             }                        
                         }
                     )
+
 
     ## TAB 4
     with tabHelp:

@@ -1,6 +1,4 @@
-# -*- coding: cp1251 -*-
 import xml.etree.ElementTree as ET
-import streamlit as st
 import numpy as np
 
 import zipfile
@@ -9,8 +7,7 @@ import math
 import io
 
 
-@st.cache_data(show_spinner = False, max_entries = 5)
-def ExportToCVAT(imageData, x, y, diameter): 
+def exportToCVAT(imageData, x, y, diameter): 
     manifest_jsonl_file = f'''{{"version":"1.1"}}\n{{"type":"images"}}\n{{"name":"{imageData['name']}","extension":".tif","width":{imageData['width']},"height":{imageData['height']},"meta":{{"related_images":[]}}}}'''
     
     # not changed
@@ -94,8 +91,7 @@ def ExportToCVAT(imageData, x, y, diameter):
 
 
 # taskCVAT: path to zip file CVAT with labeled particles
-@st.cache_data(show_spinner = False, max_entries = 5)
-def ImportTaskFromCVAT(taskCVAT):
+def importTaskFromCVAT(taskCVAT):
     with zipfile.ZipFile(taskCVAT, 'r') as tempZipFile:
         annotations = tempZipFile.read('annotations.json')
         annotations = annotations.decode('utf-8')
@@ -128,33 +124,5 @@ if __name__ == "__main__":
     from PIL import Image
     taskFile = r"D:\��������\task_nano labeling_backup_2025_09_11_10_57_41.zip"
 
-    temp = ImportTaskFromCVAT(taskFile)
-    print(1)
-
-    # jobFile = r"D:\��������\job_2955897_annotations_2025_09_09_13_06_06_cvat for images 1.1.zip"
-    
-    # BLOBs, imgName, size = ImportJobFromCVAT(jobFile)
-    # print(size, imgName, BLOBs)
-
-        
-    # img = Image.open(r"C:\Users\Muwa\Desktop\data\142-S3-A17-100k-disordered.tif").convert('L')    
-    # img_buffer = io.BytesIO()
-    # img.save(img_buffer, format = 'TIFF')
-
-    # imageData= {
-    #     'name': "142-S3-A17-100k-disordered",
-    #     'width': 1280,
-    #     'height': 1024,
-    #     'buffer': img_buffer.getvalue()
-    # }
-
-    # BLOBs = [
-    #     [10, 20, 5],
-    #     [20, 40, 7],
-    #     [25, 25, 10]
-    #     ]
-
-    # zip_buffer = ExportToCVAT(imageData, BLOBs)    
-
-    # with open(f"backup-{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip", 'wb') as f:
-    #     f.write(zip_buffer.getvalue())
+    temp = importTaskFromCVAT(taskFile)
+    print(temp)
