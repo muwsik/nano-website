@@ -37,12 +37,6 @@ def FiltrationResult(countNP):
     """, unsafe_allow_html = True)
 
 
-def LabelUploderFileCVAT():    
-    st.markdown(f"""
-        Import <a href='https://app.cvat.ai/'>CVAT</a> data to calculate statistics (format 'CVAT for images 1.1')
-    """, unsafe_allow_html = True)
-
-
 def AboutSectionParticleParams():
     st.markdown(f"""
         <p class = 'text center'>
@@ -207,9 +201,8 @@ def Quality(FN, FP, TP):
 
 def LegendChartQuality():
     st.markdown("""
-        <div style="text-align: center;">
-            Types particles in chart:<br>
-            <span class="particle-label blue">Detect by algorithm</span>
+        <div style="text-align: center; font-size: 15px">
+            <span class="particle-label blue">Detect by algorithm (D)</span>
             <span class="particle-label green">Correctly identified by algorithm (TP)</span>
             <span class="particle-label red">Not identified by algorithm (FN)</span>
             <span class="particle-label orange">Identified but not confirmed by expert (FP)</span>

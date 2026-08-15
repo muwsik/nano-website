@@ -34,9 +34,13 @@ class Distribution:
     Step            = "Step for constructing a histogram of the nanoparticle diameter distribution"
     Download        = "Uploading chart data for self-charting"
 
+UploderFileCVAT = """
+    Import [CVAT](https://app.cvat.ai/) data to calculate statistics (format 'CVAT for images 1.1')
+"""
+
 
 ExpertFileUploader  = """ 
-    If file is *.ZIP, it must match the form CVAT for image 1.1.
+    If file is *.ZIP, it must match the form 'CVAT for image 1.1'
 """
 
 

@@ -65,7 +65,8 @@ def resetDetectionTab():
     st.session_state['Image.type'] = None
     st.session_state['Default.use'] = False
     st.session_state['Default.color'] = 'rgb(150, 150, 255)'
-    st.session_state['Scale.display'] = False
+    st.session_state['Scale.display'] = False    
+    st.session_state['quality'] = False
 
 
 def resetStatisticTab():    
@@ -210,12 +211,12 @@ def qualityEstimation(thres, gt_blobs, est_blobs):
 
 @st.cache_data(show_spinner = False, max_entries = 5)
 def importTaskFromCVAT(taskCVAT):
-    API2CVAT.importTaskFromCVAT(taskCVAT)
+    return API2CVAT.importTaskFromCVAT(taskCVAT)
 
 
 @st.cache_data(show_spinner = False, max_entries = 5)
 def exportToCVAT(imageData, x, y, diameter):
-    API2CVAT.exportToCVAT(imageData, x, y, diameter)
+    return API2CVAT.exportToCVAT(imageData, x, y, diameter)
 
 
 def addIoU2Overlays(overlays, iou):
@@ -244,10 +245,9 @@ try:
     instruct.About()
 
     ## Main content area
-    tabDetect, tabStat, tabAccuracy, tabHelp = st.tabs([
+    tabDetect, tabStat, tabHelp = st.tabs([
         "Automatic detection",
         "Statistics dashboard",
-        "Quality estimation",
         "Help"
     ])
 
@@ -398,163 +398,197 @@ try:
                         st.session_state['Particles'].data.detectedCount,
                         st.session_state['Particles'].time
                     )
-
-                    # Warning about not correctly detection results 
-                    if (st.session_state['Particles'].data.detectedCount < 1):            
+ 
+                    if (st.session_state['Particles'].data.detectedCount < 1):    
+                    # Warning about not correctly detection results        
                         st.warning(tooltips.Warnings.NoFoundNanos, icon = ":material/warning:")
-                                    
-                # Action with correctly detection results
-                if (st.session_state['Particles'].detect and st.session_state['Particles'].data.detectedCount > 0):
-                    # Filtration settings
-                    with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
-                        if ('param-filt-1' not in st.session_state) or st.session_state['Default.use']:
-                            st.session_state['param-filt-1'] = st.session_state['Default'].f_brightness
-                                                    
-                        st.slider("Nanoparticle center brightness",
-                            key = 'param-filt-1',
-                            disabled = st.session_state['Default.use'],
-                            help = tooltips.Filtration.Brightness
-                        )
+                    else:
+                        # Filtration settings
+                        with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
+                            if ('param-filt-1' not in st.session_state) or st.session_state['Default.use']:
+                                st.session_state['param-filt-1'] = st.session_state['Default'].f_brightness
+                                                        
+                            st.slider("Nanoparticle center brightness",
+                                key = 'param-filt-1',
+                                disabled = st.session_state['Default.use'],
+                                help = tooltips.Filtration.Brightness
+                            )
 
-                        # Settings slider with diameters    
-                        _diameters = st.session_state['Particles'].data.get('diameter', False)                        
-                        min_d = np.min(_diameters)
-                        max_d = np.percentile(_diameters, 97)
+                            # Settings slider with diameters    
+                            _diameters = st.session_state['Particles'].data.get('diameter', False)                        
+                            min_d = np.min(_diameters)
+                            max_d = np.percentile(_diameters, 97)
 
-                        slider_min = np.floor(min_d / 10) * 10
-                        slider_max = np.ceil(max_d / 10) * 10
+                            slider_min = np.floor(min_d / 10) * 10
+                            slider_max = np.ceil(max_d / 10) * 10
 
-                        if slider_max <= slider_min:
-                            slider_max = slider_max + 10
+                            if slider_max <= slider_min:
+                                slider_max = slider_max + 10
 
-                        if ('param-filt-2' not in st.session_state) or st.session_state['Default.use']:
-                            st.session_state['param-filt-2'] = (min_d, max_d)
+                            if ('param-filt-2' not in st.session_state) or st.session_state['Default.use']:
+                                st.session_state['param-filt-2'] = (min_d, max_d)
 
-                        st.slider(f"Nanoparticles diameter, {st.session_state['Scale'].unit}",
-                            key = 'param-filt-2',                         
-                            min_value = slider_min,
-                            step = 0.1,
-                            max_value = slider_max,
-                            format = "%0.1f",
-                            disabled = st.session_state['Default.use'],
-                            help = tooltips.Filtration.Diameter +
-                                f"""**{np.sum(_diameters > max_d)}** 
-                                    particles exceed the 97th with a diameter greater 
-                                    than {max_d:.1f} {st.session_state['Scale'].unit}"""                             
-                        )
+                            st.slider(f"Nanoparticles diameter, {st.session_state['Scale'].unit}",
+                                key = 'param-filt-2',                         
+                                min_value = slider_min,
+                                step = 0.1,
+                                max_value = slider_max,
+                                format = "%0.1f",
+                                disabled = st.session_state['Default.use'],
+                                help = tooltips.Filtration.Diameter +
+                                    f"""**{np.sum(_diameters > max_d)}** 
+                                        particles exceed the 97th with a diameter greater 
+                                        than {max_d:.1f} {st.session_state['Scale'].unit}"""                             
+                            )
 
 
-                        if ('param-filt-3' not in st.session_state) or st.session_state['Default.use']:
-                            st.session_state['param-filt-3'] = st.session_state['Default'].f_reliability
+                            if ('param-filt-3' not in st.session_state) or st.session_state['Default.use']:
+                                st.session_state['param-filt-3'] = st.session_state['Default'].f_reliability
 
-                        st.slider("Nanoparticle reliability",
-                            key = 'param-filt-3',
-                            min_value = 0.0,
-                            step = 0.01,
-                            max_value = 1.0,
-                            disabled = st.session_state['Default.use'],
-                            help = tooltips.Filtration.Reliability
+                            st.slider("Nanoparticle reliability",
+                                key = 'param-filt-3',
+                                min_value = 0.0,
+                                step = 0.01,
+                                max_value = 1.0,
+                                disabled = st.session_state['Default.use'],
+                                help = tooltips.Filtration.Reliability
+                            )
+                            
+                        # Filtering                    
+                        st.session_state['Particles'].data.setfilter( 
+                            c0 = (st.session_state['param-filt-1'], None),
+                            diameter = (
+                                st.session_state['param-filt-2'][0],
+                                None if np.isclose(slider_max, st.session_state['param-filt-2'][1]) 
+                                    else st.session_state['param-filt-2'][1]
+                            ),
+                            approxError = (None, 1 - st.session_state['param-filt-3'])
                         )
                         
-                    # Filtering                    
-                    st.session_state['Particles'].data.setfilter( 
-                        c0 = (st.session_state['param-filt-1'], None),
-                        diameter = (
-                            st.session_state['param-filt-2'][0],
-                            None if np.isclose(slider_max, st.session_state['param-filt-2'][1]) 
-                                else st.session_state['param-filt-2'][1]
-                        ),
-                        approxError = (None, 1 - st.session_state['param-filt-3'])
-                    )
+                        # Info about filtered nanoparticles
+                        instruct.FiltrationResult(st.session_state['Particles'].data.count)
+
+                        if (st.session_state['Particles'].data.count < 1):
+                            st.warning(tooltips.Warnings.FiltrSettings, icon = ":material/warning:")                                      
+                                            
+                        with st.expander("Visualization and saving results", expanded = False,
+                            icon = ":material/display_settings:"
+                        ): 
+                            st.toggle("Estimated scale",
+                                key = 'Scale.display', 
+                                disabled = st.session_state['Scale'].info is None,
+                                help = tooltips.Visualization.Scale +
+                                    (tooltips.Warnings.OutScale if st.session_state['Scale'].info is None else "")
+                            )
+                                
+                            # Saving
+                            with st.container(horizontal = True, vertical_alignment = 'bottom'):
+                                _selectionSave = st.selectbox(
+                                    "What results should be saved?",
+                                    index = 3,
+                                    placeholder = "Select options...",
+                                    options = tooltips.Options.Saving.keys(),
+                                    format_func = lambda option: tooltips.Options.Saving[option]
+                                )
+
+                                fileResult = io.BytesIO()
+                                fileResultName = Path(st.session_state['Image'].uploadedFile.name).stem
+                                _buttonDownloadDisabled = False
+
+                                match _selectionSave:
+                                    case 0:
+                                        _temp = st.session_state['Particles'].data.paint(
+                                            Image.new(mode = "RGBA", size = st.session_state['Image'].preprocessed.size),
+                                            st.session_state['Default.color']
+                                        )
+                                        _temp.save(fileResult, format = 'png')
+                                        fileResultName += f"_particles.tif"
+                                    case 1:
+                                        _temp = st.session_state['Particles'].data.paint(
+                                            st.session_state['Image'].source.convert("RGB"),
+                                            st.session_state['Default.color']
+                                        )
+                                        _temp.save(fileResult, format = 'png')
+                                        fileResultName += f"_particls+image.tif"
+
+                                    case 2:
+                                        fileResult = io.StringIO()
+                                        _tempWriter = csv.writer(fileResult, delimiter = ';')
+                                        _tempWriter.writerow([f"Scale: {st.session_state['Scale'].multiplier:.3} ({st.session_state['Scale'].unit}/px)"])
+                                        _tempWriter.writerow(['coord x, px', 'coord y, px', 'diameter, px'])
+                                        _tempWriter.writerows(zip(
+                                            st.session_state["Particles"].data.get('x_px'),
+                                            st.session_state["Particles"].data.get('y_px'),
+                                            st.session_state["Particles"].data.get('diameter_px'),
+                                        ))
+                                        fileResultName += f"_parameters.csv"
+                                    case 3:
+                                        tempWidth, tempHeight = st.session_state["Image"].source.size
+                                        imageData = {
+                                            'name': Path(st.session_state['Image'].uploadedFile.name).stem,
+                                            'width': tempWidth,
+                                            'height': tempHeight,
+                                            'buffer': st.session_state['Image'].uploadedFile.getvalue()
+                                        }
+                                        fileResult = exportToCVAT(
+                                            imageData, 
+                                            st.session_state["Particles"].data.get('x_px'),
+                                            st.session_state["Particles"].data.get('y_px'),
+                                            st.session_state["Particles"].data.get('diameter_px'),
+                                        )
+
+                                        fileResultName += f"_{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
+                                    case _:
+                                        _buttonDownloadDisabled = True
+
+                                st.download_button(
+                                    label = "",
+                                    icon = ":material/download:",
+                                    data = fileResult.getvalue(),
+                                    file_name = fileResultName,
+                                    disabled = _buttonDownloadDisabled,
+                                    help = tooltips.Visualization.Download
+                                )
+
+                        with st.expander("Quality estimation", expanded = False,
+                            icon = ":material/circles:"
+                        ):                        
+                            _uploadedFileGT = st.file_uploader("Expert markup file", type = ["zip"],
+                                help = tooltips.ExpertFileUploader
+                            )
+
+                            st.session_state['quality'] = False
+                            if _uploadedFileGT is not None:
+                                try:
+                                    gt_blobs, _, _ = importTaskFromCVAT(_uploadedFileGT) 
+                                except:
+                                    st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:")
+                                    gt_blobs = []
                     
-                    # Info about filtered nanoparticles
-                    instruct.FiltrationResult(st.session_state['Particles'].data.count)
-
-                    if (st.session_state['Particles'].data.count < 1):
-                        st.warning(tooltips.Warnings.FiltrSettings, icon = ":material/warning:")                                      
-                                        
-                    with st.expander("Visualization and saving results", expanded = False,
-                        icon = ":material/display_settings:"
-                    ):
-                        # Displaying the scale
-                        st.toggle("Estimated scale",
-                            key = 'Scale.display', 
-                            disabled = st.session_state['Scale'].info is None,
-                            help = tooltips.Visualization.Scale +
-                                (tooltips.Warnings.OutScale if st.session_state['Scale'].info is None else "")
-                        )
-                            
-                        # Saving
-                        #TODO: use container horizontal
-                        selectboxCol, buttonCol = st.columns([6,1], vertical_alignment = 'bottom')
-
-                        _selectionSave = selectboxCol.selectbox(
-                            "What results should be saved?",
-                            index = 3,
-                            placeholder = "Select options...",
-                            options = tooltips.Options.Saving.keys(),
-                            format_func = lambda option: tooltips.Options.Saving[option]
-                        )
-
-                        fileResult = io.BytesIO()
-                        fileResultName = Path(st.session_state['Image'].uploadedFile.name).stem
-                        _buttonDownloadDisabled = False
-
-                        match _selectionSave:
-                            case 0:
-                                _temp = st.session_state['Particles'].data.paint(
-                                    Image.new(mode = "RGBA", size = st.session_state['Image'].preprocessed.size),
-                                    st.session_state['Default.color']
-                                )
-                                _temp.save(fileResult, format = 'png')
-                                fileResultName += f"_particles.tif"
-                            case 1:
-                                _temp = st.session_state['Particles'].data.paint(
-                                    st.session_state['Image'].source.convert("RGB"),
-                                    st.session_state['Default.color']
-                                )
-                                _temp.save(fileResult, format = 'png')
-                                fileResultName += f"_particls+image.tif"
-
-                            case 2:
-                                fileResult = io.StringIO()
-                                _tempWriter = csv.writer(fileResult, delimiter = ';')
-                                _tempWriter.writerow([f"Scale: {st.session_state['Scale'].multiplier:.3} ({st.session_state['Scale'].unit}/px)"])
-                                _tempWriter.writerow(['coord x, px', 'coord y, px', 'diameter, px'])
-                                _tempWriter.writerows(zip(
-                                    st.session_state["Particles"].data.get('x_px'),
-                                    st.session_state["Particles"].data.get('y_px'),
-                                    st.session_state["Particles"].data.get('diameter_px'),
-                                ))
-                                fileResultName += f"_parameters.csv"
-                            case 3:
-                                tempWidth, tempHeight = st.session_state["Image"].source.size
-                                imageData = {
-                                    'name': Path(st.session_state['Image'].uploadedFile.name).stem,
-                                    'width': tempWidth,
-                                    'height': tempHeight,
-                                    'buffer': st.session_state['Image'].uploadedFile.getvalue()
-                                }
-                                fileResult = exportToCVAT(
-                                    imageData, 
-                                    st.session_state["Particles"].data.get('x_px'),
-                                    st.session_state["Particles"].data.get('y_px'),
-                                    st.session_state["Particles"].data.get('diameter_px'),
-                                )
-                                fileResultName += f"_{time.strftime('%Y-%m-%d-%H-%M-%S')}.zip"
-                            case _:
-                                _buttonDownloadDisabled = True
-
-                        buttonCol.download_button(
-                            label = "",
-                            icon = ":material/download:",
-                            data = fileResult.getvalue(),
-                            file_name = fileResultName,
-                            disabled = _buttonDownloadDisabled,
-                            help = tooltips.Visualization.Download
-                        )
-         
-            
+                                if len(gt_blobs) == 0:
+                                    st.warning(tooltips.Warnings.NoResultsCVAT, icon = ":material/warning:")
+                                elif st.session_state['Particles'].data is None:                
+                                    st.warning(tooltips.Warnings.NoResults, icon = ":material/warning:")
+                                else:        
+                                    st.session_state['quality'] = True        
+                                    st.session_state['sizeImage'] = st.session_state['Image'].preprocessed.size
+                                    
+                                    est_blobs = np.column_stack([
+                                        st.session_state['Particles'].data.get('x_px'),
+                                        st.session_state['Particles'].data.get('y_px'),
+                                        st.session_state['Particles'].data.get('diameter_px'),
+                                    ])
+                                    
+                                    _thres = st.slider("Jacquard measure threshold",
+                                        min_value = 0.05,
+                                        step = 0.01,
+                                        max_value = 0.95,
+                                        value = 0.25,
+                                        help = tooltips.NoneInfo                      
+                                    )
+                
+                                    FN, FP, TP, D, D_iou  = qualityEstimation(_thres, gt_blobs, est_blobs)
+                                     
             # Display image 
             with colImage:
                 _overlays = []
@@ -562,8 +596,7 @@ try:
                     y, x, length, text = st.session_state['Scale'].info
                     x += 2 
                     tick = 5
-                    _overlays += [
-                        {
+                    _overlays += [{
                         "id": "scale",
                         "type": "path",
                         "data": {
@@ -577,16 +610,28 @@ try:
                             ),
                         },
                         "tooltip": (
-                            f"Estimated scale: {st.session_state["Scale"].multiplier:.4f} nm/px\n"
+                            f"Estimated scale: {st.session_state["Scale"].multiplier:.3f} nm/px\n"
                             f"Recognition text: {text}\n"
                         ),
-                    }                        
-                    ]
+                    }]
 
-                if st.session_state["Particles"].data is not None:
+                if (st.session_state['quality']):
+                    _overlays += (
+                        addIoU2Overlays(
+                            rEA.ParticleSet(D).toOverlays(classes = 'D', info = "none"),
+                            D_iou
+                        )
+                        +                     
+                        rEA.ParticleSet(TP).toOverlays(classes = 'TP', info = "none")
+                        +                       
+                        rEA.ParticleSet(FP).toOverlays(classes = 'FP', info = "none")
+                        +               
+                        rEA.ParticleSet(FN).toOverlays(classes = 'FN', info = "none")
+                    )
+                elif st.session_state["Particles"].data is not None:
                     _overlays += st.session_state["Particles"].data.toOverlays(
                             unit = st.session_state["Scale"].unit
-                        )
+                        )       
 
                 overlay(
                     image = st.session_state["Image"].source,
@@ -609,6 +654,24 @@ try:
                             "default": {
                                 "stroke": st.session_state['Default.color'],
                                 "strokeWidth": 1,
+                            },
+                            "class": {
+                                "D": {
+                                    "stroke": "blue",
+                                    "stroke-width": 1,
+                                },                            
+                                "TP": {
+                                    "stroke": "green",
+                                    "stroke-width": 1,
+                                },                            
+                                "FN": {
+                                    "stroke": "red",
+                                    "stroke-width": 1,
+                                },                            
+                                "FP": {
+                                    "stroke": "yellow",
+                                    "stroke-width": 1,
+                                },
                             }
                         },
                         "path": {
@@ -620,6 +683,10 @@ try:
                     },
                     key = "main-imageViewer"                    
                 )
+                
+                if (st.session_state['quality']):
+                    instruct.Quality(len(FN), len(FP), len(TP))
+                    instruct.LegendChartQuality() 
 
 
     ## TAB 2 
@@ -631,14 +698,23 @@ try:
             expanded = True,
             icon = ":material/rule_settings:"
         ):
-            _selectionUseNano = st.selectbox(
+            
+            l, r = st.columns([2, 1])
+            _selectionUseNano = l.pills(
                 "Which nanoparticles to use?",
-                #key = "Statistic.use",
-                index = 2,
+                default = 2,
+                required = True,
                 options = tooltips.Options.NanoStatistic.keys(),
                 format_func = lambda option: tooltips.Options.NanoStatistic[option],
+                width = 'stretch',
                 help = tooltips.NanopartSelectbox
             ) 
+
+            uploadedFileCVAT = r.file_uploader("Upload [CVAT](https://app.cvat.ai/) file",
+                type = ["zip"],
+                disabled = _selectionUseNano != 1,
+                help = tooltips.UploderFileCVAT
+            )
                 
             st.session_state['Statistic'].calculate = False
             match _selectionUseNano:
@@ -657,15 +733,9 @@ try:
                         st.session_state['Statistic'].image = st.session_state['Image'].source
                         st.session_state['sizeImage'] = st.session_state['Image'].preprocessed.size
                 case 1:
-                    instruct.LabelUploderFileCVAT()
-                    uploadedFileCVAT = st.file_uploader("Uploder CVAT file",
-                        type = ["zip"],
-                        label_visibility = 'collapsed'
-                    )
-
                     if uploadedFileCVAT is not None:
                         try:
-                            _blobs, _fileName, _imageCVAT = API2CVAT.ImportTaskFromCVAT(uploadedFileCVAT)
+                            _blobs, _fileName, _imageCVAT = importTaskFromCVAT(uploadedFileCVAT)
                         except:
                             st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:") 
                             _blobs = []
@@ -1334,100 +1404,7 @@ try:
                 # END db33
 
 
-    ## TAB 3    
-    with tabAccuracy:
-        instruct.AboutSectionQuality()
-
-        uploadedFileGT = st.file_uploader("Expert markup file", type = ["zip"],
-            help = tooltips.ExpertFileUploader
-        )
-                    
-        if uploadedFileGT is not None:
-            try:
-                gt_blobs, _, _ = importTaskFromCVAT(uploadedFileGT) 
-            except:
-                st.warning(tooltips.Warnings.BadFileFormat, icon = ":material/warning:")
-                gt_blobs = []
-
-            if len(gt_blobs) == 0:
-                st.warning(tooltips.Warnings.NoResultsCVAT, icon = ":material/warning:")
-            elif st.session_state['Particles'].data is None:                
-                st.warning(tooltips.Warnings.NoResults, icon = ":material/warning:")
-            else:                
-                st.session_state['sizeImage'] = st.session_state['Image'].preprocessed.size
-               
-                est_blobs = np.column_stack([
-                    st.session_state['Particles'].data.get('x_px'),
-                    st.session_state['Particles'].data.get('y_px'),
-                    st.session_state['Particles'].data.get('diameter_px'),
-                ])
-
-                l, r = st.columns([3, 7])
-
-                with l:                    
-                    _thres = st.slider("Jacquard measure threshold",
-                        min_value = 0.05,
-                        step = 0.01,
-                        max_value = 0.95,
-                        value = 0.25,
-                        help = tooltips.NoneInfo                      
-                    )
-
-                    #TODO: added IoU for all particles
-                    FN, FP, TP, TD, TD_IoU = qualityEstimation(_thres, gt_blobs, est_blobs)
-
-                    instruct.Quality(len(FN), len(FP), len(TP))
-                    instruct.LegendChartQuality()
-
-                with r:
-                    overlay(
-                        key = 'accuracy',
-                        image = st.session_state['Image'].source,
-                        overlays = 
-                            addIoU2Overlays(
-                                rEA.ParticleSet(TD).toOverlays(classes = 'detect', info = "None"),
-                                TD_IoU
-                            )
-                            +                     
-                            rEA.ParticleSet(TP).toOverlays(classes = 'TP', info = "None")
-                            +                        
-                            rEA.ParticleSet(FP).toOverlays(classes = 'FP', info = "None")
-                            +                        
-                            rEA.ParticleSet(FN).toOverlays(classes = 'FN', info = "None")
-                            ,
-                        styles = {     
-                            "viewport": {
-                            },
-                            "tooltip": {
-                                "background-color": "black",
-                                "color": "white",
-                                "white-space": "pre-line"
-                            },
-                            "circle": {
-                                "class": {
-                                    "detect": {
-                                        "stroke": "blue",
-                                        "stroke-width": 1,
-                                    },                            
-                                    "TP": {
-                                        "stroke": "green",
-                                        "stroke-width": 1,
-                                    },                            
-                                    "FN": {
-                                        "stroke": "red",
-                                        "stroke-width": 1,
-                                    },                            
-                                    "FP": {
-                                        "stroke": "yellow",
-                                        "stroke-width": 1,
-                                    },
-                                }
-                            }                        
-                        }
-                    )
-
-
-    ## TAB 4
+    ## TAB 3
     with tabHelp:
         if st.button("If you have any difficulties with our tool, please contact us (click here)",
             key = 'button_contact',
