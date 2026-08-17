@@ -121,7 +121,7 @@ def sessionState2str(closedKey = []):
 
 
 @st.dialog("Something went wrong...")
-def dialog_exception(sendReportFlag = True):
+def dialog_exception():
     st.write("""
         An error occurred while the application was running.
         *The latest detection and marking results are saved.*
@@ -129,7 +129,9 @@ def dialog_exception(sendReportFlag = True):
         (if you refresh the page through the browser, some data may not be saved).
     """)
 
-    if st.button("Rerun page", type = "primary"): 
+    _container = st.container(horizontal = True, vertical_alignment = 'center')
+
+    if _container.button("Rerun page", type = "primary"): 
         st.session_state['rerun'] = True
         st.rerun()
     else:
@@ -147,8 +149,10 @@ def dialog_exception(sendReportFlag = True):
                 "image-type": st.session_state['Image'].uploadedFile.type
             })       
 
+        sendReportFlag = _container.button("Send report")
         if sendReportFlag:
-            result, response = webBot.message2email(dataException)
+            with _container.spinner("Sending report..."):
+                result, response = webBot.message2email(dataException)
 
 
     with st.expander("Info for developers", expanded = False, icon = ":material/app_registration:"):
@@ -156,9 +160,9 @@ def dialog_exception(sendReportFlag = True):
         
         if sendReportFlag:
             if result:
-                st.success("Report successful sent!")
+                _container.success("Send successfully!")
             else:
-                st.error("Error sending report: " + str(response.json()))
+                _container.error("Error sending report: " + str(response))
     
             
 @st.dialog("Send feedback...")
@@ -173,8 +177,10 @@ def dialog_feedback():
         sendImg = False
         if st.session_state['Image'].upload:
             sendImg = st.toggle("The current uploaded image on site will be sent", value = True)
+            
+        _container = st.container(horizontal = True, vertical_alignment = 'center')
 
-        submitButtonClick = st.form_submit_button('Send feedback', icon = ":material/drafts:")
+        submitButtonClick = _container.form_submit_button('Send feedback', icon = ":material/drafts:")
 
     if submitButtonClick:
         dataFeedback = {
@@ -191,12 +197,13 @@ def dialog_feedback():
                 "image-type": st.session_state['Image'].uploadedFile.type
             })
 
-        result, _ = webBot.message2email(dataFeedback)
+        with _container.spinner("Sending report..."):
+            result, _ = webBot.message2email(dataFeedback)
         
         if result:
-            st.success("Feedback successful sent!")
+            _container.success("Send successfully!")
         else:
-            st.error("Error sending feedback. Please try again...")
+            _container.error("Error sending feedback. Please try again...")
 
     
 @st.cache_data(show_spinner = False, max_entries = 5)
@@ -235,7 +242,7 @@ try:
         resetStates(True)
 
     # Loading CSS styles
-    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide")
+    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide", page_icon = ":petri_dish:")
     style.loadStyles(st.session_state['Default.color'])
     
     ## Header
@@ -476,9 +483,9 @@ try:
                         ): 
                             st.toggle("Estimated scale",
                                 key = 'Scale.display', 
-                                disabled = st.session_state['Scale'].info is None,
+                                disabled = not st.session_state['Scale'].isInfo,
                                 help = tooltips.Visualization.Scale +
-                                    (tooltips.Warnings.OutScale if st.session_state['Scale'].info is None else "")
+                                    (tooltips.Warnings.OutScale if not st.session_state['Scale'].isInfo else "")
                             )
                                 
                             # Saving
@@ -1410,8 +1417,8 @@ try:
             key = 'button_contact',
             width = 'stretch',
         ):            
-            st.warning(tooltips.Warnings.ReportLimit)
-            #dialog_feedback()
+            #st.warning(tooltips.Warnings.ReportLimit)
+            dialog_feedback()
 
 
         # Guide 1: Detection and filtration of nanoparticles
@@ -1434,4 +1441,4 @@ try:
     instruct.Footer()
 
 except Exception as exc:
-    dialog_exception(False) # passing email with error 
+    dialog_exception()

@@ -68,7 +68,14 @@ def detectScale(image):
     scaleBarLength, scaleBarX = scaleLength(image[horizontalBound])
 
     if scaleBarVal is None or scaleBarLength is None:
-        return Scale()
+        return Scale(
+            info = [
+                horizontalBound,
+                scaleBarX,
+                scaleBarLength,
+                scaleBarText
+            ]
+        )
 
     return Scale(
         multiplier = scaleBarVal / scaleBarLength,
@@ -117,6 +124,19 @@ class Scale:
     @property
     def info(self):
         return self._info
+    
+    @property
+    def isInfo(self):
+        if (
+            (self._info is not None) 
+            and (self._info[0] is not None)
+            and (self._info[1] is not None)
+            and (self._info[2] is not None)
+            and (self._info[3] is not None)
+        ):
+            return True
+
+        return False
 
     @property
     def horizontalBound(self):
@@ -127,11 +147,11 @@ class Scale:
 ### main
 if __name__ == "__main__":  
 
-    img_path = r"C:\Users\Victory\Downloads\fMaIVQuFjZcJ1_OC-7l0q4YstN3SSGwjMOr9EdOl0G74L66EMNPJbnflPmVsPcLsNj56NQEQ5-pUvKW6dpvy_0dQ.jpg"
+    img_path = r"C:\4-S1-no_area-100k-ordered.tif"
 
     img = Image.open(img_path).convert('L')
     img = img.resize((1280, 960))
-    grayImage = np.array(img, dtype='uint8')
+    grayImage = np.array(img, dtype = 'uint8')
 
     tmp = detectScale(grayImage)
 

@@ -32,11 +32,18 @@ def message2email(data):
         })
 
     response = requests.post(URL, json = payload)
-    
-    if response.json().get("ok"):
-        return True, response
+    if not response.ok:
+        return False, f"HTTP {response.status_code}: {response.text}"
 
-    return False, response
+    try:
+        result = response.json()
+    except:
+        return False, f"Сервер вернул не JSON: {response.text}"
+
+    if result.get("ok"):
+        return True, result
+
+    return False, result
 
 
 if __name__ == "__main__":
