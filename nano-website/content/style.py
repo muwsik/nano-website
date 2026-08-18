@@ -41,7 +41,7 @@ def loadStyles(color):
             }}
 
             .st-key-button_contact button {{
-                background-color: rgb(230, 230, 255);
+                background-color: rgba(255, 255, 255, 1);
             }}
 
             .text {{
@@ -49,10 +49,14 @@ def loadStyles(color):
                 text-align: justify;
             }}
 
+            .text-help {{
+                font-size: 22px;            
+            }}
+
             .text.center {{ text-align: center; }}
 
             .cite {{
-                font-size: 1.25vw;
+                font-size: 21px;
                 text-align: justify;
             }}
 
@@ -60,7 +64,7 @@ def loadStyles(color):
                 background-color: {color};
                 color: black;
                 font-weight: bold;
-                font-size: 3vw;
+                font-size: 50px;
                 text-align: center;
                 padding: 20px;
                 border-radius: 10px;
@@ -69,7 +73,7 @@ def loadStyles(color):
             .about
             {{
                 font-weight: bold;
-                font-size: 2vw;
+                font-size: 35px;
                 text-align: center;
             }}
 

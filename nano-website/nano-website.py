@@ -1431,8 +1431,10 @@ try:
         instruct.Guide3()        
 
         # Guide 4: Evaluation of detection quality
-        instruct.Guide4()        
+        instruct.Guide4()  
         
+        # Guide 5: Statistics Dashboard
+        instruct.Guide5()   
     
     ## How to cite
     instruct.HowCite()

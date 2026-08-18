@@ -211,124 +211,114 @@ def LegendChartQuality():
 
 
 def Guide1():
-    st.subheader("Nanoparticle Detection and Filtering", anchor = False)  
-    text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-    text_col.markdown(f"""
-        <div>
-            <p class='text'>All the following steps are performed on the <strong>Automatic Detection</strong> tab.</p>
+    st.header("Nanoparticle Detection and Filtering", anchor = False)
+    st.markdown(f"""
+        <div class = 'text-help'>
+            <p>
+                All the following steps are performed on the <strong>Automatic Detection</strong> tab.
+            </p>
             <ul>
                 <li>
-                    <p class='text'>
-                        Step 1. Upload the original SEM image using the <strong>Browse File</strong> button.
+                    <p>
+                        Step 1. Upload the original SEM/TEM image using the <strong>Browse File</strong> button.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
+                    <p>
                         Step 2. Detect nanoparticles by clicking the <strong>Nanoparticles Detection</strong> button,
                         which becomes available after the image is uploaded. The detection process takes some time,
                         typically from a few seconds up to one minute.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
-                        Step 3. After successful detection, the detected nanoparticles are filtered using the default
-                        parameters. The filtered nanoparticles are displayed on the image as circles.
+                    <p>
+                        Step 3. After successful detection (if particles are found), the detected nanoparticles are
+                        filtered using the default parameters. The filtered nanoparticles are displayed on the image
+                        as circles. If no particles are detected, a warning will appear and filtering will not be available.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
+                    <p>
                         Step 4. You can manually adjust the detection and filtering parameters by unchecking the
-                        <strong>Use Default Settings</strong> option. <strong>IMPORTANT:</strong> To apply the detection
-                        parameters, click the <strong>Nanoparticles Detection</strong> button again. The filtering
-                        parameters are applied automatically.
+                        <strong>Use Default Settings</strong> option. <strong>IMPORTANT:</strong> To apply changes to the
+                        detection parameters, click the <strong>Nanoparticles Detection</strong> button again.
+                        Filtering parameters are applied automatically when sliders are moved.
                     </p>
                 </li>
             </ul>
-        </div>
-    """, unsafe_allow_html = True)
-
-    media_col.markdown(f"""
-        <div class = 'text' style = "text-align: center;">
-            A video guide will be added here soon!
         </div>
     """, unsafe_allow_html = True)
 
 
 def Guide2():
-    st.subheader("Working with Detection Results", anchor = False)
-    text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-    text_col.markdown(f"""
-        <div>
-            <p class='text'>The following features are available on the <strong>Automatic Detection</strong> tab after nanoparticle detection has been completed.</p>
+    st.header("Working with Detection Results", anchor = False)
+    st.markdown(f"""
+        <div class = 'text-help'>
+            <p>
+                The following features are available on the <strong>Automatic Detection</strong> tab after nanoparticle detection has been completed.
+                </p>
             <ul>
                 <li>
-                    <p class='text'>
+                    <p>
                         Detection results can be downloaded in several formats:
-                        (1) Detected nanoparticles on a transparent background.
-                        (2) Detected nanoparticles overlaid on the original image.
-                        (3) A file containing the center coordinates and radius of each detected nanoparticle.
+                        <ol>
+                            <li>Detected nanoparticles on a transparent background (PNG image).</li>
+                            <li>Detected nanoparticles overlaid on the original image (PNG image).</li>
+                            <li>A CSV file containing the center coordinates and <strong>diameter</strong> (in pixels) of each detected nanoparticle.</li>
+                            <li>CVAT Task backup (zip archive) for import into CVAT.</li>
+                        </ol>
                         To download the desired result, select the appropriate option from the
-                        <strong>What Results Should Be Saved?</strong> drop-down list and click the button on the right.
+                        <strong>What Results Should Be Saved?</strong> drop-down list and click the download button.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
+                    <p>
                         If the image contains a scale bar and its physical length is specified, the image scale is
-                        determined automatically. The detected scale can be displayed using the
-                        <strong>Display Scale</strong> switch.
+                        determined automatically. The detected scale can be displayed on the image using the
+                        <strong>Estimated scale</strong> toggle in the <strong>Visualization and saving results</strong> section.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
-                        The comparison mode is currently under development.
+                    <p>
+                        To assess detection quality, use the <strong>Quality estimation</strong> section (see Guide 4).
                     </p>
                 </li>
             </ul>
         </div>
     """, unsafe_allow_html = True)
-       
-    media_col.markdown(f"""
-        <div class = 'text center'>
-            A video guide will be added here soon!
-        </div>
-    """, unsafe_allow_html = True)
 
 
 def Guide3():
-    st.subheader("CVAT Integration", anchor = False)
-    text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-    text_col.markdown(f"""
-        <div>
+    st.header("CVAT Integration", anchor = False)
+    st.markdown(f"""
+        <div class = 'text-help'>
             <ul>
                 <li>
-                    <p class='text'>
+                    <p>
                         Detection results can be downloaded in a format supported by
                         <a href="https://app.cvat.ai/">CVAT</a>.
                         To do this, after completing nanoparticle detection on the
                         <strong>Automatic Detection</strong> tab, select
                         <strong>CVAT Task</strong> from the
                         <strong>What Results Should Be Saved?</strong> drop-down list
-                        and click the button on the right. The downloaded backup archive
+                        and click the download button. The downloaded backup archive
                         can then be used to create a new CVAT task.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
+                    <p>
                         Annotations created in CVAT can be imported into the application.
                         First, export the backup archive of the corresponding CVAT task.
                         Then, on the <strong>Statistics Dashboard</strong> tab, select
                         <strong>Import from CVAT</strong> from the
-                        <strong>Which Nanoparticles to Use</strong> drop-down list and
-                        upload the backup archive using the corresponding file upload field.
+                        <strong>Which Nanoparticles to Use</strong> drop-down list.
+                        A file upload field will appear – upload the backup archive (zip).
                         If all requirements are met, all statistics sections will be
                         displayed automatically below.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
+                    <p>
                         More detailed information about CVAT integration is available in the
                         <a href="https://disk.yandex.ru/i/2U5wgJ8IjskREQ">
                             extended user guide
@@ -338,61 +328,107 @@ def Guide3():
             </ul>
         </div>
     """, unsafe_allow_html = True)
-       
-    media_col.markdown(f"""
-        <div class = 'text center'>
-            A video guide will be added here soon!
-        </div>
-    """, unsafe_allow_html = True)
 
 
 def Guide4():
-    st.subheader("Quality Evaluation", anchor = False)
-    text_col, media_col = st.columns([1, 1], vertical_alignment = 'center')
-
-    text_col.markdown(f"""
-        <div>
-            <p class='text'>All the following steps are performed on the <strong>Statistics Dashboard</strong> tab.</p>
+    st.header("Quality Evaluation", anchor = False)
+    st.markdown(f"""        
+        <div class = 'text-help'>
+            <p>
+                Quality evaluation is performed on the <strong>Automatic Detection</strong> tab, after successful nanoparticle detection.
+            </p>
             <ul>
                 <li>
-                    <p class='text'>
-                        The <strong>Quality Evaluation</strong> section provides a quantitative assessment of nanoparticle
-                        detection quality. First, an automatic detection result is required. It must either be available
-                        on the <strong>Automatic Detection</strong> tab or imported as a CVAT backup archive in the
-                        <strong>Global Dashboard Settings</strong> section. Next, upload the expert annotation in the
-                        CVAT backup archive format to the corresponding field in the
-                        <strong>Quality Evaluation</strong> section. If all requirements are met, the detection quality
-                        will be displayed below as a percentage. A detailed description of the evaluation procedure
-                        can be found in publication [2].
+                    <p>
+                        Open the <strong>Quality estimation</strong> expander (located in the left settings column).
+                        Upload the expert annotation file in CVAT backup format (zip archive) using the
+                        <strong>Expert markup file</strong> uploader.
                     </p>
                 </li>
                 <li>
-                    <p class='text'>
-                        You can also visualize the detection quality assessment. To do this, enable the
-                        <strong>Display Nanoparticles</strong> switch. An interactive plot will appear below,
-                        displaying four types of nanoparticles. <strong>Blue</strong> nanoparticles are automatically
-                        detected particles that match <strong>green</strong> nanoparticles annotated by the expert (TP).
-                        <strong>Red</strong> nanoparticles are annotated by the expert but were not detected automatically (FN).
-                        <strong>Yellow</strong> nanoparticles are automatically detected particles that were not confirmed
-                        by the expert (FP).
+                    <p>
+                        Adjust the <strong>Jacquard measure threshold</strong> slider if needed. The results will be
+                        computed automatically.
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        The main image will display colored circles indicating:
+                        <ul>
+                            <li><strong>Blue</strong> – all automatically detected nanoparticles (before comparison).</li>
+                            <li><strong>Green (TP)</strong> – nanoparticles correctly matched with expert annotations.</li>
+                            <li><strong>Red (FN)</strong> – expert annotations missed by automatic detection.</li>
+                            <li><strong>Yellow (FP)</strong> – automatically detected particles not confirmed by expert.</li>
+                        </ul>
+                        A legend and counts for each category are shown below the image.
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        A detailed description of the evaluation procedure can be found in publication [2].
                     </p>
                 </li>
             </ul>
         </div>
     """, unsafe_allow_html = True)
-       
-    media_col.markdown(f"""
-        <div class = 'text' style = "text-align: center;">
-            A video guide will be added here soon!
+
+
+def Guide5():
+    st.header("Statistics Dashboard", anchor = False)
+    st.markdown(f"""
+        <div class = 'text-help'>
+            <p>
+                The <strong>Statistics Dashboard</strong> tab provides detailed analysis of detected or imported nanoparticles.
+            </p>
+            <ul>
+                <li>
+                    <p>
+                        First, choose the data source in the <strong>Global dashboard settings</strong>:
+                        <ul>
+                            <li><strong>Use current detection</strong> – statistics will be calculated for the nanoparticles detected on the Automatic Detection tab.</li>
+                            <li><strong>Import from CVAT</strong> – upload a CVAT backup archive to use its annotations.</li>
+                            <li><strong>None</strong> – no statistics are displayed.</li>
+                        </ul>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        In the <strong>Particle parameters</strong> section you can:
+                        <ul>
+                            <li>View the distribution of particle diameters (histogram) with adjustable step and normalization.</li>
+                            <li>Select the particle material to compute mass-related parameters.</li>
+                            <li>See basic statistics (count, mean diameter, standard deviation, area, volume, mass).</li>
+                            <li>Choose between heatmap or painted image visualization.</li>
+                        </ul>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        In the <strong>Nanoparticle spatial distribution</strong> section you can explore:
+                        <ul>
+                            <li>Fraction of empty subareas for different block sizes.</li>
+                            <li>Distance to nearest nanoparticle distribution.</li>
+                            <li>Average number of nanoparticles per unit area.</li>
+                            <li>Average coverage by neighbors and average number of neighbors.</li>
+                        </ul>
+                    </p>
+                </li>
+                <li>
+                    <p>
+                        The <strong>Aggregate statistics</strong> block allows you to collect summary statistics for multiple images into a table, which can be exported.
+                    </p>
+                </li>
+            </ul>
         </div>
     """, unsafe_allow_html = True)
 
 
 def HowCite():
-    tempCol = st.columns([0.8, 0.2], vertical_alignment = 'center')
+    tempCol = st.columns([8, 2], vertical_alignment = 'center')
 
     tempCol[0].markdown("""
-        <div class = 'cite'> <b>How to cite</b>:
+        <div class = 'cite'>
+            <b>How to cite</b>:
             <ul>
                 <li> <p class = 'cite'>
                     [1] An article about this site will be published soon, don't miss it!
