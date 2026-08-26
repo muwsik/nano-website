@@ -1,21 +1,31 @@
 ﻿# Nano-Website
 
-A Python web application for automated analysis of images acquired using a scanning electron microscope.
+Nano Website is a web-based application for automated analysis of nanoparticles in electron microscopy images. The application is designed for detecting large numbers of very small nanoparticles, typically occupying only 1–10 pixels in an image, and provides tools for their morphometric and statistical analysis.
 
-**Application areas:** computer vision, scanning electron microscopy (SEM) image analysis, machine learning
+The application supports SEM and TEM images and includes nanoparticle detection, filtering, visualization, statistical analysis, and integration with CVAT for annotation and detection quality evaluation. It is intended to simplify quantitative analysis of nanoparticle size and spatial distribution and provide reproducible results.
+
+**Application areas:** computer vision, machine learning, scanning/transmission electron microscopy (SEM/TEM)
 
 ## Features
 
-* Automatic nanoparticle detection in SEM images
-* Evaluation of the spatial ordering of nanoparticles
-* Detection of defective material surface regions based on structural order analysis
-* Web-based user interface
+* **Automatic nanoparticle detection** in SEM and TEM images.
+* **Automatic image scale detection** using the scale bar in electron microscopy images.
+* **Nanoparticle filtering** based on particle diameter, center brightness, and detection reliability.
+* **Interactive visualization** of detected nanoparticles and their properties directly on the original image.
+* **Results export** for further processing and analysis.
+* **CVAT integration** for importing expert annotations and exporting detected nanoparticles for annotation and review.
+* **Detection quality evaluation** using expert annotations, including TP, FP, FN, and IoU-based matching.
+* **Nanoparticle size statistics**, including diameter distributions and basic morphometric characteristics.
+* **Spatial distribution analysis**, including particle density, nearest-neighbor distances, and neighborhood characteristics.
+* **Aggregate statistics** for combining analysis results from multiple images.
+* **Interactive statistical visualization** with configurable parameters and data export.
+
 
 ## Technologies
 
-| Primary Language | Web Interface | Computer Vision | Visualization |
-|:----------------:|:-------------:|:---------------:|:-------------:|
-| Python 3.11 | Streamlit | EasyOCR, OpenCV, Scikit-image | Plotly |
+| Primary Language | Web Interface | Computer Vision | Visualization | Annotation |
+|:----------------:|:-------------:|:---------------:|:-------------:|:----------:|
+| Python 3.12 | Streamlit | EasyOCR, Scikit-image | Plotly | CVAT |
 
 ## Project Structure
 
@@ -76,34 +86,56 @@ pip install -r nano-website/requirements.txt
 streamlit run nano-website/nano-website.py
 ```
 
-After launching, the application will be available in your web browser.
+The application will be available at the local address provided by Streamlit.
 
-## Usage and Documentation
+## Usage
 
-### Using the Application
+### Automatic Detection
 
-1. Upload a scanning electron microscopy image through the web interface.
-2. Start the automatic analysis (typically takes up to 1 minute).
-3. Review the detected nanoparticles, their parameters, and the structural ordering assessment.
+1. Upload an SEM or TEM image.
+2. The application automatically determines the image scale.
+3. Configure the nanoparticle detection parameters if necessary.
+4. Run the automatic detection.
+5. Review the detected nanoparticles and adjust filtering parameters if required.
+6. Export the detection results for further analysis or annotation in CVAT.
+
+### Statistics
+
+1. Use the results of nanoparticle detection or import annotations from CVAT.
+2. Configure the parameters required for statistical analysis.
+3. Calculate nanoparticle size and spatial distribution statistics.
+4. Visualize the results using interactive plots and heatmaps.
+5. Add results from multiple images to the aggregate statistics.
+6. Export the calculated data for further analysis.
 
 A detailed interface description is available in the **Help** section of the web application.
 
-### Additional Materials
+### CVAT Integration and Detection Quality Evaluation
 
-- 📄 Integration with CVAT and detection quality assessment (https://disk.yandex.ru/i/2U5wgJ8IjskREQ)
+The application provides integration with **CVAT** for annotation and evaluation of nanoparticle detection results.
+
+* Export automatically detected nanoparticles to CVAT for manual review and correction.
+* Import CVAT annotations for statistical analysis.
+* Compare automatically detected nanoparticles with expert annotations.
+* Evaluate detection quality using **true positives (TP)**, **false positives (FP)**, and **false negatives (FN)**.
+* Match detected and annotated nanoparticles using an **IoU (Intersection over Union)** threshold.
+* Visualize matched and unmatched detections directly on the original image.
+
+- Integration with CVAT and detection quality assessment (https://disk.yandex.ru/i/2U5wgJ8IjskREQ)
 
 ### Examples
 
 #### Nanoparticle Detection
-![Detection example](nano-website/content/images/detection.png)
+![Detection example](nano-website/content/readme-examples/detection.png)
 
 #### Nanoparticle Parameter Analysis
-![Parameters example1](nano-website/content/images/parameters1.png)
-![Parameters example2](nano-website/content/images/parameters2.png)
+The application provides tools for quantitative analysis of detected nanoparticles and their spatial distribution.
+![Diameters distribution example](nano-website/content/readme-examples/diameters-distribution.png)
+![Nanoparticle spatial distribution example](nano-website/content/readme-examples/spatial-distribution.png)
 
-#### Structural Ordering and Surface Defect Detection
-![Structure example1](nano-website/content/images/structuredTrue.png)
-![Structure example2](nano-website/content/images/structuredFalse.png)
+#### Detection Quality Evaluation
+The application provides integration with CVAT for annotation and evaluation of nanoparticle detection results.
+![Quality example](nano-website/content/readme-examples/quality.png)
 
 ## Related Publications
 
