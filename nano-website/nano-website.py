@@ -659,32 +659,42 @@ try:
                         },
                         "circle": {
                             "default": {
-                                "stroke": st.session_state['Default.color'],
-                                "strokeWidth": 1,
+                                "style": {
+                                    "stroke": st.session_state['Default.color'],
+                                    "strokeWidth": 1,
+                                }
                             },
-                            "class": {
-                                "D": {
+                            "D": {
+                                "style": {
                                     "stroke": "blue",
                                     "stroke-width": 1,
-                                },                            
-                                "TP": {
+                                }
+                            },                            
+                            "TP": {
+                                "style": {
                                     "stroke": "green",
                                     "stroke-width": 1,
-                                },                            
-                                "FN": {
+                                }
+                            },                            
+                            "FN": {
+                                "style": {
                                     "stroke": "red",
                                     "stroke-width": 1,
-                                },                            
-                                "FP": {
+                                }
+                            },                            
+                            "FP": {
+                                "style": {
                                     "stroke": "yellow",
                                     "stroke-width": 1,
-                                },
-                            }
+                                }
+                            },
                         },
                         "path": {
-                            "default": {
-                                "stroke": st.session_state['Default.color'],
-                                "strokeWidth": 2,
+                            "default": {                                
+                                "style": {
+                                    "stroke": st.session_state['Default.color'],
+                                    "strokeWidth": 2,
+                                }
                             }
                         }
                     },
