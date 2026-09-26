@@ -21,9 +21,8 @@ class Visualization:
     Download        = "Click here to download the detection result in the specified format.  \n"
 
 
-NanopartSelectbox   = """
-    Which results will be used to calculate the statistics.  
-    If the value is 'None', statistics are not calculated
+NanopartSelectbox   = """Which results will be used to calculate the statistics.  
+If the value is **None**, statistics are not calculated
 """
 
 
@@ -35,7 +34,7 @@ class Distribution:
     Download        = "Uploading chart data for self-charting"
 
 UploderFileCVAT = """
-    Import [CVAT](https://app.cvat.ai/) data to calculate statistics (format 'CVAT for images 1.1')
+Import [CVAT](https://app.cvat.ai/) data to calculate statistics (format 'CVAT for images 1.1')
 """
 
 

@@ -6,6 +6,6 @@ pillow
 joblib
 plotly
 scipy
-matplotlib
-streamlit==1.56.0
-streamlit-image-overlay
+streamlit==1.57.0
+streamlit-image-overlay==1.1.8
+streamlit-embla-carousel==0.9.1

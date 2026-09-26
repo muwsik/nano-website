@@ -16,16 +16,11 @@ def loadStyles(color):
             }}
 
             .stTabs [aria-selected = "false"] {{
-                 background-color: rgba(233, 233, 233, 0.25);
+                 background-color: rgba(233, 233, 233, 0.35);
             }}
 
             .stTabs [data-baseweb = "tab"] p {{
                 font-size: 20px;            
-            }}
-
-            .stTabs [data-baseweb = "tab-panel"] {{
-                padding: 10px 10px 10px 10px;
-		        border-radius: 0px 0px 4px 4px;            
             }}
 
             .stExpander details {{

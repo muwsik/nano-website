@@ -32,7 +32,7 @@ import utils.reworkExpApp as rEA
 
 # UI
 from streamlit_image_overlay import streamlit_image_overlay as overlay
-
+from streamlit_image_gallery import streamlit_image_gallery as gallery
     
 
 ### Function ###
@@ -280,7 +280,7 @@ try:
                 # TO DO: resize fix?                
         else:
             resetDetectionTab()
-        
+
         
         if (st.session_state['Image'].upload):
             colImage, colSetting = st.columns([6, 2])
@@ -698,7 +698,8 @@ try:
                             }
                         }
                     },
-                    key = "main-imageViewer"                    
+                    key = "main-imageViewer",
+                    help = """**Left click + drag**: move image\n**Mouse wheel**: zoom\n**Double click**: fit image\n**Right click**: show/hide overlays"""                                       
                 )
                 
                 if (st.session_state['quality']):
