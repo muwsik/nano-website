@@ -8,20 +8,20 @@ def loadStyles(color):
                 padding: 8px 0px 5px 0px !important;
             }}
 
-	        .stTabs [data-baseweb = "tab"] {{
-		        height: 40px;
-		        border-radius: 4px 4px 0px 0px;
-                border: medium solid rgba(200, 200, 200, 0.3);
-                padding: 0px 10px 0px 10px;
-            }}
+	        # .stTabs [data-baseweb = "tab"] {{
+		    #     height: 40px;
+		    #     border-radius: 4px 4px 0px 0px;
+            #     border: medium solid rgba(200, 200, 200, 0.3);
+            #     padding: 0px 10px 0px 10px;
+            # }}
 
-            .stTabs [aria-selected = "false"] {{
-                 background-color: rgba(233, 233, 233, 0.35);
-            }}
+            # .stTabs [aria-selected = "false"] {{
+            #      background-color: rgba(233, 233, 233, 0.35);
+            # }}
 
-            .stTabs [data-baseweb = "tab"] p {{
-                font-size: 20px;            
-            }}
+            # .stTabs [data-baseweb = "tab"] p {{
+            #     font-size: 20px;            
+            # }}
 
             .stExpander details {{
                 border-top: 1px dashed gray;

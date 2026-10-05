@@ -19,6 +19,7 @@ import plotly.graph_objects as go
 import content.style as style
 import content.tooltips as tooltips
 import content.instructions as instruct
+import content.examples as examples
 
 # utils
 import utils.autoscale as autoscale
@@ -32,14 +33,13 @@ import utils.reworkExpApp as rEA
 
 # UI
 from streamlit_image_overlay import streamlit_image_overlay as overlay
-from streamlit_image_gallery import streamlit_image_gallery as gallery
+from streamlit_embla_carousel import streamlit_embla_carousel as carousel
     
 
 ### Function ###
     
 def resetDetectionTab():
     st.session_state['Image'] = SimpleNamespace(
-        upload = False,
         uploadedFile = None,
         source = None,
         preprocessed = None,
@@ -62,6 +62,7 @@ def resetDetectionTab():
     )
 
     # widgets
+    # st.session_state['Image.uploader'] = None
     st.session_state['Image.type'] = None
     st.session_state['Default.use'] = False
     st.session_state['Default.color'] = 'rgb(150, 150, 255)'
@@ -175,7 +176,7 @@ def dialog_feedback():
         txt = st.text_area("Describe your problem")
 
         sendImg = False
-        if st.session_state['Image'].upload:
+        if st.session_state['Image'].uploadedFile is not None:
             sendImg = st.toggle("The current uploaded image on site will be sent", value = True)
             
         _container = st.container(horizontal = True, vertical_alignment = 'center')
@@ -226,11 +227,35 @@ def exportToCVAT(imageData, x, y, diameter):
     return API2CVAT.exportToCVAT(imageData, x, y, diameter)
 
 
+@st.cache_data(show_spinner = False, max_entries = 5)
+def loadExamples():
+    return examples.loadExamples()
+
+
 def addIoU2Overlays(overlays, iou):
     for overlay, value in zip(overlays, iou):
         overlay["tooltip"] += f"IoU: {value:.3f}\n"
     return overlays
 
+
+def applyImageSelection():
+    if not st.session_state['Image.popover']:
+        uploadedFile = st.session_state.get('Image.uploader')
+
+        if uploadedFile is None:
+            resetDetectionTab()
+        else:
+            currentFile = st.session_state['Image'].uploadedFile
+
+            if (currentFile is None
+                or currentFile.name != uploadedFile.name
+            ):
+                resetDetectionTab()
+
+                st.session_state['Image'].uploadedFile = uploadedFile
+                st.session_state['Image'].source = \
+                    Image.open(uploadedFile).convert("L").resize((1280, 960))
+       
 
 
 ### Main app ###
@@ -258,31 +283,60 @@ try:
         "Help"
     ])
 
-
     ## TAB 1
-    with tabDetect:           
-        st.subheader("Upload EM-image", anchor = False)  
-        
-        _tempUploadedFile = st.file_uploader("Choose an EM-image",
-            label_visibility = 'collapsed',
-            type = ["tif", "tiff", "png", "jpg", "jpeg" ]
+    with tabDetect: 
+        chooseLabel = "Choose an EM-image"
+        if st.session_state["Image"].uploadedFile is not None:
+            image = st.session_state["Image"].uploadedFile
+            chooseLabel = (
+                f"Custom image successfully uploaded. "
+                f"Name: '**{image.name}**'. "
+                #f"Size: {image.size} bytes"
+            )
+            
+        choose = st.popover(
+            chooseLabel,
+            width = "stretch",
+            key = "Image.popover",
+            on_change = applyImageSelection,
         )
 
-        if _tempUploadedFile is not None: 
-            if (st.session_state['Image'].uploadedFile is None
-                or st.session_state['Image'].uploadedFile.name != _tempUploadedFile.name
-            ):                 
-                resetDetectionTab() # Reset old values
+        with choose:
+            _infoPlaceholder = st.empty()
 
-                st.session_state['Image'].upload = True  
-                st.session_state['Image'].uploadedFile = _tempUploadedFile  
-                st.session_state['Image'].source = Image.open(_tempUploadedFile).convert("L").resize((1280, 960)) 
-                # TO DO: resize fix?                
-        else:
-            resetDetectionTab()
+            st.subheader("Upload EM-image", anchor = False)
+
+            st.file_uploader(
+                "Choose an EM-image",
+                label_visibility = "collapsed",
+                type = ["tif", "tiff", "png", "jpg", "jpeg"],
+                key = 'Image.uploader',
+            )
+
+            st.subheader("Choose example EM-image", anchor = False)
+
+            example = carousel(loadExamples())
+
+            if example and (st.session_state['Image.uploader'] is not None):
+                _infoPlaceholder.warning(
+                    f"A file has been uploaded and an example has been selected! Priority is given to the uploaded file. "
+                    f"The image will be displayed in the workspace after exiting this menu."
+                )
+
+            if example and (st.session_state['Image.uploader'] is None):
+                _infoPlaceholder.success(
+                    f"Example image selected. "
+                    f"The image will be displayed in the workspace after exiting this menu."
+                )
+
+            if not example and (st.session_state['Image.uploader'] is not None):
+                _infoPlaceholder.success(
+                    f"File '{st.session_state['Image.uploader'].name}' successfully uploaded! "
+                    f"The image will be displayed in the workspace after exiting this menu."                                
+                )
 
         
-        if (st.session_state['Image'].upload):
+        if (st.session_state['Image'].uploadedFile is not None):
             colImage, colSetting = st.columns([6, 2])
 
             # Detection settings and results
@@ -319,7 +373,6 @@ try:
                                 break
                                               
                 st.toggle("Use default settings",
-                    disabled = not st.session_state['Image'].upload,
                     key = 'Default.use',
                     help = tooltips.DefaultToggle
                 )                         
@@ -360,7 +413,6 @@ try:
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         width = 'stretch',
-                        disabled = not st.session_state['Image'].upload,
                         on_click = lambda: setattr(st.session_state["Particles"], "detect", True),
                     )
                     
