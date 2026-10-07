@@ -33,7 +33,6 @@ import utils.reworkExpApp as rEA
 
 # UI
 from streamlit_image_overlay import streamlit_image_overlay as overlay
-from streamlit_embla_carousel import streamlit_embla_carousel as carousel
     
 
 ### Function ###
@@ -53,7 +52,7 @@ def resetDetectionTab():
     )
 
     st.session_state['Default'] = SimpleNamespace(
-        imageType       = None,             # auto estimate
+        type            = None,             # auto estimate
         d_brightness    = 5,
         d_diameter      = 2,                # type, not value 
         f_brightness    = 7,
@@ -62,12 +61,7 @@ def resetDetectionTab():
     )
 
     # widgets
-    # st.session_state['Image.uploader'] = None
     st.session_state['Image.type'] = None
-    st.session_state['Default.use'] = False
-    st.session_state['Default.color'] = 'rgb(150, 150, 255)'
-    st.session_state['Scale.display'] = False    
-    st.session_state['quality'] = False
 
 
 def resetStatisticTab():    
@@ -86,16 +80,28 @@ def resetStatisticTab():
     st.session_state['heatmap-step'] = 10
 
 
-def resetStates(_dispToast = False):
+def resetAll(_dispToast = False):
     if _dispToast:
         st.toast('Default configuration loaded!')
-    
-    st.session_state['rerun'] = False
-    
-    st.session_state['Scale'] = None
 
     resetDetectionTab()
     resetStatisticTab()
+    
+    st.session_state['rerun'] = False  
+
+    st.session_state['Scale'] = None
+    st.session_state['Scale.display'] = False    
+
+    st.session_state['Example'] = SimpleNamespace(
+        file = None,
+        name = None,
+        using = True,
+    )
+    
+    st.session_state['Default.use'] = False
+    st.session_state['Default.color'] = 'rgb(150, 150, 255)'
+
+    st.session_state['quality'] = False
 
     st.session_state["buffer"] = pd.DataFrame(columns = [
         "Image",
@@ -227,9 +233,9 @@ def exportToCVAT(imageData, x, y, diameter):
     return API2CVAT.exportToCVAT(imageData, x, y, diameter)
 
 
-@st.cache_data(show_spinner = False, max_entries = 5)
-def loadExamples():
-    return examples.loadExamples()
+#@st.cache_data(show_spinner = False, max_entries = 5)
+def createExamples():
+    return examples.createExamples()
 
 
 def addIoU2Overlays(overlays, iou):
@@ -238,36 +244,35 @@ def addIoU2Overlays(overlays, iou):
     return overlays
 
 
-def applyImageSelection():
-    if not st.session_state['Image.popover']:
-        uploadedFile = st.session_state.get('Image.uploader')
+def setExample(name):          
+    if st.session_state['Example'].name == name:
+        st.session_state['Example'].name = None  
+    else:
+        st.session_state['Example'].name = name
 
-        if uploadedFile is None:
-            resetDetectionTab()
-        else:
-            currentFile = st.session_state['Image'].uploadedFile
+    if st.session_state.get('File.uploader') is None:
+        st.session_state['Example'].using = True   
+    else:
+        st.session_state['Example'].using = False
 
-            if (currentFile is None
-                or currentFile.name != uploadedFile.name
-            ):
-                resetDetectionTab()
-
-                st.session_state['Image'].uploadedFile = uploadedFile
-                st.session_state['Image'].source = \
-                    Image.open(uploadedFile).convert("L").resize((1280, 960))
-       
+    
 
 
 ### Main app ###
 try:    
     # Initial loading of session states
     if 'rerun' not in st.session_state:
-        resetStates()
+        resetAll()
     elif st.session_state['rerun']:
-        resetStates(True)
+        resetAll(True)
 
     # Loading CSS styles
-    st.set_page_config(page_title = "Web Nanoparticles", layout = "wide", page_icon = ":petri_dish:")
+    st.set_page_config(
+        page_title = "Web Nanoparticles", 
+        layout = "wide", 
+        page_icon = r"./nano-website/content/bubbles.png",
+        initial_sidebar_state = "collapsed"
+    )
     style.loadStyles(st.session_state['Default.color'])
     
     ## Header
@@ -275,6 +280,30 @@ try:
 
     ## About
     instruct.About()
+
+    ## SideBar
+    with st.sidebar:
+        _examples = createExamples()
+
+        for i, _example in enumerate(_examples):
+            with st.container(border = True):
+                st.image(_example.getvalue())
+
+                with st.container(horizontal = True, vertical_alignment = "center", horizontal_alignment = "distribute"):
+                    st.markdown(_example.title)
+
+                    if st.session_state['Example'].name != _example.name:
+                        b_lable = "Use it"
+                        b_type = 'secondary'
+                    else:                    
+                        b_lable = "Using"
+                        b_type = 'primary'    
+
+                    if st.button(b_lable, type = b_type, disabled = not st.session_state['Example'].using,
+                        key = f"use_button_{i}",
+                        on_click = setExample, args = (_example.name,)
+                    ):
+                        st.session_state['Example'].file = _example       
 
     ## Main content area
     tabDetect, tabStat, tabHelp = st.tabs([
@@ -285,57 +314,35 @@ try:
 
     ## TAB 1
     with tabDetect: 
-        chooseLabel = "Choose an EM-image"
-        if st.session_state["Image"].uploadedFile is not None:
-            image = st.session_state["Image"].uploadedFile
-            chooseLabel = (
-                f"Custom image successfully uploaded. "
-                f"Name: '**{image.name}**'. "
-                #f"Size: {image.size} bytes"
-            )
-            
-        choose = st.popover(
-            chooseLabel,
-            width = "stretch",
-            key = "Image.popover",
-            on_change = applyImageSelection,
+        st.subheader("Upload EM-image", anchor = False)
+
+        _uploadedFile = st.file_uploader(
+            "Choose an EM-image",
+            label_visibility = "collapsed",
+            type = ["tif", "tiff", "png", "jpg", "jpeg"],
+            key = 'File.uploader',
+            on_change = setExample, args = (None,)
         )
 
-        with choose:
-            _infoPlaceholder = st.empty()
+        # example image is being used and other file is not uploaded
+        if st.session_state['Example'].name is not None and st.session_state['Example'].using:
+            _uploadedFile = st.session_state['Example'].file  
 
-            st.subheader("Upload EM-image", anchor = False)
+        if _uploadedFile is None:
+            resetDetectionTab()
+        else:
+            currentFile = st.session_state['Image'].uploadedFile
 
-            st.file_uploader(
-                "Choose an EM-image",
-                label_visibility = "collapsed",
-                type = ["tif", "tiff", "png", "jpg", "jpeg"],
-                key = 'Image.uploader',
-            )
+            if (currentFile is None) or (currentFile.name != _uploadedFile.name):
+                resetDetectionTab()
 
-            st.subheader("Choose example EM-image", anchor = False)
+                if st.session_state['Example'].name is not None:
+                    st.session_state['Default'] = examples.getExampleParams(st.session_state['Example'].name)
 
-            example = carousel(loadExamples())
+                st.session_state['Image'].uploadedFile = _uploadedFile
+                st.session_state['Image'].source = \
+                    Image.open(_uploadedFile).convert("L").resize((1280, 960))
 
-            if example and (st.session_state['Image.uploader'] is not None):
-                _infoPlaceholder.warning(
-                    f"A file has been uploaded and an example has been selected! Priority is given to the uploaded file. "
-                    f"The image will be displayed in the workspace after exiting this menu."
-                )
-
-            if example and (st.session_state['Image.uploader'] is None):
-                _infoPlaceholder.success(
-                    f"Example image selected. "
-                    f"The image will be displayed in the workspace after exiting this menu."
-                )
-
-            if not example and (st.session_state['Image.uploader'] is not None):
-                _infoPlaceholder.success(
-                    f"File '{st.session_state['Image.uploader'].name}' successfully uploaded! "
-                    f"The image will be displayed in the workspace after exiting this menu."                                
-                )
-
-        
         if (st.session_state['Image'].uploadedFile is not None):
             colImage, colSetting = st.columns([6, 2])
 
@@ -351,26 +358,20 @@ try:
                         # Information bar crop
                         st.session_state['Image'].preprocessed = st.session_state['Image'].source.crop(
                             (
-                                0,
-                                0,
+                                0, 0,
                                 st.session_state['Image'].source.size[0], 
                                 st.session_state['Scale'].horizontalBound
                             )
                         )                        
 
-                    if (st.session_state['Image.type'] is None) or st.session_state['Default.use']:
-                        _data = np.array(st.session_state['Image'].preprocessed, dtype = 'uint8').flatten()
-                        counts, _ = np.histogram(_data, bins = np.arange(0, 255, 1))
-                        counts = counts / np.sum(counts)
+                    if (st.session_state['Example'].name is not None):
+                        st.session_state['Image.type'] = st.session_state['Default'].type
 
-                        cumSum = 0
-                        for i, j in enumerate(counts):
-                            cumSum = cumSum + j
-                            if (cumSum >= 0.5):
-                                if (i <= 127):
-                                    st.session_state['Image.type'] = 1     # SEM
-                                else: st.session_state['Image.type'] = 2   # TEM
-                                break
+                    elif (st.session_state['Image.type'] is None ) or (st.session_state['Default.use']):
+                        if np.median(st.session_state['Image'].preprocessed) <= 127:
+                            st.session_state['Image.type'] = 1  # SEM
+                        else:
+                            st.session_state['Image.type'] = 2  # TEM                            
                                               
                 st.toggle("Use default settings",
                     key = 'Default.use',

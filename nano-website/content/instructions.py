@@ -8,9 +8,34 @@ def Header():
     
 def About():
     st.markdown("""
+        <link href = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel = "stylesheet">
+
+        <style>
+            .sidebar-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 35px;
+                height: 35px;
+                border: 1px solid rgba(128, 128, 128, 0.5);
+                border-radius: 5px;
+                vertical-align: middle;
+                margin: 0 3px;
+            }
+
+            .sidebar-icon .material-symbols-outlined {
+                font-size: 33px;
+            }
+        </style>
+
         <div class = 'about'>
-            Hello! It is an interactive tool for processing images from an electron microscope (SEM or TEM).
-            It will help you to detect nanoparticles in the image and calculate their statictics.
+            Hello! It is an interactive tool for processing images from an electron <nobr>microscope (SEM or TEM)</nobr>.
+            <br>It will help you to detect nanoparticles in the image and calculate their statictics.
+            <br>You can find example images in the <nobr>sidebar — click 
+                <span class = "sidebar-icon">
+                    <span class = "material-symbols-outlined">keyboard_double_arrow_right</span>
+                </span>
+                in</nobr> the upper-left corner.
         </div>
     """, unsafe_allow_html = True)
 
@@ -195,6 +220,22 @@ def Quality(FN, FP, TP):
 
 def LegendChartQuality():
     st.markdown("""
+        <style>
+            .particle-label {{
+                color: white;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: bold;
+                display: inline-block;
+                margin: 2px;
+            }}
+
+            .particle-label.blue    {{ background-color: #007bff; }}
+            .particle-label.green   {{ background-color: #28a745; }}
+            .particle-label.red     {{ background-color: #dc3545; }}
+            .particle-label.orange  {{ background-color: #fd7e14; }}
+        </style>
+
         <div style="text-align: center; font-size: 15px">
             <span class="particle-label blue">Detect by algorithm (D)</span>
             <span class="particle-label green">Correctly identified by algorithm (TP)</span>

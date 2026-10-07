@@ -8,20 +8,9 @@ def loadStyles(color):
                 padding: 8px 0px 5px 0px !important;
             }}
 
-	        # .stTabs [data-baseweb = "tab"] {{
-		    #     height: 40px;
-		    #     border-radius: 4px 4px 0px 0px;
-            #     border: medium solid rgba(200, 200, 200, 0.3);
-            #     padding: 0px 10px 0px 10px;
-            # }}
-
-            # .stTabs [aria-selected = "false"] {{
-            #      background-color: rgba(233, 233, 233, 0.35);
-            # }}
-
-            # .stTabs [data-baseweb = "tab"] p {{
-            #     font-size: 20px;            
-            # }}
+            [data-testid = "stSidebar"] {{
+                width: 350px;
+            }}
 
             .stExpander details {{
                 border-top: 1px dashed gray;
@@ -59,32 +48,18 @@ def loadStyles(color):
                 background-color: {color};
                 color: black;
                 font-weight: bold;
-                font-size: 50px;
+                font-size: 45px;
                 text-align: center;
-                padding: 20px;
+                padding: 5px;
                 border-radius: 10px;
             }}
 
             .about
             {{
                 font-weight: bold;
-                font-size: 35px;
+                font-size: 33px;
                 text-align: center;
             }}
-
-            .particle-label {{
-                color: white;
-                padding: 2px 6px;
-                border-radius: 4px;
-                font-weight: bold;
-                display: inline-block;
-                margin: 2px;
-            }}
-
-            .particle-label.blue    {{ background-color: #007bff; }}
-            .particle-label.green   {{ background-color: #28a745; }}
-            .particle-label.red     {{ background-color: #dc3545; }}
-            .particle-label.orange  {{ background-color: #fd7e14; }}
 
             .footer {{
                 background-color: rgb(0, 0, 0);
@@ -95,6 +70,7 @@ def loadStyles(color):
                 left: 0;
                 bottom: 0;
                 width: 100%;
+                z-index: 9999;
             }}
 
         </style>
