@@ -372,7 +372,26 @@ try:
                 st.toggle("Use default settings",
                     key = 'Default.use',
                     help = tooltips.DefaultToggle
-                )                         
+                )                   
+
+                if st.session_state['Default.use']:
+                    params = examples.getExampleParams(st.session_state['Example'].name)
+                    if params is not None:
+                        st.session_state['Params.d_type'] = params.d_type
+                        st.session_state['Params.d_brightness'] = params.d_brightness
+                        st.session_state['Params.d_diameter'] = params.d_diameter
+                        st.session_state['Params.f_brightness'] = params.f_brightness
+                        # only auto estimated
+                        # st.session_state['Params.f_diameter'] = params.f_diameter
+                        st.session_state['Params.f_reliability'] = params.f_reliability
+                    else:
+                        st.session_state['Params.d_brightness'] = 5
+                        st.session_state['Params.d_diameter'] = 2
+                        st.session_state['Params.f_brightness'] = 7
+                        # only auto estimated
+                        # st.session_state['Params.f_diameter'] = params.f_diameter
+                        st.session_state['Params.f_reliability'] = 0.75
+
 
                 # Detection settings       
                 with st.expander("Detection settings", icon = ":material/tune:",
@@ -483,7 +502,7 @@ try:
                                 particles exceed the 98th with a diameter greater 
                                 than {_max_d:.1f} {st.session_state['Scale'].unit}"""
                             
-                            if (st.session_state['Params.f_diameter'] is None):
+                            if (st.session_state['Params.f_diameter'] is None) or (st.session_state['Default.use']):
                                 st.session_state['Params.f_diameter'] = (_min_d, _max_d)
                             # else used previous value
 
