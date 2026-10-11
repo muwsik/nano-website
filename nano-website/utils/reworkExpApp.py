@@ -247,6 +247,9 @@ def detectingParticles(image, settings):
     if len(blobs_appr) < 1:
         return ParticleSet(np.array([]))
 
+    # delete blobs with r <= 0.1
+    blobs_appr = blobs_appr[blobs_appr[:, 2] > 0]
+
     if settings[2] == 2:
         blobs_appr[:, :3] *= 2
     elif settings[2] == 1 or settings[2] == 0:
@@ -258,7 +261,7 @@ def detectingParticles(image, settings):
         np.column_stack([
             blobs_appr[:, 1],
             blobs_appr[:, 0],
-            blobs_appr[:, 2] * 2,
+            blobs_appr[:, 2] * 2, # diameters
             blobs_appr[:, 3],
             blobs_appr[:, 5],
         ])

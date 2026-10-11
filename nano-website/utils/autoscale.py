@@ -61,7 +61,8 @@ def detectScale(image):
     if horizontalBound is None:
         return Scale()
 
-    fullText = findText(image[horizontalBound:, :])
+    # -50 is the magic number
+    fullText = findText(image[horizontalBound - 50:, :])
 
     scaleBarVal, scaleBarText = scale(fullText)
 
@@ -147,7 +148,7 @@ class Scale:
 ### main
 if __name__ == "__main__":  
 
-    img_path = r"C:\4-S1-no_area-100k-ordered.tif"
+    img_path = r"D:\Projects\nano-website\nano-website\content\EM-examples\Pd-1.jpg"
 
     img = Image.open(img_path).convert('L')
     img = img.resize((1280, 960))

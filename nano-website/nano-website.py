@@ -51,17 +51,13 @@ def resetDetectionTab():
         time = None,
     )
 
-    st.session_state['Default'] = SimpleNamespace(
-        type            = None,             # auto estimate
-        d_brightness    = 5,
-        d_diameter      = 2,                # type, not value 
-        f_brightness    = 7,
-        f_diameter      = (None, None),     # nm scale
-        f_reliability   = 0.75,
-    )
-
-    # widgets
-    st.session_state['Image.type'] = None
+    # widgets for detection and filtering
+    st.session_state['Params.d_type'] = None
+    st.session_state['Params.d_brightness'] = 5
+    st.session_state['Params.d_diameter'] = 2
+    st.session_state['Params.f_brightness'] = 7
+    st.session_state['Params.f_diameter'] = None   
+    st.session_state['Params.f_reliability'] = 0.75
 
 
 def resetStatisticTab():    
@@ -94,8 +90,7 @@ def resetAll(_dispToast = False):
 
     st.session_state['Example'] = SimpleNamespace(
         file = None,
-        name = None,
-        using = True,
+        name = None
     )
     
     st.session_state['Default.use'] = False
@@ -250,15 +245,10 @@ def setExample(name):
     else:
         st.session_state['Example'].name = name
 
-    if st.session_state.get('File.uploader') is None:
-        st.session_state['Example'].using = True   
-    else:
-        st.session_state['Example'].using = False
-
-    
 
 
-### Main app ###
+##### Main app #####
+
 try:    
     # Initial loading of session states
     if 'rerun' not in st.session_state:
@@ -299,13 +289,15 @@ try:
                         b_lable = "Using"
                         b_type = 'primary'    
 
-                    if st.button(b_lable, type = b_type, disabled = not st.session_state['Example'].using,
+                    if st.button(b_lable, type = b_type,
+                        disabled = st.session_state.get('File.uploader') is not None,
                         key = f"use_button_{i}",
                         on_click = setExample, args = (_example.name,)
                     ):
                         st.session_state['Example'].file = _example       
 
-    ## Main content area
+
+    ## Main content tabs
     tabDetect, tabStat, tabHelp = st.tabs([
         "Automatic detection",
         "Statistics dashboard",
@@ -324,20 +316,27 @@ try:
             on_change = setExample, args = (None,)
         )
 
-        # example image is being used and other file is not uploaded
-        if st.session_state['Example'].name is not None and st.session_state['Example'].using:
-            _uploadedFile = st.session_state['Example'].file  
-
-        if _uploadedFile is None:
+        if (_uploadedFile is None) and (st.session_state['Example'].name is None):
+            # Data has not been uploaded
             resetDetectionTab()
         else:
-            currentFile = st.session_state['Image'].uploadedFile
+            if (st.session_state['Example'].name is not None):
+                _uploadedFile = st.session_state['Example'].file  
 
+            currentFile = st.session_state['Image'].uploadedFile
             if (currentFile is None) or (currentFile.name != _uploadedFile.name):
                 resetDetectionTab()
 
-                if st.session_state['Example'].name is not None:
-                    st.session_state['Default'] = examples.getExampleParams(st.session_state['Example'].name)
+                # Default settings for example images
+                params = examples.getExampleParams(st.session_state['Example'].name)
+                if params is not None:
+                    st.session_state['Params.d_type'] = params.d_type
+                    st.session_state['Params.d_brightness'] = params.d_brightness
+                    st.session_state['Params.d_diameter'] = params.d_diameter
+                    st.session_state['Params.f_brightness'] = params.f_brightness
+                    # only auto estimated
+                    # st.session_state['Params.f_diameter'] = params.f_diameter
+                    st.session_state['Params.f_reliability'] = params.f_reliability
 
                 st.session_state['Image'].uploadedFile = _uploadedFile
                 st.session_state['Image'].source = \
@@ -364,14 +363,11 @@ try:
                             )
                         )                        
 
-                    if (st.session_state['Example'].name is not None):
-                        st.session_state['Image.type'] = st.session_state['Default'].type
-
-                    elif (st.session_state['Image.type'] is None ) or (st.session_state['Default.use']):
+                    if (st.session_state['Params.d_type'] is None) or (st.session_state['Default.use']):
                         if np.median(st.session_state['Image'].preprocessed) <= 127:
-                            st.session_state['Image.type'] = 1  # SEM
+                            st.session_state['Params.d_type'] = 1  # SEM
                         else:
-                            st.session_state['Image.type'] = 2  # TEM                            
+                            st.session_state['Params.d_type'] = 2  # TEM                            
                                               
                 st.toggle("Use default settings",
                     key = 'Default.use',
@@ -384,73 +380,73 @@ try:
                 ):
                     st.pills("Type of microscope image",
                         required = True,
-                        key = 'Image.type',
+                        key = 'Params.d_type',
                         options = tooltips.Options.TypeMicroscope.keys(),
                         format_func = lambda option: tooltips.Options.TypeMicroscope[option],  
                         width = 'stretch',                     
                         disabled = st.session_state['Default.use'],
-                        help = tooltips.TypeMicroscopePills
+                        help = tooltips.TypeMicroscopePills,
+                        persist_state = 'session'
                     )                    
-                    
-                    if ('param-pre-1' not in st.session_state) or st.session_state['Default.use']:
-                        st.session_state['param-pre-1'] = st.session_state['Default'].d_brightness
-                        
+                                            
                     st.slider("Minimal nanoparticle brightness",
-                        key = 'param-pre-1',
+                        key = 'Params.d_brightness',
                         disabled = st.session_state['Default.use'],
-                        help = tooltips.Detection.Brightness
+                        help = tooltips.Detection.Brightness,
+                        persist_state = 'session'
                     )
 
-                    if ('param-pre-2' not in st.session_state) or st.session_state['Default.use']:
-                            st.session_state['param-pre-2'] = st.session_state['Default'].d_diameter
-
                     st.selectbox("Hypothetical nanoparticles diameter",
-                        key = 'param-pre-2',
+                        key = 'Params.d_diameter',
                         options = tooltips.Options.NanopartSize.keys(),
                         format_func = lambda option: tooltips.Options.NanopartSize[option],
                         disabled = st.session_state['Default.use'],
-                        help = tooltips.Detection.Diameter
+                        help = tooltips.Detection.Diameter,
+                        persist_state = 'session'
                     )
         
                     pushDetectButton = st.button("Nanoparticles detection",
                         width = 'stretch',
-                        on_click = lambda: setattr(st.session_state["Particles"], "detect", True),
+                        on_click = lambda: (
+                            setattr(
+                                st.session_state["Particles"],
+                                "settings",
+                                [
+                                    st.session_state['Params.d_type'],
+                                    st.session_state['Params.d_brightness'],
+                                    st.session_state['Params.d_diameter'],
+                                ]
+                            ),
+                            setattr(
+                                st.session_state["Particles"],
+                                "detect",
+                                True
+                            )
+                        ),
                     )
-                    
-                    tempWarningPlaceholder = st.empty()
 
                     if st.session_state['Particles'].detect:
                         if (st.session_state['Particles'].settings != [                        
-                            st.session_state['Image.type'],
-                            st.session_state['param-pre-1'],
-                            st.session_state['param-pre-2'],
+                            st.session_state['Params.d_type'],
+                            st.session_state['Params.d_brightness'],
+                            st.session_state['Params.d_diameter'],
                         ]):
-                            tempWarningPlaceholder.warning(
-                                tooltips.Warnings.DetectSettings,
-                                icon = ":material/warning:"
-                            )
+                            st.warning(tooltips.Warnings.DetectSettings, icon = ":material/warning:")
                 
                 # Detecting
                 if pushDetectButton:
                     st.session_state['Particles'].detect = False
-                    tempWarningPlaceholder.empty()
                     
                     timeStart = time.time()
-                    with st.spinner("Nanoparticles detection...", show_time = True):                         
-                        st.session_state['Particles'].detect = True                          
-                        st.session_state['Particles'].settings = [
-                            st.session_state['Image.type'],
-                            st.session_state['param-pre-1'],
-                            st.session_state['param-pre-2'],
-                        ]   
-
+                    with st.spinner("Nanoparticles detection...", show_time = True): 
                         st.session_state['Particles'].data = rEA.detectingParticles(
                             st.session_state['Image'].preprocessed,
                             st.session_state['Particles'].settings
                         )
                         st.session_state['Particles'].data.applyScale(st.session_state['Scale'].multiplier)   
 
-                    st.session_state['Particles'].time = int(np.ceil(time.time() - timeStart))
+                    st.session_state['Particles'].time = int(np.ceil(time.time() - timeStart))                                           
+                    st.session_state['Particles'].detect = True                  
 
                 # Detection results
                 if st.session_state['Particles'].detect:
@@ -460,69 +456,67 @@ try:
                     )
  
                     if (st.session_state['Particles'].data.detectedCount < 1):    
-                    # Warning about not correctly detection results        
+                        # Warning about not correctly detection results        
                         st.warning(tooltips.Warnings.NoFoundNanos, icon = ":material/warning:")
                     else:
                         # Filtration settings
                         with st.expander("Filtration settings", expanded = True, icon = ":material/filter_alt:"):
-                            if ('param-filt-1' not in st.session_state) or st.session_state['Default.use']:
-                                st.session_state['param-filt-1'] = st.session_state['Default'].f_brightness
-                                                        
                             st.slider("Nanoparticle center brightness",
-                                key = 'param-filt-1',
+                                key = 'Params.f_brightness',
                                 disabled = st.session_state['Default.use'],
-                                help = tooltips.Filtration.Brightness
+                                help = tooltips.Filtration.Brightness,
+                                persist_state = 'session'
                             )
 
                             # Settings slider with diameters    
-                            _diameters = st.session_state['Particles'].data.get('diameter', False)                        
-                            min_d = np.min(_diameters)
-                            max_d = np.percentile(_diameters, 97)
+                            _diameters = st.session_state['Particles'].data.get('diameter', False)  
+                            _min_d = np.min(_diameters)
+                            _max_d = np.percentile(_diameters, 98)
 
-                            slider_min = np.floor(min_d / 10) * 10
-                            slider_max = np.ceil(max_d / 10) * 10
+                            slider_min = np.floor(_min_d / 10) * 10
+                            slider_max = np.ceil(_max_d / 10) * 10
 
                             if slider_max <= slider_min:
                                 slider_max = slider_max + 10
 
-                            if ('param-filt-2' not in st.session_state) or st.session_state['Default.use']:
-                                st.session_state['param-filt-2'] = (min_d, max_d)
+                            additionalHelp = f"""**{np.sum(_diameters > _max_d)}** 
+                                particles exceed the 98th with a diameter greater 
+                                than {_max_d:.1f} {st.session_state['Scale'].unit}"""
+                            
+                            if (st.session_state['Params.f_diameter'] is None):
+                                st.session_state['Params.f_diameter'] = (_min_d, _max_d)
+                            # else used previous value
 
                             st.slider(f"Nanoparticles diameter, {st.session_state['Scale'].unit}",
-                                key = 'param-filt-2',                         
+                                key = 'Params.f_diameter',                         
                                 min_value = slider_min,
                                 step = 0.1,
                                 max_value = slider_max,
                                 format = "%0.1f",
                                 disabled = st.session_state['Default.use'],
-                                help = tooltips.Filtration.Diameter +
-                                    f"""**{np.sum(_diameters > max_d)}** 
-                                        particles exceed the 97th with a diameter greater 
-                                        than {max_d:.1f} {st.session_state['Scale'].unit}"""                             
+                                persist_state = 'session',                     
+                                help = tooltips.Filtration.Diameter + additionalHelp
                             )
 
-
-                            if ('param-filt-3' not in st.session_state) or st.session_state['Default.use']:
-                                st.session_state['param-filt-3'] = st.session_state['Default'].f_reliability
-
                             st.slider("Nanoparticle reliability",
-                                key = 'param-filt-3',
+                                key = 'Params.f_reliability',
                                 min_value = 0.0,
                                 step = 0.01,
                                 max_value = 1.0,
                                 disabled = st.session_state['Default.use'],
-                                help = tooltips.Filtration.Reliability
+                                help = tooltips.Filtration.Reliability,
+                                persist_state = 'session'       
                             )
                             
                         # Filtering                    
                         st.session_state['Particles'].data.setfilter( 
-                            c0 = (st.session_state['param-filt-1'], None),
+                            c0 = (st.session_state['Params.f_brightness'], None),
                             diameter = (
-                                st.session_state['param-filt-2'][0],
-                                None if np.isclose(slider_max, st.session_state['param-filt-2'][1]) 
-                                    else st.session_state['param-filt-2'][1]
+                                st.session_state['Params.f_diameter'][0],
+                                None if np.isclose(slider_max, st.session_state['Params.f_diameter'][1]) 
+                                    else st.session_state['Params.f_diameter'][1]
                             ),
-                            approxError = (None, 1 - st.session_state['param-filt-3'])
+                            approxError = (None, 1 - st.session_state['Params.f_reliability'])
                         )
                         
                         # Info about filtered nanoparticles

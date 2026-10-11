@@ -7,11 +7,7 @@ def loadStyles(color):
                 font-size: 21px !important;
                 padding: 8px 0px 5px 0px !important;
             }}
-
-            [data-testid = "stSidebar"] {{
-                width: 350px;
-            }}
-
+            
             .stExpander details {{
                 border-top: 1px dashed gray;
                 border-right: 0px dashed gray;
