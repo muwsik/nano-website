@@ -24,8 +24,8 @@ _EXAMPLES = [
         "time": 15,
 
         "d_type": 1,  # SEM
-        "d_brightness": 5,
-        "d_diameter": 0,    # Medium (5-15 pixels)
+        "d_brightness": 7,
+        "d_diameter": 1,    # Medium (5-15 pixels)
         "f_brightness": 11,
         #"f_diameters": (4.3, 12.0),
         "f_reliability": 0.84,
