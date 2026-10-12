@@ -8,4 +8,3 @@ plotly
 scipy
 streamlit==1.60.0
 streamlit-image-overlay==1.1.8
-streamlit-embla-carousel==0.9.4
