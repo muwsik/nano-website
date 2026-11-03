@@ -466,7 +466,10 @@ def HowCite():
             <b>How to cite</b>:
             <ul>
                 <li> <p class = 'cite'>
-                    [1] An article about this site will be published soon, don't miss it!
+                    [1] Nanoparticle-Promoted and Nanoparticle-Suppressed Behavior of Pd/C Catalytic Systems Revealed by a Digital Assistant for Electron Microscopy Data Quantification.
+                    Kashin A.S., Ivanova N.M., Shutovskaya E.S. [et al.] 
+                    // Inorganic Chemistry. 2026. Vol. 65, No. 43. Pp. 25208–25222.
+                    DOI: <a href=https://doi.org/10.1021/acs.inorgchem.6c02635>10.1021/acs.inorgchem.6c02635</a>.
                 </p> </li>
                 <li> <p class = 'cite'>
                     [2] Automated Recognition of Nanoparticles in Electron Microscopy Images of Nanoscale Palladium Catalysts.
@@ -489,7 +492,7 @@ def HowCite():
         </div>
     """, unsafe_allow_html = True)
 
-    tempCol[1].image(r"./nano-website/content/qr-code.svg",
+    tempCol[1].image(r"./nano-website/content/qr-code.png",
         caption = "Web Nanoparticles QR-code",
         width = 'stretch'
     )   
